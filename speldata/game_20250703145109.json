@@ -1,0 +1,25 @@
+{
+  "id": "20250703145109",
+  "datum": "2025-07-03",
+  "plats": "Bunke",
+  "antal_spelare": 20,
+  "skapad": "2025-07-03T14:51:09.951156",
+  "fas": "Orderfas",
+  "runda": 3,
+  "lag": [
+    "Alfa",
+    "Bravo",
+    "STT",
+    "FM",
+    "BS"
+  ],
+  "order": {},
+  "poang": {},
+  "resultat": [],
+  "backlog": [],
+  "orderfas_min": 2,
+  "diplomatifas_min": 2,
+  "timer_status": "stopped",
+  "timer_start": null,
+  "timer_elapsed": 0
+}

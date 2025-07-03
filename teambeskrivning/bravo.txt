@@ -1,0 +1,20 @@
+Utförliga Mål:
+Leverera ett komplett och stabilt valsystem enligt plan:
+Följ en noggrant utformad plan stegvis. Först all kravinsamling, sedan all design, sedan all utveckling, testning och till slut produktionssättning. Varje steg ska vara färdigt innan nästa påbörjas.
+Säkerställ att projektet håller sig inom budget och tidsramar:
+Hantera resurser noggrant för att säkerställa att projektet inte överskrider de givna handlingspoängen. Allokeringen av resurser ska vara effektiv och kostnadsmedveten, och projektet ska avslutas inom den givna tidsramen.
+Upprätthåll noggrann kontroll och dokumentation genom hela processen:
+Se till att varje beslut är väldokumenterat och att risker hanteras proaktivt. Systemet ska vara lätt att förstå och underhålla även efter att spelet är över.
+Dolda Agendor:
+Bevisa överlägsenheten hos traditionella projektmetoder:
+Demonstrera att er metodik är mer pålitlig och stabil än agila metoder. Om möjligt, peka på problem som Team Alfa stöter på som bevis för att er metod är överlägsen.
+Försök få kontroll över resurser från andra team:
+Om det finns möjlighet att omdirigera eller ta över resurser från andra team (t.ex. STT handlingspoäng), bör ni göra detta för att säkerställa att ert projekt är bäst försett.
+Tips:
+Arbeta metodiskt men sök aktivt stöd från SÄPO och Regeringen för att få resurser i rätt tid.
+
+Skapa en långsiktig berättelse till Media om ert stabila arbetssätt – positionera Alfa som ett riskprojekt.
+
+Ha personer som lyssnar på Alfa för att samla in information om deras framfart och eventuella misstag.
+ 
+Ovan är er projektplan med de leverabler ni ska leverera under projektet med estimat på hur många handlingspoäng varje ”task” tar.

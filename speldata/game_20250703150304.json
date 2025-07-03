@@ -1,0 +1,37 @@
+{
+  "id": "20250703150304",
+  "datum": "2025-07-03",
+  "plats": "b2",
+  "antal_spelare": 60,
+  "skapad": "2025-07-03T15:03:04.787875",
+  "fas": "Orderfas",
+  "runda": 1,
+  "lag": [
+    "Alfa",
+    "Bravo",
+    "STT",
+    "FM",
+    "BS",
+    "Media",
+    "SÄPO",
+    "Regeringen",
+    "USA"
+  ],
+  "order": {},
+  "poang": {},
+  "resultat": [],
+  "backlog": [],
+  "orderfas_min": 1,
+  "diplomatifas_min": 1,
+  "timer_status": "stopped",
+  "timer_start": null,
+  "timer_elapsed": 0,
+  "fashistorik": [
+    {
+      "runda": 1,
+      "fas": "Orderfas",
+      "status": "pågående"
+    }
+  ],
+  "avslutat": false
+}

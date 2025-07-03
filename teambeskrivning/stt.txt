@@ -1,0 +1,22 @@
+Utförliga Mål:
+Upprätthåll en stabil och säker infrastruktur:
+Säkerställ att all infrastruktur är "härdad" mot attacker och att kapaciteten är tillräcklig för att hantera hög belastning. Målet är att inga system ska gå ner eller bli komprometterade under spelets gång.
+Skydda systemet mot både interna och externa hot:
+Utför regelbundna säkerhetstester och övervaka alla system för potentiella hot. Om en säkerhetsbrist upptäcks, agera omedelbart.
+Samarbeta med utvecklingsteamen för att säkerställa lyckad produktionssättning:
+Se till att ni har en tydlig bild av varje teams behov och beroenden så att alla system kan sättas i produktion utan problem. Prioritera produktionssättningar utifrån systemens kritikalitet.
+Dolda Agendor:
+Säkra era egna intressen genom att prioritera säkerhet över allt annat:
+Om ni står inför valet mellan att uppfylla ett teams önskan om snabb produktionssättning och att säkerställa säkerheten, bör ni alltid välja säkerheten, även om det orsakar förseningar för andra team.
+Underminerar arbetet i team som inte värderar säkerhet tillräckligt:
+Om ni märker att ett utvecklingsteam (t.ex. Alfa eller Bravo) ignorerar säkerhetsaspekter, bör ni försöka påverka teamet att förstå hotet från andra aktörer.
+Försök påverka regeringen för att få ytterligare säkerhetsresurser:
+Om ni anser att ni inte har tillräckliga resurser för att säkerställa systemets säkerhet, försök få ytterligare medel från regeringen genom att förklara potentiella hot.
+Tips:
+Var selektiv och kräva handlingspoäng för att produktionssätta – tvinga andra team att förhandla om prioritet.
+
+Håll tät kontakt med SÄPO och Regeringen – det kan ge politiskt skydd om ni saktar ner vissa team.
+
+Få Media att förstå vikten av säkerhet – annars riskerar ni att framstå som en bromskloss.
+
+Ovan är de mål ni har tillsammans med hur många handlingspoäng det kostar. Notera att under deklarationstider (markerat i rött) produktionssätter ni ingenting.

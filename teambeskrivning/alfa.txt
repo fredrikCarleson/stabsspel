@@ -1,0 +1,22 @@
+Utförliga Mål:
+Leverera en fungerande version av valsystemets nyckelfunktioner i tid:
+Se till att inloggningssystemet, röstinsamlingen och API för röstdata är fullt fungerande och säkra. Målet är att ha dessa funktioner operativa varje runda, med löpande förbättringar baserat på feedback.
+Optimera utvecklingsprocessen genom CI/CD:
+Implementera och utnyttja en CI/CD-pipeline för att snabbt kunna iterera och leverera funktionalitet. Säkerställ att varje leverans är testad och stabil för att minimera risken för buggar i produktion.
+Samarbeta effektivt med STT för att säkra produktionssättningen:
+Arbeta nära STT för att säkerställa att alla system kan produktionssättas utan förseningar. Se till att alla beroenden och säkerhetsaspekter hanteras i tid.
+Dolda Agendor:
+Främja agila arbetsmetoder över traditionella modeller:
+Inom laget, och gärna genom att påverka andra lag, bör ni försöka visa överlägsenheten hos agila metoder. Detta kan innebära att fördröja eller kritisera Team Bravos traditionella arbetssätt för att framhäva agilitetens fördelar.
+Implementera en specifik teknisk lösning:
+Ni har en stark preferens för en viss teknisk lösning (t.ex. ett specifikt ramverk eller molntjänst) och kommer att försöka få detta implementerat även om det inte är den mest optimala lösningen. Försök driva denna agenda utan att väcka misstankar från andra lag.
+Övertyga regeringen om att ni behöver mer resurser:
+Försök övertyga regeringen om att ni behöver extra resurser för att möta ert mål. Om ni lyckas kan ni få extra handlingspoäng i en senare runda.
+Tips:
+Skapa snabba allianser med STT för att få prioritet vid produktionssättning.
+
+Förhandla aktivt med Regeringen om mer resurser – Regeringen tenderar att lyssna på dem som pratar mest.
+
+Försök påverka Media att rapportera era snabba framgångar för att pressa Bravo.
+
+Teamet vill arbeta med att få funktioner klara direkt och få det i produktion och efter hand förbättra. Ovan är  de funktioner ni ska få klara med antal handlingspoäng som krävs.
