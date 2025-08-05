@@ -85,7 +85,6 @@ def create_compact_header(data, lag_html):
             <div style="flex: 1; min-width: 300px;">
                 <p style="margin: 0; font-size: 14px;"><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
                 <p style="margin: 5px 0 0 0; font-size: 14px;"><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
-            <p><a href="/admin">Tillbaka till adminstart</a></p>
             </div>
             <div style="flex: 1; min-width: 300px;">
                 <p style="margin: 0; font-size: 14px;"><b>Lag:</b> {lag_html}</p>
@@ -97,15 +96,17 @@ def create_compact_header(data, lag_html):
 
 def create_action_buttons(spel_id):
     """Skapa knappar för åtgärder"""
-    poang_lank = f'<a href="/admin/{spel_id}/poang" style="display: block; text-decoration: none;"><button style="width: 100%;">Visa/ändra handlingspoäng</button></a>'
-    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" style="display: block; text-decoration: none;"><button style="width: 100%;">Skriv ut aktivitetskort</button></a>'
-    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: block; text-decoration: none;"><button type="submit" style="width: 100%;">Återställ spel</button></form>'
+    poang_lank = f'<a href="/admin/{spel_id}/poang" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Visa/ändra handlingspoäng</button></a>'
+    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Skriv ut aktivitetskort</button></a>'
+    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: block; text-decoration: none;"><button type="submit" style="width: 100%; height: 40px;">Återställ spel</button></form>'
+    back_lank = f'<a href="/admin" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Tillbaka till adminstart</button></a>'
     
     return f'''
     <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
         {poang_lank}
         {aktivitetskort_lank}
         {reset_lank}
+        {back_lank}
     </div>
     '''
 
