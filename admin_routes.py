@@ -10,31 +10,21 @@ from models import (
 
 admin_bp = Blueprint('admin', __name__)
 
-@admin_bp.route("/admin", methods=["GET", "POST"])
-def admin_start():
-    if request.method == "POST":
-        datum = request.form.get("datum")
-        plats = request.form.get("plats")
-        intervall = request.form.get("players_interval")
-        antal_spelare = int(intervall) if intervall else 20
-        orderfas_min = int(request.form.get("orderfas_min") or 10)
-        diplomatifas_min = int(request.form.get("diplomatifas_min") or 10)
-        spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
-        return redirect(url_for("admin.admin_panel", spel_id=spel_id))
-    # Lista befintliga spel
-    spel = []
-    for fil in os.listdir(DATA_DIR):
-        if fil.startswith("game_") and fil.endswith(".json"):
-            with open(os.path.join(DATA_DIR, fil), encoding="utf-8") as f:
-                data = json.load(f)
-                spel.append({"id": data["id"], "datum": data["datum"], "plats": data["plats"]})
-    intervals = [
-        ("15-26 (5 team)", 20),
-        ("27-60 (9 team)", 27)
-    ]
-    
-    # Skapa JavaScript för att visa vilka team som kommer vara med
-    team_info_js = '''
+# ============================================================================
+# HJÄLPFUNKTIONER
+# ============================================================================
+
+def load_game_data(spel_id):
+    """Ladda speldatan från fil"""
+    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
+    if not os.path.exists(filnamn):
+        return None
+    with open(filnamn, encoding="utf-8") as f:
+        return json.load(f)
+
+def create_team_info_js():
+    """Skapa JavaScript för team-information"""
+    return '''
     <script>
     function updateTeamInfo() {
         const select = document.getElementById('players_interval');
@@ -86,6 +76,260 @@ def admin_start():
     };
     </script>
     '''
+
+def create_compact_header(data, lag_html):
+    """Skapa kompakt header med spelinformation"""
+    return f'''
+    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #007bff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="flex: 1; min-width: 300px;">
+                <p style="margin: 0; font-size: 14px;"><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
+                <p style="margin: 5px 0 0 0; font-size: 14px;"><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
+            </div>
+            <div style="flex: 1; min-width: 300px;">
+                <p style="margin: 0; font-size: 14px;"><b>Lag:</b> {lag_html}</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">(Klicka på laget för att se dess mål)</p>
+            </div>
+        </div>
+    </div>
+    '''
+
+def create_action_buttons(spel_id):
+    """Skapa knappar för åtgärder"""
+    poang_lank = f'<a href="/admin/{spel_id}/poang" style="display: block; text-decoration: none;"><button style="width: 100%;">Visa/ändra handlingspoäng</button></a>'
+    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" style="display: block; text-decoration: none;"><button style="width: 100%;">Skriv ut aktivitetskort</button></a>'
+    
+    return f'''
+    <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+        {poang_lank}
+        {aktivitetskort_lank}
+    </div>
+    '''
+
+def create_timer_controls(spel_id, remaining, timer_status):
+    """Skapa timer-kontroller"""
+    return f'''
+    <div>
+        <span id="timer">{remaining//60:02d}:{remaining%60:02d}</span>
+        <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+            <button name="action" value="start">Starta</button>
+            <button name="action" value="pause">Pausa</button>
+            <button name="action" value="reset">Återställ</button>
+        </form>
+        <p class="status {timer_status}">Status: {timer_status.capitalize()}</p>
+    </div>
+    '''
+
+def create_orderfas_checklist(spel_id, data):
+    """Skapa checklista för Orderfas"""
+    checklist_html = f'''
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #28a745;">
+        <h3>📋 Checklista: Ordrar från alla team</h3>
+        <div style="margin: 10px 0;">
+    '''
+    
+    # Skapa checkbox för varje lag
+    for i, lag in enumerate(data["lag"], 1):
+        checklist_html += f'''
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="order_check{i}" style="margin-right: 10px;" onchange="updateNextFasButton()">
+                <span>Ordrar från {lag}</span>
+            </label>
+        '''
+    
+    checklist_html += f'''
+        </div>
+    </div>
+    
+    <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+        <button name="action" value="next_fas" id="next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Nästa fas</button>
+    </form>
+    
+    <script>
+    function updateNextFasButton() {{
+        const totalTeams = {len(data["lag"])};
+        let checkedCount = 0;
+        
+        for (let i = 1; i <= totalTeams; i++) {{
+            const checkbox = document.getElementById('order_check' + i);
+            if (checkbox && checkbox.checked) {{
+                checkedCount++;
+            }}
+        }}
+        
+        const nextFasButton = document.getElementById('next-fas-btn');
+        
+        if (checkedCount === totalTeams) {{
+            nextFasButton.disabled = false;
+            nextFasButton.style.opacity = '1';
+            nextFasButton.style.cursor = 'pointer';
+        }} else {{
+            nextFasButton.disabled = true;
+            nextFasButton.style.opacity = '0.5';
+            nextFasButton.style.cursor = 'not-allowed';
+        }}
+    }}
+    
+    // Initiera knappen som inaktiverad när sidan laddas
+    window.onload = function() {{
+        updateNextFasButton();
+    }};
+    </script>
+    '''
+    
+    return checklist_html
+
+def create_resultatfas_checklist(spel_id):
+    """Skapa checklista för Resultatfas"""
+    return f'''
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #007bff;">
+        <h3>✅ Checklista innan ny runda</h3>
+        <div style="margin: 10px 0;">
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="check1" style="margin-right: 10px;" onchange="updateStartButton()">
+                <span>Uppdatera progress för teamens arbete</span>                
+            </label>
+            <a href="/admin/{spel_id}/backlog"><button>Uppdatera teamens arbete</button></a>
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="check2" style="margin-right: 10px;" onchange="updateStartButton()">
+                <span>Läsa upp nyheter</span>
+            </label>
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="check3" style="margin-right: 10px;" onchange="updateStartButton()">
+                <span>Redigera handlingspoäng för varje team</span>
+            </label>
+        </div>
+    </div>
+    
+    <script>
+    function updateStartButton() {{
+        const check1 = document.getElementById('check1').checked;
+        const check2 = document.getElementById('check2').checked;
+        const check3 = document.getElementById('check3').checked;
+        const startButton = document.getElementById('start-ny-runda-btn');
+        
+        if (check1 && check2 && check3) {{
+            startButton.disabled = false;
+            startButton.style.opacity = '1';
+            startButton.style.cursor = 'pointer';
+        }} else {{
+            startButton.disabled = true;
+            startButton.style.opacity = '0.5';
+            startButton.style.cursor = 'not-allowed';
+        }}
+    }}
+    
+    // Initiera knappen som inaktiverad när sidan laddas
+    window.onload = function() {{
+        updateStartButton();
+    }};
+    </script>
+    '''
+
+def create_timer_script(remaining, timer_status):
+    """Skapa timer-script"""
+    return f'''
+    <script>
+    var remaining = {remaining};
+    var timerElem = document.getElementById('timer');
+    var running = "{timer_status}" === "running";
+    var alarmPlayed = false;
+    
+    // Skapa audio-element för alarmet
+    var alarm = new Audio('/static/alarm.mp3');
+    alarm.volume = 0.7; // Sätt volym till 70%
+    
+    function updateTimer() {{
+        if (remaining > 0 && running) {{
+            remaining--;
+            var min = Math.floor(remaining/60);
+            var sec = remaining%60;
+            timerElem.textContent = (min<10?'0':'')+min+":"+(sec<10?'0':'')+sec;
+            
+            // Spela alarm när tiden går ut
+            if (remaining <= 0 && !alarmPlayed) {{
+                alarm.play().catch(function(error) {{
+                    console.log('Kunde inte spela alarm:', error);
+                }});
+                alarmPlayed = true;
+                
+                // Visa varning
+                alert('Tiden är ute!');
+            }}
+        }}
+    }}
+    setInterval(updateTimer, 1000);
+    </script>
+    '''
+
+def create_historik_html(rundor):
+    """Skapa snygg historik HTML"""
+    if not rundor:
+        return ""
+    
+    historik_html = '''
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6c757d;">
+        <h3 style="margin-top: 0; color: #495057; font-size: 1.4em;">📊 Spelhistorik</h3>
+    '''
+    
+    for rundnr in sorted(rundor.keys()):
+        historik_html += f'''
+        <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #e9ecef;">
+            <h4 style="margin: 0 0 10px 0; color: #495057; font-size: 1.2em;">🎯 Runda {rundnr}</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        '''
+        
+        for entry in rundor[rundnr]:
+            if entry["status"] == "pågående":
+                status_icon = "🔄"
+                status_class = "background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
+            else:
+                status_icon = "✅"
+                status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
+            
+            historik_html += f'''
+            <div style="{status_class} padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500;">
+                {status_icon} {entry["fas"]}
+            </div>
+            '''
+        
+        historik_html += '''
+            </div>
+        </div>
+        '''
+    
+    historik_html += '</div>'
+    return historik_html
+
+# ============================================================================
+# ROUTES
+# ============================================================================
+
+@admin_bp.route("/admin", methods=["GET", "POST"])
+def admin_start():
+    if request.method == "POST":
+        datum = request.form.get("datum")
+        plats = request.form.get("plats")
+        intervall = request.form.get("players_interval")
+        antal_spelare = int(intervall) if intervall else 20
+        orderfas_min = int(request.form.get("orderfas_min") or 10)
+        diplomatifas_min = int(request.form.get("diplomatifas_min") or 10)
+        spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
+        return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+    # Lista befintliga spel
+    spel = []
+    for fil in os.listdir(DATA_DIR):
+        if fil.startswith("game_") and fil.endswith(".json"):
+            with open(os.path.join(DATA_DIR, fil), encoding="utf-8") as f:
+                data = json.load(f)
+                spel.append({"id": data["id"], "datum": data["datum"], "plats": data["plats"]})
+    intervals = [
+        ("15-26 (5 team)", 20),
+        ("27-60 (9 team)", 27)
+    ]
+    
+    # Skapa JavaScript för att visa vilka team som kommer vara med
+    team_info_js = create_team_info_js()
     
     return f'''
         <link rel="stylesheet" href="/static/style.css">
@@ -119,27 +363,31 @@ def admin_start():
 
 @admin_bp.route("/admin/<spel_id>")
 def admin_panel(spel_id):
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
+    data = load_game_data(spel_id)
+    if not data:
         return "Spelet hittades inte.", 404
-    with open(filnamn, encoding="utf-8") as f:
-        data = json.load(f)
-    # Timerberäkning
+    
+    # Beräkna timer-värden
     fas_min = get_fas_minutes(data)
     total_sec = fas_min * 60
     now = int(time.time())
     timer_status = data.get("timer_status", "stopped")
     timer_start = data.get("timer_start")
     timer_elapsed = data.get("timer_elapsed", 0)
+    
     if timer_status == "running" and timer_start:
         elapsed = now - timer_start + timer_elapsed
     else:
         elapsed = timer_elapsed
+    
     remaining = max(0, total_sec - elapsed)
+    
+    # Hämta spelstatus
     avslutat = data.get("avslutat", False)
     runda = data.get("runda", 1)
     fas = data.get("fas", "Orderfas")
-    # Historik grupperad per runda
+    
+    # Skapa historik
     historik = data.get("fashistorik", [])
     rundor = {}
     for entry in historik:
@@ -148,247 +396,25 @@ def admin_panel(spel_id):
             rundor[rundnr] = []
         rundor[rundnr].append(entry)
     
-    # Skapa snyggare historik HTML
-    historik_html = ""
-    if rundor:
-        historik_html = '''
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6c757d;">
-            <h3 style="margin-top: 0; color: #495057; font-size: 1.4em;">📊 Spelhistorik</h3>
-        '''
-        
-        for rundnr in sorted(rundor.keys()):
-            historik_html += f'''
-            <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #e9ecef;">
-                <h4 style="margin: 0 0 10px 0; color: #495057; font-size: 1.2em;">🎯 Runda {rundnr}</h4>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-            '''
-            
-            for entry in rundor[rundnr]:
-                if entry["status"] == "pågående":
-                    status_icon = "🔄"
-                    status_class = "background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
-                else:
-                    status_icon = "✅"
-                    status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
-                
-                historik_html += f'''
-                <div style="{status_class} padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500;">
-                    {status_icon} {entry["fas"]}
-                </div>
-                '''
-            
-            historik_html += '''
-                </div>
-            </div>
-            '''
-        
-        historik_html += '</div>'
-    # Rubrik för runda och fas
+    historik_html = create_historik_html(rundor)
     rubrik = f"Runda {runda} av {MAX_RUNDA} – {fas}"
-    # Gör lagnamn klickbara
+    
+    # Skapa klickbara lagnamn
     lag_html = ', '.join([
         f'<a href="/team/{spel_id}/{lag}" target="_blank">{lag}</a>' for lag in data['lag']
     ])
-    # Länk till poängsidan och aktivitetskort
-    poang_lank = f'<a href="/admin/{spel_id}/poang" style="display: block; text-decoration: none;"><button style="width: 100%;">Visa/ändra handlingspoäng</button></a>'
-    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" style="display: block; text-decoration: none;"><button style="width: 100%;">Skriv ut aktivitetskort</button></a>'
-    # Timer och knappar endast för Orderfas/Diplomatifas
-    timer_html = ""
-    if not avslutat:
-        if fas in ["Orderfas", "Diplomatifas"]:
-            timer_html = f'''
-            <h1>{rubrik}</h1>
-            <div>
-                <span id="timer">{remaining//60:02d}:{remaining%60:02d}</span>
-                <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-                    <button name="action" value="start">Starta</button>
-                    <button name="action" value="pause">Pausa</button>
-                    <button name="action" value="reset">Återställ</button>
-                </form>
-                <p class="status {timer_status}">Status: {timer_status.capitalize()}</p>
-            </div>
-            '''
-            
-            # Lägg till checklista endast för Orderfas
-            if fas == "Orderfas":
-                timer_html += f'''
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #28a745;">
-                    <h3>📋 Checklista: Ordrar från alla team</h3>
-                    <div style="margin: 10px 0;">
-                '''
-                
-                # Skapa checkbox för varje lag
-                for i, lag in enumerate(data["lag"], 1):
-                    timer_html += f'''
-                        <label style="display: flex; align-items: center; margin: 8px 0;">
-                            <input type="checkbox" id="order_check{i}" style="margin-right: 10px;" onchange="updateNextFasButton()">
-                            <span>Ordrar från {lag}</span>
-                        </label>
-                    '''
-                
-                timer_html += f'''
-                    </div>
-                </div>
-                
-                <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-                    <button name="action" value="next_fas" id="next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Nästa fas</button>
-                </form>
-                
-                <script>
-                function updateNextFasButton() {{
-                    const totalTeams = {len(data["lag"])};
-                    let checkedCount = 0;
-                    
-                    for (let i = 1; i <= totalTeams; i++) {{
-                        const checkbox = document.getElementById('order_check' + i);
-                        if (checkbox && checkbox.checked) {{
-                            checkedCount++;
-                        }}
-                    }}
-                    
-                    const nextFasButton = document.getElementById('next-fas-btn');
-                    
-                    if (checkedCount === totalTeams) {{
-                        nextFasButton.disabled = false;
-                        nextFasButton.style.opacity = '1';
-                        nextFasButton.style.cursor = 'pointer';
-                    }} else {{
-                        nextFasButton.disabled = true;
-                        nextFasButton.style.opacity = '0.5';
-                        nextFasButton.style.cursor = 'not-allowed';
-                    }}
-                }}
-                
-                // Initiera knappen som inaktiverad när sidan laddas
-                window.onload = function() {{
-                    updateNextFasButton();
-                }};
-                </script>
-                '''
-            
-            timer_html += '''
-            <script>
-            var remaining = ''' + str(remaining) + ''';
-            var timerElem = document.getElementById('timer');
-            var running = "''' + timer_status + '''" === "running";
-            var alarmPlayed = false;
-            
-            // Skapa audio-element för alarmet
-            var alarm = new Audio('/static/alarm.mp3');
-            alarm.volume = 0.7; // Sätt volym till 70%
-            
-            function updateTimer() {
-                if (remaining > 0 && running) {
-                    remaining--;
-                    var min = Math.floor(remaining/60);
-                    var sec = remaining%60;
-                    timerElem.textContent = (min<10?'0':'')+min+":"+(sec<10?'0':'')+sec;
-                    
-                    // Spela alarm när tiden går ut
-                    if (remaining <= 0 && !alarmPlayed) {
-                        alarm.play().catch(function(error) {
-                            console.log('Kunde inte spela alarm:', error);
-                        });
-                        alarmPlayed = true;
-                        
-                        // Visa varning
-                        alert('Tiden är ute!');
-                    }
-                }
-            }
-            setInterval(updateTimer, 1000);
-            </script>
-            '''
-        elif fas == "Resultatfas":
-            timer_html = f'<h1>{rubrik}</h1>'
-
-            
-            # Checklista för att säkerställa att allt är klart innan ny runda
-            timer_html += f'''
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #007bff;">
-                <h3>✅ Checklista innan ny runda</h3>
-                <div style="margin: 10px 0;">
-                    <label style="display: flex; align-items: center; margin: 8px 0;">
-                        <input type="checkbox" id="check1" style="margin-right: 10px;" onchange="updateStartButton()">
-                        <span>Uppdatera progress för teamens arbete</span>                
-                    </label>
-                    <a href="/admin/{spel_id}/backlog"><button>Uppdatera teamens arbete</button></a>
-                    <label style="display: flex; align-items: center; margin: 8px 0;">
-                        <input type="checkbox" id="check2" style="margin-right: 10px;" onchange="updateStartButton()">
-                        <span>Läsa upp nyheter</span>
-                    </label>
-                    <label style="display: flex; align-items: center; margin: 8px 0;">
-                        <input type="checkbox" id="check3" style="margin-right: 10px;" onchange="updateStartButton()">
-                        <span>Redigera handlingspoäng för varje team</span>
-                    </label>
-                </div>
-            </div>
-            
-            <script>
-            function updateStartButton() {{
-                const check1 = document.getElementById('check1').checked;
-                const check2 = document.getElementById('check2').checked;
-                const check3 = document.getElementById('check3').checked;
-                const startButton = document.getElementById('start-ny-runda-btn');
-                
-                if (check1 && check2 && check3) {{
-                    startButton.disabled = false;
-                    startButton.style.opacity = '1';
-                    startButton.style.cursor = 'pointer';
-                }} else {{
-                    startButton.disabled = true;
-                    startButton.style.opacity = '0.5';
-                    startButton.style.cursor = 'not-allowed';
-                }}
-            }}
-            
-            // Initiera knappen som inaktiverad när sidan laddas
-            window.onload = function() {{
-                updateStartButton();
-            }};
-            </script>
-            '''
-            
-            # Visa alltid "Starta ny runda" om spelet inte är avslutat
-            if not avslutat:
-                timer_html += f'''
-                <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Starta ny runda</button>
-                </form>
-                '''
-            if runda > MAX_RUNDA and fas == "Resultatfas":
-                timer_html += f'''
-                <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
-                    <button type="submit">Avsluta spelet</button>
-                </form>
-                '''
-    else:
-        timer_html = f'<h2>Spelet är avslutat</h2>'
-    # HTML
+    
+    # Skapa timer HTML baserat på fas
+    timer_html = create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda)
+    
+    # Returnera komplett HTML
     return f'''
         <link rel="stylesheet" href="/static/style.css">
         <div class="container">
         <h1>Adminpanel för spel {spel_id}</h1>
         
-        <!-- Kompakt header-box med spelinformation -->
-        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #007bff;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="flex: 1; min-width: 300px;">
-                    <p style="margin: 0; font-size: 14px;"><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
-                    <p style="margin: 5px 0 0 0; font-size: 14px;"><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
-                </div>
-                <div style="flex: 1; min-width: 300px;">
-                    <p style="margin: 0; font-size: 14px;"><b>Lag:</b> {lag_html}</p>
-                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">(Klicka på laget för att se dess mål)</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Horisontellt utlagda knappar -->
-        <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
-            {poang_lank}
-            {aktivitetskort_lank}
-        </div>
+        {create_compact_header(data, lag_html)}
+        {create_action_buttons(spel_id)}
         
         <hr>
         {timer_html}
@@ -399,19 +425,54 @@ def admin_panel(spel_id):
         <p>Här kommer funktioner för order, poäng, resultat, backlog m.m.</p>
         <a href="/admin">Tillbaka till adminstart</a>
         
-        <!-- Historik längst ner -->
         {historik_html}
         </div>
     '''
 
+def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda):
+    """Skapa timer HTML baserat på fas"""
+    if avslutat:
+        return '<h2>Spelet är avslutat</h2>'
+    
+    if fas in ["Orderfas", "Diplomatifas"]:
+        timer_html = f'<h1>{rubrik}</h1>'
+        timer_html += create_timer_controls(spel_id, remaining, timer_status)
+        
+        if fas == "Orderfas":
+            timer_html += create_orderfas_checklist(spel_id, data)
+        
+        timer_html += create_timer_script(remaining, timer_status)
+        return timer_html
+    
+    elif fas == "Resultatfas":
+        timer_html = f'<h1>{rubrik}</h1>'
+        timer_html += create_resultatfas_checklist(spel_id)
+        
+        # Starta ny runda knapp
+        timer_html += f'''
+        <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
+            <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Starta ny runda</button>
+        </form>
+        '''
+        
+        # Avsluta spel om max runder nått
+        if runda > MAX_RUNDA:
+            timer_html += f'''
+            <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
+                <button type="submit">Avsluta spelet</button>
+            </form>
+            '''
+        
+        return timer_html
+    
+    return ""
+
 @admin_bp.route("/admin/<spel_id>/timer", methods=["POST"])
 def admin_timer_action(spel_id):
     action = request.form.get("action")
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
+    data = load_game_data(spel_id)
+    if not data:
         return "Spelet hittades inte.", 404
-    with open(filnamn, encoding="utf-8") as f:
-        data = json.load(f)
     now = int(time.time())
     if action == "start":
         data["timer_status"] = "running"
@@ -453,11 +514,9 @@ def admin_slut(spel_id):
 
 @admin_bp.route("/admin/<spel_id>/poang", methods=["GET", "POST"])
 def admin_poang(spel_id):
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
+    data = load_game_data(spel_id)
+    if not data:
         return "Spelet hittades inte.", 404
-    with open(filnamn, encoding="utf-8") as f:
-        data = json.load(f)
     laglista = data["lag"]
     runda = data.get("runda", 1)
     # Initiera poängstruktur om den saknas eller om lag saknas
@@ -524,11 +583,9 @@ def nollstall_regeringsstod(data):
 # Modifiera admin_ny_runda så att regeringsstöd nollställs
 @admin_bp.route("/admin/<spel_id>/ny_runda", methods=["POST"])
 def admin_ny_runda(spel_id):
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
+    data = load_game_data(spel_id)
+    if not data:
         return "Spelet hittades inte.", 404
-    with open(filnamn, encoding="utf-8") as f:
-        data = json.load(f)
     # Avsluta aktuell fas
     data = avsluta_aktuell_fas(data)
     # Starta ny runda med Orderfas
@@ -570,11 +627,9 @@ def admin_reset(spel_id):
 
 @admin_bp.route("/admin/<spel_id>/aktivitetskort")
 def admin_aktivitetskort(spel_id):
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
+    data = load_game_data(spel_id)
+    if not data:
         return "Spelet hittades inte.", 404
-    with open(filnamn, encoding="utf-8") as f:
-        data = json.load(f)
     
     laglista = data["lag"]
     html = f'''
@@ -669,11 +724,9 @@ def admin_aktivitetskort(spel_id):
 
 @admin_bp.route("/admin/<spel_id>/backlog", methods=["GET", "POST"])
 def admin_backlog(spel_id):
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
+    data = load_game_data(spel_id)
+    if not data:
         return "Spelet hittades inte.", 404
-    with open(filnamn, encoding="utf-8") as f:
-        data = json.load(f)
     
     # Initiera backlog om den saknas eller är fel typ
     if "backlog" not in data or not isinstance(data["backlog"], dict):
