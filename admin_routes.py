@@ -355,8 +355,8 @@ def admin_panel(spel_id):
             </div>
         </div>
         
-        <!-- Vertikalt utlagda knappar -->
-        <div style="display: flex; flex-direction: column; gap: 10px; margin: 15px 0;">
+        <!-- Horisontellt utlagda knappar -->
+        <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
             {poang_lank}
             {aktivitetskort_lank}
         </div>
