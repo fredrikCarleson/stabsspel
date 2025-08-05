@@ -197,7 +197,7 @@ def admin_panel(spel_id):
                         </label>
                     '''
                 
-                timer_html += '''
+                timer_html += f'''
                     </div>
                 </div>
                 
@@ -206,34 +206,34 @@ def admin_panel(spel_id):
                 </form>
                 
                 <script>
-                function updateNextFasButton() {
-                    const totalTeams = ''' + str(len(data["lag"])) + ''';
+                function updateNextFasButton() {{
+                    const totalTeams = {len(data["lag"])};
                     let checkedCount = 0;
                     
-                    for (let i = 1; i <= totalTeams; i++) {
+                    for (let i = 1; i <= totalTeams; i++) {{
                         const checkbox = document.getElementById('order_check' + i);
-                        if (checkbox && checkbox.checked) {
+                        if (checkbox && checkbox.checked) {{
                             checkedCount++;
-                        }
-                    }
+                        }}
+                    }}
                     
                     const nextFasButton = document.getElementById('next-fas-btn');
                     
-                    if (checkedCount === totalTeams) {
+                    if (checkedCount === totalTeams) {{
                         nextFasButton.disabled = false;
                         nextFasButton.style.opacity = '1';
                         nextFasButton.style.cursor = 'pointer';
-                    } else {
+                    }} else {{
                         nextFasButton.disabled = true;
                         nextFasButton.style.opacity = '0.5';
                         nextFasButton.style.cursor = 'not-allowed';
-                    }
-                }
+                    }}
+                }}
                 
                 // Initiera knappen som inaktiverad när sidan laddas
-                window.onload = function() {
+                window.onload = function() {{
                     updateNextFasButton();
-                };
+                }};
                 </script>
                 '''
             
