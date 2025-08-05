@@ -179,6 +179,56 @@ def create_orderfas_checklist(spel_id, data):
     
     return checklist_html
 
+def create_diplomatifas_checklist(spel_id):
+    """Skapa checklista för Diplomatifas"""
+    return f'''
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #17a2b8;">
+        <h3>📋 Checklista: Diplomatifas</h3>
+        <div style="margin: 10px 0;">
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="diplo_check1" style="margin-right: 10px;" onchange="updateDiploNextFasButton()">
+                <span>Läs igenom alla orders</span>
+            </label>
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="diplo_check2" style="margin-right: 10px;" onchange="updateDiploNextFasButton()">
+                <span>Besluta om konsekvenser gällande handlingspoäng</span>
+            </label>
+            <label style="display: flex; align-items: center; margin: 8px 0;">
+                <input type="checkbox" id="diplo_check3" style="margin-right: 10px;" onchange="updateDiploNextFasButton()">
+                <span>Skapa nyheter</span>
+            </label>
+        </div>
+    </div>
+    
+    <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+        <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Nästa fas</button>
+    </form>
+    
+    <script>
+    function updateDiploNextFasButton() {{
+        const check1 = document.getElementById('diplo_check1').checked;
+        const check2 = document.getElementById('diplo_check2').checked;
+        const check3 = document.getElementById('diplo_check3').checked;
+        const nextFasButton = document.getElementById('diplo-next-fas-btn');
+        
+        if (check1 && check2 && check3) {{
+            nextFasButton.disabled = false;
+            nextFasButton.style.opacity = '1';
+            nextFasButton.style.cursor = 'pointer';
+        }} else {{
+            nextFasButton.disabled = true;
+            nextFasButton.style.opacity = '0.5';
+            nextFasButton.style.cursor = 'not-allowed';
+        }}
+    }}
+    
+    // Initiera knappen som inaktiverad när sidan laddas
+    window.onload = function() {{
+        updateDiploNextFasButton();
+    }};
+    </script>
+    '''
+
 def create_resultatfas_checklist(spel_id):
     """Skapa checklista för Resultatfas"""
     return f'''
@@ -440,6 +490,8 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         
         if fas == "Orderfas":
             timer_html += create_orderfas_checklist(spel_id, data)
+        elif fas == "Diplomatifas":
+            timer_html += create_diplomatifas_checklist(spel_id)
         
         timer_html += create_timer_script(remaining, timer_status)
         return timer_html
