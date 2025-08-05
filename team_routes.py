@@ -36,43 +36,13 @@ def team_beskrivning(spel_id, lag_namn):
         '''
     # Förbättrad utskriftsvänlig och lättläst CSS
     return f'''
-        <html>
-        <head>
-            <title>{lag_namn} – Lagbeskrivning</title>
-            <style>
-                body {{
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    margin: 40px;
-                    color: #222;
-                    background: #fff;
-                    line-height: 1.3;
-                    font-size: 1.1em;
-                }}
-                h1 {{ font-size: 2.2em; margin-bottom: 0.3em; }}
-                b {{ font-size: 1.1em; display: block; margin-top: 1.2em; margin-bottom: 0.2em; }}
-                ul, ol {{ margin-left: 2em; margin-bottom: 1em; }}
-                table {{ border-collapse: collapse; margin: 1.5em 0; width: 100%; }}
-                th, td {{ border: 1px solid #bbb; padding: 0.5em 0.8em; }}
-                th {{ background: #f3f3f3; }}
-                img {{ margin: 1.5em 0; border-radius: 6px; box-shadow: 0 2px 8px #0001; }}
-                .bildsida {{ margin-top: 2em; }}
-                button {{ font-size: 1em; padding: 0.5em 1.2em; margin-bottom: 1.5em; border-radius: 5px; border: 1px solid #bbb; background: #f3f3f3; cursor: pointer; }}
-                button:hover {{ background: #e0e0e0; }}
-                @media print {{
-                    button {{ display: none; }}
-                    .bildsida {{ page-break-before: always; break-before: page; }}
-                    .bildsida img {{ width: 100vw; max-width: 100vw; max-height: 29.7cm; object-fit: contain; }}
-                    body {{ background: #fff; color: #000; }}
-                }}
-            </style>
-        </head>
-        <body>
-            <button onclick="window.print()">Skriv ut</button>
-            <h1>{lag_namn}</h1>
-            <div>{Markup(text_html)}</div>
-            {img_html}
-        </body>
-        </html>
+        <link rel="stylesheet" href="/static/style.css">
+        <div class="container">
+        <button onclick="window.print()">Skriv ut</button>
+        <h1>{lag_namn}</h1>
+        <div>{Markup(text_html)}</div>
+        {img_html}
+        </div>
     '''
 
 @team_bp.route("/teambeskrivning/<filename>")

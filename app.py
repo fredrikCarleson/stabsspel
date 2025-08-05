@@ -24,12 +24,15 @@ def startsida():
         spel_html += f'<form method="post" action="/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm(\'Ta bort spelet permanent?\');">'
         spel_html += '<button type="submit">Ta bort</button></form></li>'
     return f'''
+        <link rel="stylesheet" href="/static/style.css">
+        <div class="container">
         <h1>Stabsspelet</h1>
         <a href="/admin"><button>Skapa nytt spel</button></a>
         <h2>Befintliga spel</h2>
         <ul>
             {spel_html}
         </ul>
+        </div>
     '''
 
 @app.route("/teams/<int:num_players>")
