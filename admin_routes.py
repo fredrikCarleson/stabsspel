@@ -161,8 +161,8 @@ def admin_panel(spel_id):
         f'<a href="/team/{spel_id}/{lag}" target="_blank">{lag}</a>' for lag in data['lag']
     ])
     # Länk till poängsidan och aktivitetskort
-    poang_lank = f'<a href="/admin/{spel_id}/poang"><button>Visa/ändra handlingspoäng</button></a>'
-    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank"><button>Skriv ut aktivitetskort</button></a><br><br>'
+    poang_lank = f'<a href="/admin/{spel_id}/poang" style="display: block; text-decoration: none;"><button style="width: 100%;">Visa/ändra handlingspoäng</button></a>'
+    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" style="display: block; text-decoration: none;"><button style="width: 100%;">Skriv ut aktivitetskort</button></a>'
     # Timer och knappar endast för Orderfas/Diplomatifas
     timer_html = ""
     if not avslutat:
@@ -357,8 +357,8 @@ def admin_panel(spel_id):
         
         <!-- Vertikalt utlagda knappar -->
         <div style="display: flex; flex-direction: column; gap: 10px; margin: 15px 0;">
-            {poang_lank.replace('<br><br>', '')}
-            {aktivitetskort_lank.replace('<br><br>', '')}
+            {poang_lank}
+            {aktivitetskort_lank}
         </div>
         
         <hr>
