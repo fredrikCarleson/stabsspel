@@ -248,6 +248,7 @@ def create_resultatfas_checklist(spel_id):
                 <input type="checkbox" id="check3" style="margin-right: 10px;" onchange="updateStartButton()">
                 <span>Redigera handlingspoäng för varje team</span>
             </label>
+            <a href="/admin/{spel_id}/poang"><button>Visa/ändra handlingspoäng</button></a>
         </div>
     </div>
     
