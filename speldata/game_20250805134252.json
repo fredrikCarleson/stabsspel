@@ -1,11 +1,11 @@
 {
-  "id": "20250805112441",
+  "id": "20250805134252",
   "datum": "2025-08-05",
-  "plats": "Test nio team",
+  "plats": "Test stort",
   "antal_spelare": 27,
-  "skapad": "2025-08-05T11:24:41.226780",
+  "skapad": "2025-08-05T13:42:52.289079",
   "fas": "Orderfas",
-  "runda": 1,
+  "runda": 4,
   "lag": [
     "Alfa",
     "Bravo",
@@ -18,7 +18,53 @@
     "USA"
   ],
   "order": {},
-  "poang": {},
+  "poang": {
+    "Alfa": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "Bravo": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "STT": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "FM": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "BS": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "Media": {
+      "bas": 15,
+      "aktuell": 15,
+      "regeringsstod": false
+    },
+    "SÄPO": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "Regeringen": {
+      "bas": 10,
+      "aktuell": 10,
+      "regeringsstod": false
+    },
+    "USA": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    }
+  },
   "resultat": [],
   "backlog": {
     "Alfa": [
@@ -26,21 +72,21 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 15,
-        "slutford": true
+        "spenderade_hp": 0,
+        "slutford": false
       },
       {
         "id": "alfa_2",
         "namn": "Back-end API för inskickade röster",
         "estimaterade_hp": 25,
-        "spenderade_hp": 5,
+        "spenderade_hp": 12,
         "slutford": false
       },
       {
         "id": "alfa_3",
         "namn": "Sökfunktion",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 6,
         "slutford": false
       },
       {
@@ -90,13 +136,13 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 4,
-            "spenderade_hp": 0,
-            "slutford": false
+            "spenderade_hp": 4,
+            "slutford": true
           },
           {
             "namn": "Design",
             "estimaterade_hp": 3,
-            "spenderade_hp": 0,
+            "spenderade_hp": 2,
             "slutford": false
           },
           {
@@ -121,7 +167,7 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 2,
-            "spenderade_hp": 0,
+            "spenderade_hp": 1,
             "slutford": false
           },
           {
@@ -151,7 +197,7 @@
         "id": "stt_1",
         "namn": "Infrastruktur för val (setup, hardening, konfig)",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 5,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -159,15 +205,15 @@
         "id": "stt_2",
         "namn": "Infrastruktur för deklaration",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
-        "slutford": false,
+        "spenderade_hp": 20,
+        "slutford": true,
         "typ": "en_gang"
       },
       {
         "id": "stt_3",
         "namn": "Ny säker arkitektur (poddar, WAF, brandväggar)",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 10,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -175,7 +221,7 @@
         "id": "stt_4",
         "namn": "Kapacitetstest (per gång)",
         "estimaterade_hp": 10,
-        "spenderade_hp": 0,
+        "spenderade_hp": 7,
         "slutford": false,
         "typ": "aterkommande"
       },
@@ -197,17 +243,58 @@
       }
     ]
   },
-  "orderfas_min": 10,
-  "diplomatifas_min": 15,
-  "timer_status": "running",
-  "timer_start": 1754391772,
+  "orderfas_min": 1,
+  "diplomatifas_min": 1,
+  "timer_status": "stopped",
+  "timer_start": null,
   "timer_elapsed": 0,
   "fashistorik": [
     {
       "runda": 1,
       "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 1,
+      "fas": "Diplomatifas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 1,
+      "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Diplomatifas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 3,
+      "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 3,
+      "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 4,
+      "fas": "Orderfas",
       "status": "pågående"
     }
   ],
+  "checkbox_states": {},
   "avslutat": false
 }

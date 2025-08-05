@@ -22,6 +22,24 @@ def load_game_data(spel_id):
     with open(filnamn, encoding="utf-8") as f:
         return json.load(f)
 
+def save_checkbox_state(spel_id, checkbox_id, checked):
+    """Spara checkbox-tillstånd"""
+    data = load_game_data(spel_id)
+    if not data:
+        return
+    
+    if "checkbox_states" not in data:
+        data["checkbox_states"] = {}
+    
+    data["checkbox_states"][checkbox_id] = checked
+    save_game_data(spel_id, data)
+
+def get_checkbox_state(data, checkbox_id):
+    """Hämta checkbox-tillstånd"""
+    if "checkbox_states" not in data:
+        return False
+    return data["checkbox_states"].get(checkbox_id, False)
+
 def create_team_info_js():
     """Skapa JavaScript för team-information"""
     return '''
@@ -80,15 +98,15 @@ def create_team_info_js():
 def create_compact_header(data, lag_html):
     """Skapa kompakt header med spelinformation"""
     return f'''
-    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #007bff;">
+    <div style="background: #ecf0f1; color: #2c3e50; padding: 12px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #3498db;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="flex: 1; min-width: 300px;">
-                <p style="margin: 0; font-size: 14px;"><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
-                <p style="margin: 5px 0 0 0; font-size: 14px;"><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
+                <p style="margin: 0; font-size: 14px; color: #2c3e50;"><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #2c3e50;"><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
             </div>
             <div style="flex: 1; min-width: 300px;">
-                <p style="margin: 0; font-size: 14px;"><b>Lag:</b> {lag_html}</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">(Klicka på laget för att se dess mål)</p>
+                <p style="margin: 0; font-size: 14px; color: #2c3e50;"><b>Lag:</b> {lag_html}</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #7f8c8d;">(Klicka på laget för att se dess mål)</p>
             </div>
         </div>
     </div>
@@ -113,31 +131,44 @@ def create_action_buttons(spel_id):
 def create_timer_controls(spel_id, remaining, timer_status):
     """Skapa timer-kontroller"""
     return f'''
-    <div>
-        <span id="timer">{remaining//60:02d}:{remaining%60:02d}</span>
-        <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-            <button name="action" value="start">Starta</button>
-            <button name="action" value="pause">Pausa</button>
-            <button name="action" value="reset">Återställ</button>
-        </form>
-        <p class="status {timer_status}">Status: {timer_status.capitalize()}</p>
+    <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+        <div style="margin-bottom: 25px;">
+            <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ TID KVAR</h2>
+            <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: 'Courier New', monospace; letter-spacing: 3px; margin: 10px 0;">{remaining//60:02d}:{remaining%60:02d}</div>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+                <button name="action" value="start" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
+                <button name="action" value="pause" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
+                <button name="action" value="reset" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+            </form>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <span class="status {timer_status}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if timer_status == 'running' else '#f39c12' if timer_status == 'paused' else '#95a5a6'}; color: white;">Status: {timer_status.capitalize()}</span>
+        </div>
     </div>
     '''
 
 def create_orderfas_checklist(spel_id, data):
     """Skapa checklista för Orderfas"""
     checklist_html = f'''
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #28a745;">
-        <h3>📋 Checklista: Ordrar från alla team</h3>
-        <div style="margin: 10px 0;">
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #28a745; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">📋 Checklista: Ordrar från alla team</h3>
+        <div style="margin: 15px 0;">
     '''
     
     # Skapa checkbox för varje lag
     for i, lag in enumerate(data["lag"], 1):
+        checkbox_id = f"order_check{i}"
+        is_checked = get_checkbox_state(data, checkbox_id)
+        checked_attr = "checked" if is_checked else ""
+        
         checklist_html += f'''
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="order_check{i}" style="margin-right: 10px;" onchange="updateNextFasButton()">
-                <span>Ordrar från {lag}</span>
+            <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
+                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                <span style="font-size: 14px; color: #495057;">Ordrar från {lag}</span>
             </label>
         '''
     
@@ -145,11 +176,26 @@ def create_orderfas_checklist(spel_id, data):
         </div>
     </div>
     
-    <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-        <button name="action" value="next_fas" id="next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Nästa fas</button>
-    </form>
+    <div style="margin: 20px 0;">
+        <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+            <button name="action" value="next_fas" id="next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; transition: all 0.3s;">Nästa fas</button>
+        </form>
+    </div>
     
     <script>
+    function saveCheckboxState(checkboxId, checked) {{
+        fetch('/admin/{spel_id}/save_checkbox', {{
+            method: 'POST',
+            headers: {{
+                'Content-Type': 'application/json',
+            }},
+            body: JSON.stringify({{
+                checkbox_id: checkboxId,
+                checked: checked
+            }})
+        }});
+    }}
+    
     function updateNextFasButton() {{
         const totalTeams = {len(data["lag"])};
         let checkedCount = 0;
@@ -167,14 +213,16 @@ def create_orderfas_checklist(spel_id, data):
             nextFasButton.disabled = false;
             nextFasButton.style.opacity = '1';
             nextFasButton.style.cursor = 'pointer';
+            nextFasButton.style.background = '#28a745';
         }} else {{
             nextFasButton.disabled = true;
             nextFasButton.style.opacity = '0.5';
             nextFasButton.style.cursor = 'not-allowed';
+            nextFasButton.style.background = '#6c757d';
         }}
     }}
     
-    // Initiera knappen som inaktiverad när sidan laddas
+    // Initiera knappen när sidan laddas
     window.onload = function() {{
         updateNextFasButton();
     }};
@@ -185,30 +233,56 @@ def create_orderfas_checklist(spel_id, data):
 
 def create_diplomatifas_checklist(spel_id):
     """Skapa checklista för Diplomatifas"""
-    return f'''
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #17a2b8;">
-        <h3>📋 Checklista: Diplomatifas</h3>
-        <div style="margin: 10px 0;">
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="diplo_check1" style="margin-right: 10px;" onchange="updateDiploNextFasButton()">
-                <span>Läs igenom alla orders</span>
+    data = load_game_data(spel_id)
+    
+    checklist_html = f'''
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #17a2b8; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">📋 Checklista: Diplomatifas</h3>
+        <div style="margin: 15px 0;">
+    '''
+    
+    # Skapa checkboxar med persistent states
+    checkbox_items = [
+        ("diplo_check1", "Läs igenom alla orders"),
+        ("diplo_check2", "Besluta om konsekvenser gällande handlingspoäng"),
+        ("diplo_check3", "Skapa nyheter")
+    ]
+    
+    for checkbox_id, label in checkbox_items:
+        is_checked = get_checkbox_state(data, checkbox_id)
+        checked_attr = "checked" if is_checked else ""
+        
+        checklist_html += f'''
+            <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
+                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateDiploNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                <span style="font-size: 14px; color: #495057;">{label}</span>
             </label>
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="diplo_check2" style="margin-right: 10px;" onchange="updateDiploNextFasButton()">
-                <span>Besluta om konsekvenser gällande handlingspoäng</span>
-            </label>
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="diplo_check3" style="margin-right: 10px;" onchange="updateDiploNextFasButton()">
-                <span>Skapa nyheter</span>
-            </label>
+        '''
+    
+    checklist_html += f'''
         </div>
     </div>
     
-    <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-        <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Nästa fas</button>
-    </form>
+    <div style="margin: 20px 0;">
+        <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+            <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; transition: all 0.3s;">Nästa fas</button>
+        </form>
+    </div>
     
     <script>
+    function saveCheckboxState(checkboxId, checked) {{
+        fetch('/admin/{spel_id}/save_checkbox', {{
+            method: 'POST',
+            headers: {{
+                'Content-Type': 'application/json',
+            }},
+            body: JSON.stringify({{
+                checkbox_id: checkboxId,
+                checked: checked
+            }})
+        }});
+    }}
+    
     function updateDiploNextFasButton() {{
         const check1 = document.getElementById('diplo_check1').checked;
         const check2 = document.getElementById('diplo_check2').checked;
@@ -219,67 +293,115 @@ def create_diplomatifas_checklist(spel_id):
             nextFasButton.disabled = false;
             nextFasButton.style.opacity = '1';
             nextFasButton.style.cursor = 'pointer';
+            nextFasButton.style.background = '#17a2b8';
         }} else {{
             nextFasButton.disabled = true;
             nextFasButton.style.opacity = '0.5';
             nextFasButton.style.cursor = 'not-allowed';
+            nextFasButton.style.background = '#6c757d';
         }}
     }}
     
-    // Initiera knappen som inaktiverad när sidan laddas
+    // Initiera knappen när sidan laddas
     window.onload = function() {{
         updateDiploNextFasButton();
     }};
     </script>
     '''
+    
+    return checklist_html
 
 def create_resultatfas_checklist(spel_id):
     """Skapa checklista för Resultatfas"""
-    return f'''
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #007bff;">
-        <h3>✅ Checklista innan ny runda</h3>
-        <div style="margin: 10px 0;">
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="check1" style="margin-right: 10px;" onchange="updateStartButton()">
-                <span>Uppdatera progress för teamens arbete</span>                
+    data = load_game_data(spel_id)
+    
+    checklist_html = f'''
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #007bff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">✅ Checklista innan ny runda</h3>
+        <div style="margin: 15px 0;">
+    '''
+    
+    # Skapa checkboxar med persistent states
+    checkbox_items = [
+        ("result_check1", "Uppdatera progress för teamens arbete"),
+        ("result_check2", "Läsa upp nyheter"),
+        ("result_check3", "Redigera handlingspoäng för varje team")
+    ]
+    
+    for i, (checkbox_id, label) in enumerate(checkbox_items, 1):
+        is_checked = get_checkbox_state(data, checkbox_id)
+        checked_attr = "checked" if is_checked else ""
+        
+        checklist_html += f'''
+            <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
+                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateStartButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                <span style="font-size: 14px; color: #495057;">{label}</span>
             </label>
-            <a href="/admin/{spel_id}/backlog"><button>Uppdatera teamens arbete</button></a>
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="check2" style="margin-right: 10px;" onchange="updateStartButton()">
-                <span>Läsa upp nyheter</span>
-            </label>
-            <label style="display: flex; align-items: center; margin: 8px 0;">
-                <input type="checkbox" id="check3" style="margin-right: 10px;" onchange="updateStartButton()">
-                <span>Redigera handlingspoäng för varje team</span>
-            </label>
-            <a href="/admin/{spel_id}/poang"><button>Visa/ändra handlingspoäng</button></a>
+        '''
+        
+        # Lägg till knappar efter specifika checkboxar
+        if i == 1:
+            checklist_html += f'''
+            <div style="margin: 8px 0 16px 24px;">
+                <a href="/admin/{spel_id}/backlog" style="text-decoration: none;">
+                    <button type="button" style="background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Uppdatera teamens arbete</button>
+                </a>
+            </div>
+            '''
+        elif i == 3:
+            checklist_html += f'''
+            <div style="margin: 8px 0 16px 24px;">
+                <a href="/admin/{spel_id}/poang" style="text-decoration: none;">
+                    <button type="button" style="background: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Visa/ändra handlingspoäng</button>
+                </a>
+            </div>
+            '''
+    
+    checklist_html += f'''
         </div>
     </div>
     
     <script>
+    function saveCheckboxState(checkboxId, checked) {{
+        fetch('/admin/{spel_id}/save_checkbox', {{
+            method: 'POST',
+            headers: {{
+                'Content-Type': 'application/json',
+            }},
+            body: JSON.stringify({{
+                checkbox_id: checkboxId,
+                checked: checked
+            }})
+        }});
+    }}
+    
     function updateStartButton() {{
-        const check1 = document.getElementById('check1').checked;
-        const check2 = document.getElementById('check2').checked;
-        const check3 = document.getElementById('check3').checked;
+        const check1 = document.getElementById('result_check1').checked;
+        const check2 = document.getElementById('result_check2').checked;
+        const check3 = document.getElementById('result_check3').checked;
         const startButton = document.getElementById('start-ny-runda-btn');
         
         if (check1 && check2 && check3) {{
             startButton.disabled = false;
             startButton.style.opacity = '1';
             startButton.style.cursor = 'pointer';
+            startButton.style.background = '#007bff';
         }} else {{
             startButton.disabled = true;
             startButton.style.opacity = '0.5';
             startButton.style.cursor = 'not-allowed';
+            startButton.style.background = '#6c757d';
         }}
     }}
     
-    // Initiera knappen som inaktiverad när sidan laddas
+    // Initiera knappen när sidan laddas
     window.onload = function() {{
         updateStartButton();
     }};
     </script>
     '''
+    
+    return checklist_html
 
 def create_timer_script(remaining, timer_status):
     """Skapa timer-script"""
@@ -300,6 +422,16 @@ def create_timer_script(remaining, timer_status):
             var min = Math.floor(remaining/60);
             var sec = remaining%60;
             timerElem.textContent = (min<10?'0':'')+min+":"+(sec<10?'0':'')+sec;
+            
+            // Lägg till visuella varningar baserat på återstående tid
+            timerElem.classList.remove('warning', 'danger');
+            if (remaining <= 60 && remaining > 30) {{
+                // Varning: 1 minut kvar
+                timerElem.classList.add('warning');
+            }} else if (remaining <= 30) {{
+                // Fara: 30 sekunder eller mindre
+                timerElem.classList.add('danger');
+            }}
             
             // Spela alarm när tiden går ut
             if (remaining <= 0 && !alarmPlayed) {{
@@ -356,6 +488,96 @@ def create_historik_html(rundor):
     historik_html += '</div>'
     return historik_html
 
+def create_team_overview(data):
+    """Skapa översikt för alla team med liggande stapeldiagram"""
+    if "backlog" not in data or not isinstance(data["backlog"], dict):
+        return ""
+    
+    overview_html = '''
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6c757d;">
+        <h3 style="margin-top: 0; color: #495057; font-size: 1.4em;">📊 Team Översikt</h3>
+        <div style="margin: 15px 0;">
+    '''
+    
+    # Samla alla uppgifter från alla team
+    all_tasks = []
+    
+    for lag in data["lag"]:
+        if lag in data["backlog"]:
+            for uppgift in data["backlog"][lag]:
+                # Filtrera bort återkommande uppgifter
+                is_aterkommande = "typ" in uppgift and uppgift["typ"] == "aterkommande"
+                if not is_aterkommande:
+                    if lag == "Bravo":
+                        # Bravo har faser - beräkna total progress
+                        total_estimaterade = sum(fas["estimaterade_hp"] for fas in uppgift["faser"])
+                        total_spenderade = sum(fas["spenderade_hp"] for fas in uppgift["faser"])
+                        progress_percent = min(100, (total_spenderade / total_estimaterade * 100) if total_estimaterade > 0 else 0)
+                    else:
+                        # Enkla uppgifter
+                        progress_percent = min(100, (uppgift["spenderade_hp"] / uppgift["estimaterade_hp"] * 100) if uppgift["estimaterade_hp"] > 0 else 0)
+                    
+                    all_tasks.append({
+                        "lag": lag,
+                        "namn": uppgift["namn"],
+                        "progress": progress_percent,
+                        "spenderade": uppgift["spenderade_hp"] if lag != "Bravo" else total_spenderade,
+                        "estimaterade": uppgift["estimaterade_hp"] if lag != "Bravo" else total_estimaterade
+                    })
+    
+    # Sortera efter progress (högst först)
+    all_tasks.sort(key=lambda x: x["progress"], reverse=True)
+    
+    # Skapa färgskala funktion
+    def get_progress_color(percent):
+        if percent >= 80:
+            return "#28a745"  # Grön
+        elif percent >= 60:
+            return "#ffc107"  # Gul
+        elif percent >= 40:
+            return "#fd7e14"  # Orange
+        elif percent >= 20:
+            return "#e83e8c"  # Rosa
+        else:
+            return "#dc3545"  # Röd
+    
+    # Skapa stapeldiagram för varje uppgift
+    for task in all_tasks:
+        color = get_progress_color(task["progress"])
+        overview_html += f'''
+        <div style="margin: 15px 0; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e9ecef;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="flex: 1;">
+                    <strong style="color: #495057;">{task["lag"]}</strong>
+                    <span style="color: #6c757d; margin-left: 10px;">{task["namn"]}</span>
+                </div>
+                <div style="text-align: right; font-weight: bold; color: #495057;">
+                    {task["progress"]:.0f}%
+                </div>
+            </div>
+            <div style="background: #e9ecef; height: 20px; border-radius: 10px; overflow: hidden;">
+                <div style="background: {color}; height: 100%; width: {task["progress"]}%; transition: width 0.3s ease; border-radius: 10px;"></div>
+            </div>
+            <div style="text-align: right; font-size: 0.9em; color: #6c757d; margin-top: 5px;">
+                {task["spenderade"]}/{task["estimaterade"]} HP
+            </div>
+        </div>
+        '''
+    
+    if not all_tasks:
+        overview_html += '''
+        <div style="text-align: center; color: #6c757d; padding: 20px;">
+            <p>Inga uppgifter att visa ännu.</p>
+        </div>
+        '''
+    
+    overview_html += '''
+        </div>
+    </div>
+    '''
+    
+    return overview_html
+
 # ============================================================================
 # ROUTES
 # ============================================================================
@@ -371,6 +593,7 @@ def admin_start():
         diplomatifas_min = int(request.form.get("diplomatifas_min") or 10)
         spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+    
     # Lista befintliga spel
     spel = []
     for fil in os.listdir(DATA_DIR):
@@ -378,6 +601,10 @@ def admin_start():
             with open(os.path.join(DATA_DIR, fil), encoding="utf-8") as f:
                 data = json.load(f)
                 spel.append({"id": data["id"], "datum": data["datum"], "plats": data["plats"]})
+    
+    # Sortera spel efter datum (nyaste först)
+    spel.sort(key=lambda x: x["datum"], reverse=True)
+    
     intervals = [
         ("15-26 (5 team)", 20),
         ("27-60 (9 team)", 27)
@@ -389,31 +616,153 @@ def admin_start():
     return f'''
         <link rel="stylesheet" href="/static/style.css">
         <div class="container">
-        <h1>Adminpanel – Starta nytt spel</h1>
-        <form method="post">
-            <label for="datum">Datum:</label>
-            <input type="date" name="datum" id="datum" required><br>
-            <label for="plats">Plats:</label>
-            <input type="text" name="plats" id="plats" required><br>
-            <label for="players_interval">Antal spelare:</label>
-            <select name="players_interval" id="players_interval" onchange="updateTeamInfo()">
-                {''.join([f'<option value="{val}">{label}</option>' for label, val in intervals])}
-            </select><br>
-            <label for="orderfas_min">Orderfas (minuter):</label>
-            <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required><br>
-            <label for="diplomatifas_min">Diplomatifas (minuter):</label>
-            <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required><br>
-            <input type="submit" value="Starta nytt spel">
-        </form>
-        
-        <div id="team-info"></div>
-        
-        {team_info_js}
-        <h2>Befintliga spel</h2>
-        <ul>
-            {''.join([f'<li><a href="/admin/{s["id"]}">{s["datum"]} – {s["plats"]} (ID: {s["id"]})</a></li> <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm(\'Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.\')"><button type="submit" style="background: #e53e3e; margin-left: 10px;">Ta bort</button></form>' for s in spel])}
-        </ul>
+            <!-- Header Section -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                <h1 style="margin: 0 0 10px 0; font-size: 2.5em; font-weight: 300;">🎮 Stabsspel Admin</h1>
+                <p style="margin: 0; font-size: 1.2em; opacity: 0.9;">Spelhantering och kontrollpanel</p>
+            </div>
+            
+            <!-- Main Content Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                
+                <!-- New Game Form -->
+                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #667eea;">
+                    <h2 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center;">
+                        <span style="background: #667eea; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em;">➕</span>
+                        Starta nytt spel
+                    </h2>
+                    
+                    <form method="post" style="display: grid; gap: 15px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label for="datum" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">📅 Datum</label>
+                                <input type="date" name="datum" id="datum" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; transition: border-color 0.3s;">
+                            </div>
+                            <div>
+                                <label for="plats" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">📍 Plats</label>
+                                <input type="text" name="plats" id="plats" required placeholder="T.ex. Stockholm" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; transition: border-color 0.3s;">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="players_interval" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">👥 Antal spelare</label>
+                            <select name="players_interval" id="players_interval" onchange="updateTeamInfo()" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; background: white;">
+                                {''.join([f'<option value="{val}">{label}</option>' for label, val in intervals])}
+                            </select>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label for="orderfas_min" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">⏱️ Orderfas (min)</label>
+                                <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div>
+                                <label for="diplomatifas_min" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">🤝 Diplomatifas (min)</label>
+                                <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; margin-top: 10px;">
+                            🚀 Starta nytt spel
+                        </button>
+                    </form>
+                    
+                    <div id="team-info" style="margin-top: 20px;"></div>
+                </div>
+                
+                <!-- Existing Games -->
+                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #28a745;">
+                    <h2 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center;">
+                        <span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em;">📋</span>
+                        Befintliga spel ({len(spel)})
+                    </h2>
+                    
+                    {f'''
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        {''.join([f'''
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #28a745; transition: all 0.3s;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1em;">{s["datum"]}</h3>
+                                    <p style="margin: 0; color: #6c757d; font-size: 0.9em;">📍 {s["plats"]}</p>
+                                    <p style="margin: 5px 0 0 0; color: #adb5bd; font-size: 0.8em;">ID: {s["id"]}</p>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <a href="/admin/{s["id"]}" style="text-decoration: none;">
+                                        <button style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: background 0.3s;">
+                                            ▶️ Öppna
+                                        </button>
+                                    </a>
+                                    <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
+                                        <button type="submit" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: background 0.3s;">
+                                            🗑️ Ta bort
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        ''' for s in spel])}
+                    </div>
+                    ''' if spel else '''
+                    <div style="text-align: center; padding: 40px 20px; color: #6c757d;">
+                        <div style="font-size: 3em; margin-bottom: 15px;">📭</div>
+                        <h3 style="margin: 0 0 10px 0; color: #495057;">Inga spel ännu</h3>
+                        <p style="margin: 0; font-size: 0.9em;">Skapa ditt första spel genom att fylla i formuläret till vänster.</p>
+                    </div>
+                    '''}
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #ffc107;">
+                <h2 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center;">
+                    <span style="background: #ffc107; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em;">📊</span>
+                    Snabbstatistik
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">🎮</div>
+                        <h3 style="margin: 0; color: #2c3e50;">{len(spel)}</h3>
+                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Totalt antal spel</p>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">👥</div>
+                        <h3 style="margin: 0; color: #2c3e50;">5-9</h3>
+                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Team per spel</p>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">⏱️</div>
+                        <h3 style="margin: 0; color: #2c3e50;">10-15</h3>
+                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Minuter per fas</p>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">🔄</div>
+                        <h3 style="margin: 0; color: #2c3e50;">3</h3>
+                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Faser per runda</p>
+                    </div>
+                </div>
+            </div>
+            
+            {team_info_js}
         </div>
+        
+        <style>
+        input:focus, select:focus {{
+            outline: none;
+            border-color: #667eea !important;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }}
+        
+        button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }}
+        
+        .container > div:hover {{
+            transform: translateY(-2px);
+            transition: transform 0.3s ease;
+        }}
+        </style>
     '''
 
 @admin_bp.route("/admin/<spel_id>")
@@ -462,32 +811,38 @@ def admin_panel(spel_id):
     # Skapa timer HTML baserat på fas
     timer_html = create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda)
     
-    # Returnera komplett HTML
+    # Returnera komplett HTML med förbättrad layout
     return f'''
         <link rel="stylesheet" href="/static/style.css">
-        <div class="container">
-        <h1>Adminpanel för spel {spel_id}</h1>
-        
-        {create_compact_header(data, lag_html)}
-        {create_action_buttons(spel_id)}
-        
-        <hr>
-        {timer_html}
-        <hr>
-        
-        
-        
-        {historik_html}
+        <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+            <!-- Header Section -->
+            <div style="background: #2c3e50; color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
+                <h1 style="margin: 0 0 20px 0; color: white; font-size: 2.2em; font-weight: 600;">Adminpanel för spel {spel_id}</h1>
+                
+                {create_compact_header(data, lag_html)}
+                {create_action_buttons(spel_id)}
+            </div>
+            
+            <!-- Main Content Section -->
+            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                {timer_html}
+            </div>
+            
+            <!-- Team Overview Section -->
+            {create_team_overview(data)}
+            
+            <!-- History Section -->
+            {historik_html}
         </div>
     '''
 
 def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda):
     """Skapa timer HTML baserat på fas"""
     if avslutat:
-        return '<h2>Spelet är avslutat</h2>'
+        return '<h2 style="color: #dc3545; font-size: 1.8em; font-weight: 600; text-align: center; margin: 30px 0;">Spelet är avslutat</h2>'
     
     if fas in ["Orderfas", "Diplomatifas"]:
-        timer_html = f'<h1>{rubrik}</h1>'
+        timer_html = f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
         timer_html += create_timer_controls(spel_id, remaining, timer_status)
         
         if fas == "Orderfas":
@@ -499,27 +854,47 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         return timer_html
     
     elif fas == "Resultatfas":
-        timer_html = f'<h1>{rubrik}</h1>'
+        timer_html = f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
         timer_html += create_resultatfas_checklist(spel_id)
         
         # Starta ny runda knapp
         timer_html += f'''
-        <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-            <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Starta ny runda</button>
-        </form>
+        <div style="margin: 25px 0; text-align: center;">
+            <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
+                <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Starta ny runda</button>
+            </form>
+        </div>
         '''
         
         # Avsluta spel om max runder nått
-        if runda > MAX_RUNDA:
+        if runda >= MAX_RUNDA:
             timer_html += f'''
-            <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
-                <button type="submit">Avsluta spelet</button>
-            </form>
+            <div style="margin: 25px 0; text-align: center;">
+                <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
+                    <button type="submit" style="background: #dc3545; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Avsluta spelet</button>
+                </form>
+            </div>
             '''
         
         return timer_html
     
     return ""
+
+@admin_bp.route("/admin/<spel_id>/save_checkbox", methods=["POST"])
+def save_checkbox_state_route(spel_id):
+    """Spara checkbox-tillstånd via AJAX"""
+    try:
+        data = request.get_json()
+        checkbox_id = data.get("checkbox_id")
+        checked = data.get("checked")
+        
+        if checkbox_id is not None and checked is not None:
+            save_checkbox_state(spel_id, checkbox_id, checked)
+            return {"success": True}, 200
+        else:
+            return {"success": False, "error": "Missing checkbox_id or checked"}, 400
+    except Exception as e:
+        return {"success": False, "error": str(e)}, 500
 
 @admin_bp.route("/admin/<spel_id>/timer", methods=["POST"])
 def admin_timer_action(spel_id):
@@ -651,6 +1026,9 @@ def admin_ny_runda(spel_id):
     add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
     # Nollställ regeringsstöd
     data = nollstall_regeringsstod(data)
+    # Nollställ checkbox-tillstånd för nya rundan
+    if "checkbox_states" in data:
+        data["checkbox_states"] = {}
     save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
@@ -676,6 +1054,18 @@ def admin_reset(spel_id):
             data["poang"][lag]["bas"] = bas
             data["poang"][lag]["aktuell"] = bas
             data["poang"][lag]["regeringsstod"] = False
+    # Nollställ checkbox-tillstånd
+    if "checkbox_states" in data:
+        data["checkbox_states"] = {}
+    
+    # Nollställ teamens arbete (backlog)
+    if "backlog" in data:
+        from models import BACKLOG
+        for lag in data["lag"]:
+            if lag in BACKLOG and lag in data["backlog"]:
+                # Återställ till original från BACKLOG
+                data["backlog"][lag] = BACKLOG[lag].copy()
+    
     save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
