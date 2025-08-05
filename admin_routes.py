@@ -147,13 +147,42 @@ def admin_panel(spel_id):
         if rundnr not in rundor:
             rundor[rundnr] = []
         rundor[rundnr].append(entry)
-    historik_html = "<h3>Historik</h3>"
-    for rundnr in sorted(rundor.keys()):
-        historik_html += f'<h2>Runda {rundnr}</h2><ul>'
-        for entry in rundor[rundnr]:
-            status = "<b>(pågående)</b>" if entry["status"] == "pågående" else "(avklarad)"
-            historik_html += f'<li>{entry["fas"]} {status}</li>'
-        historik_html += "</ul>"
+    
+    # Skapa snyggare historik HTML
+    historik_html = ""
+    if rundor:
+        historik_html = '''
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6c757d;">
+            <h3 style="margin-top: 0; color: #495057; font-size: 1.4em;">📊 Spelhistorik</h3>
+        '''
+        
+        for rundnr in sorted(rundor.keys()):
+            historik_html += f'''
+            <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #e9ecef;">
+                <h4 style="margin: 0 0 10px 0; color: #495057; font-size: 1.2em;">🎯 Runda {rundnr}</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            '''
+            
+            for entry in rundor[rundnr]:
+                if entry["status"] == "pågående":
+                    status_icon = "🔄"
+                    status_class = "background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
+                else:
+                    status_icon = "✅"
+                    status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
+                
+                historik_html += f'''
+                <div style="{status_class} padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500;">
+                    {status_icon} {entry["fas"]}
+                </div>
+                '''
+            
+            historik_html += '''
+                </div>
+            </div>
+            '''
+        
+        historik_html += '</div>'
     # Rubrik för runda och fas
     rubrik = f"Runda {runda} av {MAX_RUNDA} – {fas}"
     # Gör lagnamn klickbara
@@ -362,8 +391,6 @@ def admin_panel(spel_id):
         </div>
         
         <hr>
-        {historik_html}
-        <hr>
         {timer_html}
         <hr>
         <form method="post" action="/admin/{spel_id}/reset">
@@ -371,6 +398,9 @@ def admin_panel(spel_id):
         </form>
         <p>Här kommer funktioner för order, poäng, resultat, backlog m.m.</p>
         <a href="/admin">Tillbaka till adminstart</a>
+        
+        <!-- Historik längst ner -->
+        {historik_html}
         </div>
     '''
 
