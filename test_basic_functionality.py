@@ -149,18 +149,25 @@ class TestBasicFunctionality(unittest.TestCase):
         ]
         
         for file_path in static_files:
-            if os.path.exists(file_path):
-                self.assertTrue(os.path.isfile(file_path), f"{file_path} exists but is not a file")
-            # Note: We don't fail if files don't exist as they might be optional
+            self.assertTrue(os.path.exists(file_path), f"Static file {file_path} not found")
     
     def test_teambeskrivning_directory(self):
-        """Test that teambeskrivning directory exists and has content"""
-        self.assertTrue(os.path.exists('teambeskrivning'), "teambeskrivning directory does not exist")
-        self.assertTrue(os.path.isdir('teambeskrivning'), "teambeskrivning is not a directory")
+        """Test that team description files exist"""
+        teambeskrivning_files = [
+            'teambeskrivning/alfa.txt',
+            'teambeskrivning/bravo.txt',
+            'teambeskrivning/stt.txt'
+        ]
         
-        # Check that it has some content
-        files = os.listdir('teambeskrivning')
-        self.assertGreater(len(files), 0, "teambeskrivning directory is empty")
+        for file_path in teambeskrivning_files:
+            self.assertTrue(os.path.exists(file_path), f"Team description file {file_path} not found")
+
+    def test_delete_game_import(self):
+        """Test that delete_game function can be imported and called"""
+        # This test ensures the function exists and can be imported
+        # We'll test the actual functionality in test_admin_routes.py
+        from admin_routes import delete_game
+        self.assertTrue(callable(delete_game))
 
 class TestDataConsistency(unittest.TestCase):
     """Test data consistency across the application"""

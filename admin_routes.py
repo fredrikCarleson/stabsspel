@@ -7,6 +7,7 @@ from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG
 )
+from game_management import delete_game
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1557,9 +1558,6 @@ def admin_backlog(spel_id):
     return Markup(html)
 
 @admin_bp.route("/admin/delete_game/<spel_id>", methods=["POST"])
-def delete_game(spel_id):
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if os.path.exists(filnamn):
-        os.remove(filnamn)
-        return redirect(url_for("admin.admin_start"))
-    return redirect(url_for("admin.admin_start")) 
+def delete_game_route(spel_id):
+    """Route handler for deleting a game - delegates to game_management.delete_game"""
+    return delete_game(spel_id) 

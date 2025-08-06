@@ -1,11 +1,11 @@
 {
-  "id": "20250806114450",
+  "id": "20250806133949",
   "datum": "2025-08-06",
-  "plats": "Stort",
+  "plats": "stort",
   "antal_spelare": 27,
-  "skapad": "2025-08-06T11:44:50.472555",
+  "skapad": "2025-08-06T13:39:49.761523",
   "fas": "Orderfas",
-  "runda": 3,
+  "runda": 1,
   "lag": [
     "Alfa",
     "Bravo",
@@ -201,46 +201,5 @@
     ]
   },
   "orderfas_min": 1,
-  "diplomatifas_min": 1,
-  "checkbox_states": {},
-  "timer_status": "stopped",
-  "timer_start": null,
-  "timer_elapsed": 0,
-  "fashistorik": [
-    {
-      "runda": 1,
-      "fas": "Orderfas",
-      "status": "pågående"
-    },
-    {
-      "runda": 1,
-      "fas": "Diplomatifas",
-      "status": "avklarad"
-    },
-    {
-      "runda": 1,
-      "fas": "Resultatfas",
-      "status": "avklarad"
-    },
-    {
-      "runda": 2,
-      "fas": "Orderfas",
-      "status": "avklarad"
-    },
-    {
-      "runda": 2,
-      "fas": "Diplomatifas",
-      "status": "avklarad"
-    },
-    {
-      "runda": 2,
-      "fas": "Resultatfas",
-      "status": "avklarad"
-    },
-    {
-      "runda": 3,
-      "fas": "Orderfas",
-      "status": "pågående"
-    }
-  ]
+  "diplomatifas_min": 1
 }
