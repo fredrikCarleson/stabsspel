@@ -578,6 +578,42 @@ def create_team_overview(data):
     
     return overview_html
 
+def create_phase_progress_html(runda, fas):
+    """Skapa visuell fas-progress för aktuell runda"""
+    phases = ["Orderfas", "Diplomatifas", "Resultatfas"]
+    
+    progress_html = f'''
+    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;">🎯 Runda {runda} av 4</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+    '''
+    
+    for phase in phases:
+        if phase == fas:
+            # Aktuell fas
+            status_icon = "🔄"
+            status_class = "background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
+        elif phases.index(phase) < phases.index(fas):
+            # Slutförd fas
+            status_icon = "✅"
+            status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
+        else:
+            # Framtida fas (grydd ut)
+            status_icon = "⏳"
+            status_class = "background: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; opacity: 0.6;"
+        
+        progress_html += f'''
+        <div style="{status_class} padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500;">
+            {status_icon} {phase}
+        </div>
+        '''
+    
+    progress_html += '''
+        </div>
+    </div>
+    '''
+    return progress_html
+
 # ============================================================================
 # ROUTES
 # ============================================================================
@@ -802,8 +838,8 @@ def admin_panel(spel_id):
     
     historik_html = create_historik_html(rundor)
     
-    # Anpassa rubrik baserat på runda
-    rubrik = f"Runda {runda} av 4 – {fas}"
+    # Skapa visuell fas-progress för aktuell runda
+    phase_progress_html = create_phase_progress_html(runda, fas)
     
     # Skapa kvartalsvisualisering
     quarters = [
@@ -820,8 +856,8 @@ def admin_panel(spel_id):
         f'<a href="/team/{spel_id}/{lag}" target="_blank" style="color: #ffffff; text-decoration: underline; font-weight: 500;">{lag}</a>' for lag in data['lag']
     ])
     
-    # Skapa timer HTML baserat på fas
-    timer_html = create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda)
+    # Skapa timer HTML baserat på fas (utan rubrik eftersom vi använder visuell progress)
+    timer_html = create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, "", runda)
     
     # Returnera komplett HTML med förbättrad layout
     return f'''
@@ -838,6 +874,9 @@ def admin_panel(spel_id):
             
             <!-- Quarter Progress Bar -->
             {quarter_bar_html}
+            
+            <!-- Phase Progress Bar -->
+            {phase_progress_html}
             
             <!-- Main Content Section -->
             <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
@@ -901,7 +940,10 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         return '<h2 style="color: #dc3545; font-size: 1.8em; font-weight: 600; text-align: center; margin: 30px 0;">Spelet är avslutat</h2>'
     
     if fas in ["Orderfas", "Diplomatifas"]:
-        timer_html = f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
+        # Visa rubrik endast om den inte är tom (för bakåtkompatibilitet)
+        timer_html = ''
+        if rubrik:
+            timer_html += f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
         timer_html += create_timer_controls(spel_id, remaining, timer_status)
         
         if fas == "Orderfas":
@@ -913,7 +955,10 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         return timer_html
     
     elif fas == "Resultatfas":
-        timer_html = f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
+        # Visa rubrik endast om den inte är tom (för bakåtkompatibilitet)
+        timer_html = ''
+        if rubrik:
+            timer_html += f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
         timer_html += create_resultatfas_checklist(spel_id)
         
         # Starta ny runda knapp - inaktivera om runda 4

@@ -4,8 +4,8 @@
   "plats": "Stort",
   "antal_spelare": 27,
   "skapad": "2025-08-06T11:44:50.472555",
-  "fas": "Diplomatifas",
-  "runda": 2,
+  "fas": "Orderfas",
+  "runda": 3,
   "lag": [
     "Alfa",
     "Bravo",
@@ -202,17 +202,7 @@
   },
   "orderfas_min": 1,
   "diplomatifas_min": 1,
-  "checkbox_states": {
-    "order_check1": true,
-    "order_check2": true,
-    "order_check3": true,
-    "order_check4": true,
-    "order_check5": true,
-    "order_check6": true,
-    "order_check7": true,
-    "order_check8": true,
-    "order_check9": true
-  },
+  "checkbox_states": {},
   "timer_status": "stopped",
   "timer_start": null,
   "timer_elapsed": 0,
@@ -240,6 +230,16 @@
     {
       "runda": 2,
       "fas": "Diplomatifas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 3,
+      "fas": "Orderfas",
       "status": "pågående"
     }
   ]
