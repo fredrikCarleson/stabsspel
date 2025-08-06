@@ -248,6 +248,31 @@ def save_game_data(spel_id, data):
 def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min):
     spel_id = datetime.now().strftime("%Y%m%d%H%M%S")
     filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
+    
+    # Skapa backlog med korrekt data från BACKLOG
+    lag = suggest_teams(antal_spelare)
+    backlog_data = {}
+    for lag_namn in lag:
+        if lag_namn in BACKLOG:
+            # Kopiera BACKLOG-data och säkerställ att spenderade_hp är 0
+            backlog_data[lag_namn] = []
+            for uppgift in BACKLOG[lag_namn]:
+                if isinstance(uppgift, dict):
+                    # För enkla uppgifter
+                    ny_uppgift = uppgift.copy()
+                    ny_uppgift["spenderade_hp"] = 0
+                    ny_uppgift["slutford"] = False
+                    backlog_data[lag_namn].append(ny_uppgift)
+                else:
+                    # För komplexa uppgifter med faser
+                    ny_uppgift = uppgift.copy()
+                    if "faser" in ny_uppgift:
+                        for fas in ny_uppgift["faser"]:
+                            fas["spenderade_hp"] = 0
+                            fas["slutford"] = False
+                    ny_uppgift["slutford"] = False
+                    backlog_data[lag_namn].append(ny_uppgift)
+    
     data = {
         "id": spel_id,
         "datum": datum,
@@ -256,11 +281,11 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
         "skapad": datetime.now().isoformat(),
         "fas": "Orderfas",
         "runda": 1,
-        "lag": suggest_teams(antal_spelare),
+        "lag": lag,
         "order": {},
         "poang": {},
         "resultat": [],
-        "backlog": [],
+        "backlog": backlog_data,
         "orderfas_min": orderfas_min,
         "diplomatifas_min": diplomatifas_min,
     }

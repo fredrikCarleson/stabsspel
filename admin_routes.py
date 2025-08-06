@@ -120,7 +120,7 @@ def create_action_buttons(spel_id):
     back_lank = f'<a href="/admin" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Tillbaka till adminstart</button></a>'
     
     return f'''
-    <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+    <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap; justify-content: center;">
         {poang_lank}
         {aktivitetskort_lank}
         {reset_lank}
@@ -455,8 +455,8 @@ def create_historik_html(rundor):
         return ""
     
     historik_html = '''
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6c757d;">
-        <h3 style="margin-top: 0; color: #495057; font-size: 1.4em;">📊 Spelhistorik</h3>
+    <div class="section-header">
+        <h3>📊 Spelhistorik</h3>
     '''
     
     for rundnr in sorted(rundor.keys()):
@@ -494,8 +494,8 @@ def create_team_overview(data):
         return ""
     
     overview_html = '''
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6c757d;">
-        <h3 style="margin-top: 0; color: #495057; font-size: 1.4em;">📊 Team Översikt</h3>
+    <div class="section-header">
+        <h3>📊 Team Översikt</h3>
         <div style="margin: 15px 0;">
     '''
     
@@ -614,12 +614,12 @@ def admin_start():
     team_info_js = create_team_info_js()
     
     return f'''
-        <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
         <div class="container">
             <!-- Header Section -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-                <h1 style="margin: 0 0 10px 0; font-size: 2.5em; font-weight: 300;">🎮 Stabsspel Admin</h1>
-                <p style="margin: 0; font-size: 1.2em; opacity: 0.9;">Spelhantering och kontrollpanel</p>
+            <div class="page-header">
+                <h1>🎮 Stabsspel Admin</h1>
+                <p class="page-subtitle">Spelhantering och kontrollpanel</p>
             </div>
             
             <!-- Main Content Grid -->
@@ -801,11 +801,23 @@ def admin_panel(spel_id):
         rundor[rundnr].append(entry)
     
     historik_html = create_historik_html(rundor)
-    rubrik = f"Runda {runda} av {MAX_RUNDA} – {fas}"
+    
+    # Anpassa rubrik baserat på runda
+    rubrik = f"Runda {runda} av 4 – {fas}"
+    
+    # Skapa kvartalsvisualisering
+    quarters = [
+        {"name": "Okt-Dec", "active": runda >= 1},
+        {"name": "Jan-Mar", "active": runda >= 2},
+        {"name": "Apr-Jun", "active": runda >= 3},
+        {"name": "Jul-Sep", "active": runda >= 4}
+    ]
+    
+    quarter_bar_html = create_quarter_bar_html(quarters, runda)
     
     # Skapa klickbara lagnamn
     lag_html = ', '.join([
-        f'<a href="/team/{spel_id}/{lag}" target="_blank">{lag}</a>' for lag in data['lag']
+        f'<a href="/team/{spel_id}/{lag}" target="_blank" style="color: #ffffff; text-decoration: underline; font-weight: 500;">{lag}</a>' for lag in data['lag']
     ])
     
     # Skapa timer HTML baserat på fas
@@ -813,15 +825,19 @@ def admin_panel(spel_id):
     
     # Returnera komplett HTML med förbättrad layout
     return f'''
-        <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
         <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
             <!-- Header Section -->
-            <div style="background: #2c3e50; color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
-                <h1 style="margin: 0 0 20px 0; color: white; font-size: 2.2em; font-weight: 600;">Adminpanel för spel {spel_id}</h1>
-                
-                {create_compact_header(data, lag_html)}
+            <div class="page-header">
+                <h1>Adminpanel för spel {spel_id}</h1>
+                <p class="page-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
+                <p class="page-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
+                <p class="page-subtitle">Lag: {lag_html}</p>
                 {create_action_buttons(spel_id)}
             </div>
+            
+            <!-- Quarter Progress Bar -->
+            {quarter_bar_html}
             
             <!-- Main Content Section -->
             <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
@@ -835,6 +851,49 @@ def admin_panel(spel_id):
             {historik_html}
         </div>
     '''
+
+def create_quarter_bar_html(quarters, current_round):
+    """Skapa kvartalsvisualisering"""
+    quarter_html = '<div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">'
+    quarter_html += '<h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;">Kvartalsförlopp</h3>'
+    quarter_html += '<div style="display: flex; gap: 10px; align-items: center;">'
+    
+    for i, quarter in enumerate(quarters):
+        is_active = quarter["active"]
+        is_current = current_round == i + 1
+        
+        if is_current:
+            bg_color = "#3498db"
+            text_color = "white"
+            border = "2px solid #2980b9"
+        elif is_active:
+            bg_color = "#27ae60"
+            text_color = "white"
+            border = "1px solid #229954"
+        else:
+            bg_color = "#ecf0f1"
+            text_color = "#7f8c8d"
+            border = "1px solid #bdc3c7"
+        
+        quarter_html += f'''
+        <div style="
+            flex: 1;
+            background: {bg_color};
+            color: {text_color};
+            padding: 12px 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9em;
+            border: {border};
+            transition: all 0.3s ease;
+        ">
+            {quarter["name"]}
+        </div>
+        '''
+    
+    quarter_html += '</div></div>'
+    return quarter_html
 
 def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda):
     """Skapa timer HTML baserat på fas"""
@@ -857,14 +916,23 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         timer_html = f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
         timer_html += create_resultatfas_checklist(spel_id)
         
-        # Starta ny runda knapp
-        timer_html += f'''
-        <div style="margin: 25px 0; text-align: center;">
-            <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Starta ny runda</button>
-            </form>
-        </div>
-        '''
+        # Starta ny runda knapp - inaktivera om runda 4
+        if runda >= MAX_RUNDA:
+            timer_html += f'''
+            <div style="margin: 25px 0; text-align: center;">
+                <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
+                    <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Starta ny runda</button>
+                </form>
+            </div>
+            '''
+        else:
+            timer_html += f'''
+            <div style="margin: 25px 0; text-align: center;">
+                <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
+                    <button type="submit" id="start-ny-runda-btn" style="background: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Starta ny runda</button>
+                </form>
+            </div>
+            '''
         
         # Avsluta spel om max runder nått
         if runda >= MAX_RUNDA:
@@ -875,10 +943,8 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
                 </form>
             </div>
             '''
-        
-        return timer_html
     
-    return ""
+    return timer_html
 
 @admin_bp.route("/admin/<spel_id>/save_checkbox", methods=["POST"])
 def save_checkbox_state_route(spel_id):
@@ -967,15 +1033,15 @@ def admin_poang(spel_id):
             data["poang"][lag]["aktuell"] = aktuell
             data["poang"][lag]["regeringsstod"] = regeringsstod
         save_game_data(spel_id, data)
-    # Bygg tabell
-    tabell = "<form method='post'><table border='1' cellpadding='6' style='border-collapse:collapse;'>"
+    # Bygg tabell med moderna CSS-klasser
+    tabell = "<form method='post'><table>"
     tabell += "<tr><th>Lag</th><th>Ursprung</th><th>Aktuell</th><th>Skillnad</th><th>Regeringsstöd</th><th>Formel</th></tr>"
     for lag in laglista:
         p = data["poang"][lag]
         bas = p["bas"]
         aktuell = p["aktuell"]
         diff = aktuell - bas
-        diff_farg = "green" if diff > 0 else ("red" if diff < 0 else "black")
+        diff_class = "text-success" if diff > 0 else ("text-danger" if diff < 0 else "text-muted")
         regeringsstod = p.get("regeringsstod", False)
         # Formel: t.ex. 25 + 10 om regeringsstöd
         formel = str(aktuell)
@@ -983,21 +1049,24 @@ def admin_poang(spel_id):
             formel += " + 10"
         # Inputfält och checkbox
         tabell += f"<tr>"
-        tabell += f"<td>{lag}</td>"
+        tabell += f"<td><strong>{lag}</strong></td>"
         tabell += f"<td>{bas}</td>"
-        tabell += f"<td><input type='number' name='poang_{lag}' value='{aktuell}'></td>"
-        tabell += f"<td style='color:{diff_farg};text-align:center;'>{'+' if diff>0 else ''}{diff}</td>"
-        tabell += f"<td style='text-align:center;'><input type='checkbox' name='regeringsstod_{lag}' {'checked' if regeringsstod else ''}></td>"
-        tabell += f"<td>{formel}</td>"
+        tabell += f"<td><input type='number' name='poang_{lag}' value='{aktuell}' min='0'></td>"
+        tabell += f"<td class='text-center {diff_class}'>{'+' if diff>0 else ''}{diff}</td>"
+        tabell += f"<td class='text-center'><input type='checkbox' name='regeringsstod_{lag}' {'checked' if regeringsstod else ''}></td>"
+        tabell += f"<td><code>{formel}</code></td>"
         tabell += f"</tr>"
     tabell += "</table><br><button type='submit'>Spara ändringar</button></form>"
-    # Visa aktuell runda
+    # Visa aktuell runda med konsistent header
     html = f"""
     <link rel='stylesheet' href='/static/style.css'>
     <div class='container'>
-    <h1>Handlingspoäng – Runda {runda}</h1>
-    {tabell}
-    <br><a href='/admin/{spel_id}'>Tillbaka till adminpanelen</a>
+        <div class='page-header'>
+            <h1>Handlingspoäng – Runda {runda}</h1>
+            <p class='page-subtitle'>Hantera teamens handlingspoäng och regeringsstöd</p>
+        </div>
+        {tabell}
+        <br><a href='/admin/{spel_id}' class='back-button'>← Tillbaka till adminpanelen</a>
     </div>
     """
     return Markup(html)
@@ -1063,8 +1132,24 @@ def admin_reset(spel_id):
         from models import BACKLOG
         for lag in data["lag"]:
             if lag in BACKLOG and lag in data["backlog"]:
-                # Återställ till original från BACKLOG
-                data["backlog"][lag] = BACKLOG[lag].copy()
+                # Återställ till original från BACKLOG och säkerställ att spenderade_hp är 0
+                data["backlog"][lag] = []
+                for uppgift in BACKLOG[lag]:
+                    if isinstance(uppgift, dict):
+                        # För enkla uppgifter
+                        ny_uppgift = uppgift.copy()
+                        ny_uppgift["spenderade_hp"] = 0
+                        ny_uppgift["slutford"] = False
+                        data["backlog"][lag].append(ny_uppgift)
+                    else:
+                        # För komplexa uppgifter med faser
+                        ny_uppgift = uppgift.copy()
+                        if "faser" in ny_uppgift:
+                            for fas in ny_uppgift["faser"]:
+                                fas["spenderade_hp"] = 0
+                                fas["slutford"] = False
+                        ny_uppgift["slutford"] = False
+                        data["backlog"][lag].append(ny_uppgift)
     
     save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
@@ -1077,7 +1162,7 @@ def admin_aktivitetskort(spel_id):
     
     laglista = data["lag"]
     html = f'''
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
     <div class="container">
     <h1>Aktivitetskort för spel {spel_id}</h1>
     <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]}</p>
@@ -1089,39 +1174,57 @@ def admin_aktivitetskort(spel_id):
     for lag in laglista:
         if lag in AKTIVITETSKORT:
             html += f'<h2>🟢 Team {lag} – Aktivitetskort</h2>'
-            html += '<div style="page-break-after: always;">'
+            html += '<div class="cards-container" style="page-break-after: always;">'
             
             # Skapa kort för alla spelare i laget (2 med uppdrag, resten blanka)
             kort = AKTIVITETSKORT[lag]
             
             # Kort 1 med uppdrag
             html += f'''
-            <div class="kort">
-                <div class="kort-header">
+            <div class="activity-card">
+                <div class="card-header">
                     <h3>{lag} Kort 1: {kort[0]["titel"]}</h3>
                 </div>
-                <div class="kort-innehall">
-                    <p><strong>Uppdrag:</strong> {kort[0]["uppdrag"]}</p>
-                    <p><strong>Mål:</strong> {kort[0]["mål"]}</p>
-                    <p><strong>Belöning:</strong> {kort[0]["belöning"]}</p>
-                    {f'<p><strong>Risk:</strong> {kort[0]["risk"]}</p>' if "risk" in kort[0] else ''}
-                    {f'<p><strong>Bonus:</strong> {kort[0]["bonus"]}</p>' if "bonus" in kort[0] else ''}
+                <div class="card-content">
+                    <div class="card-section">
+                        <h4>Uppdrag</h4>
+                        <p>{kort[0]["uppdrag"]}</p>
+                    </div>
+                    <div class="card-section">
+                        <h4>Mål</h4>
+                        <p>{kort[0]["mål"]}</p>
+                    </div>
+                    <div class="card-section">
+                        <h4>Belöning</h4>
+                        <p>{kort[0]["belöning"]}</p>
+                    </div>
+                    {f'<div class="card-section"><h4>Risk</h4><p>{kort[0]["risk"]}</p></div>' if "risk" in kort[0] else ''}
+                    {f'<div class="card-section"><h4>Bonus</h4><p>{kort[0]["bonus"]}</p></div>' if "bonus" in kort[0] else ''}
                 </div>
             </div>
             '''
             
             # Kort 2 med uppdrag
             html += f'''
-            <div class="kort">
-                <div class="kort-header">
+            <div class="activity-card">
+                <div class="card-header">
                     <h3>{lag} Kort 2: {kort[1]["titel"]}</h3>
                 </div>
-                <div class="kort-innehall">
-                    <p><strong>Uppdrag:</strong> {kort[1]["uppdrag"]}</p>
-                    <p><strong>Mål:</strong> {kort[1]["mål"]}</p>
-                    <p><strong>Belöning:</strong> {kort[1]["belöning"]}</p>
-                    {f'<p><strong>Risk:</strong> {kort[1]["risk"]}</p>' if "risk" in kort[1] else ''}
-                    {f'<p><strong>Bonus:</strong> {kort[1]["bonus"]}</p>' if "bonus" in kort[1] else ''}
+                <div class="card-content">
+                    <div class="card-section">
+                        <h4>Uppdrag</h4>
+                        <p>{kort[1]["uppdrag"]}</p>
+                    </div>
+                    <div class="card-section">
+                        <h4>Mål</h4>
+                        <p>{kort[1]["mål"]}</p>
+                    </div>
+                    <div class="card-section">
+                        <h4>Belöning</h4>
+                        <p>{kort[1]["belöning"]}</p>
+                    </div>
+                    {f'<div class="card-section"><h4>Risk</h4><p>{kort[1]["risk"]}</p></div>' if "risk" in kort[1] else ''}
+                    {f'<div class="card-section"><h4>Bonus</h4><p>{kort[1]["bonus"]}</p></div>' if "bonus" in kort[1] else ''}
                 </div>
             </div>
             '''
@@ -1129,12 +1232,23 @@ def admin_aktivitetskort(spel_id):
             # Lägg till blanka kort för resten av spelarna
             for i in range(3, 11):  # Upp till 10 spelare per lag
                 html += f'''
-                <div class="kort">
-                    <div class="kort-header">
+                <div class="activity-card">
+                    <div class="card-header">
                         <h3>{lag} Kort {i}: Blankt</h3>
                     </div>
-                    <div class="kort-innehall">
-                        <p><em>Du har inget särskilt uppdrag. Fokusera på ditt teams mål.</em></p>
+                    <div class="card-content">
+                        <div class="card-section">
+                            <h4>Uppdrag</h4>
+                            <p><em>Du har inget särskilt uppdrag. Fokusera på ditt teams mål.</em></p>
+                        </div>
+                        <div class="card-section">
+                            <h4>Mål</h4>
+                            <p><em>Arbeta med ditt team för att slutföra era uppgifter.</em></p>
+                        </div>
+                        <div class="card-section">
+                            <h4>Belöning</h4>
+                            <p><em>Din belöning kommer från teamets framgång.</em></p>
+                        </div>
                     </div>
                 </div>
                 '''
@@ -1143,29 +1257,43 @@ def admin_aktivitetskort(spel_id):
         else:
             # Om laget inte har aktivitetskort, skapa blanka kort för alla spelare
             html += f'<h2>🟢 Team {lag} – Aktivitetskort</h2>'
-            html += '<div style="page-break-after: always;">'
+            html += '<div class="cards-container" style="page-break-after: always;">'
             
             # Skapa blanka kort för alla spelare i laget
             for i in range(1, 11):  # Upp till 10 spelare per lag
                 html += f'''
-                <div class="kort">
-                    <div class="kort-header">
+                <div class="activity-card">
+                    <div class="card-header">
                         <h3>{lag} Kort {i}: Blankt</h3>
                     </div>
-                    <div class="kort-innehall">
-                        <p><em>Du har inget särskilt uppdrag. Fokusera på ditt teams mål.</em></p>
+                    <div class="card-content">
+                        <div class="card-section">
+                            <h4>Uppdrag</h4>
+                            <p><em>Du har inget särskilt uppdrag. Fokusera på ditt teams mål.</em></p>
+                        </div>
+                        <div class="card-section">
+                            <h4>Mål</h4>
+                            <p><em>Arbeta med ditt team för att slutföra era uppgifter.</em></p>
+                        </div>
+                        <div class="card-section">
+                            <h4>Belöning</h4>
+                            <p><em>Din belöning kommer från teamets framgång.</em></p>
+                        </div>
                     </div>
                 </div>
                 '''
             
             html += '</div>'
     
-    html += f'''
-    <br><br>
-    <a href="/admin/{spel_id}">Tillbaka till adminpanelen</a>
+    html += '''
+    <div style="margin-top: 30px; text-align: center;">
+        <button onclick="window.print()">Skriv ut aktivitetskort</button>
+        <a href="/admin/''' + spel_id + '''"><button type="button">Tillbaka till adminpanel</button></a>
+    </div>
     </div>
     '''
-    return Markup(html)
+    
+    return html
 
 @admin_bp.route("/admin/<spel_id>/backlog", methods=["GET", "POST"])
 def admin_backlog(spel_id):
@@ -1210,24 +1338,54 @@ def admin_backlog(spel_id):
         save_game_data(spel_id, data)
         return redirect(url_for("admin.admin_backlog", spel_id=spel_id))
     
-    # Bygg HTML för varje lag
+    # Bygg HTML för varje lag med förbättrad layout
     html_parts = []
     for lag in data["lag"]:
         if lag in data["backlog"]:
-            html_parts.append(f'<h2>✅ Team {lag} – Uppgifter & handlingspoäng</h2>')
+            # Beräkna totala HP för laget först
+            if lag == "Bravo":
+                total_estimaterade = sum(sum(fas["estimaterade_hp"] for fas in uppgift["faser"]) for uppgift in data["backlog"][lag])
+                total_spenderade = sum(sum(fas["spenderade_hp"] for fas in uppgift["faser"]) for uppgift in data["backlog"][lag])
+            else:
+                total_estimaterade = sum(uppgift["estimaterade_hp"] for uppgift in data["backlog"][lag])
+                total_spenderade = sum(uppgift["spenderade_hp"] for uppgift in data["backlog"][lag])
+            
+            # Skapa team-kort header
+            progress_percent = (total_spenderade / total_estimaterade * 100) if total_estimaterade > 0 else 0
+            progress_color = "#28a745" if progress_percent >= 100 else "#ffc107" if progress_percent > 50 else "#dc3545"
+            
+            html_parts.append(f'''
+            <div class="team-backlog-card">
+                <div class="team-header">
+                    <div class="team-info">
+                        <h3>✅ Team {lag}</h3>
+                        <div class="team-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {min(progress_percent, 100)}%; background-color: {progress_color};"></div>
+                            </div>
+                            <span class="progress-text">{total_spenderade}/{total_estimaterade} HP ({progress_percent:.0f}%)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="team-content">
+            ''')
             
             if lag == "Bravo":
-                # Bravo - GANTT-stil med faser
+                # Bravo - GANTT-stil med faser - Explicit layout utan CSS-beroende
                 html_parts.append('''
-                <table>
-                    <tr>
-                        <th>Uppgift</th>
-                        <th>Krav</th>
-                        <th>Design</th>
-                        <th>Utveckling</th>
-                        <th>Test</th>
-                        <th>Totalt</th>
-                    </tr>
+                <div class="backlog-table-container">
+                    <table class="backlog-table" data-team="Bravo" style="table-layout: fixed; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%;">Uppgift</th>
+                                <th style="width: 15%; text-align: center;">Krav</th>
+                                <th style="width: 15%; text-align: center;">Design</th>
+                                <th style="width: 15%; text-align: center;">Utveckling</th>
+                                <th style="width: 15%; text-align: center;">Test</th>
+                                <th style="width: 5%; text-align: center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                 ''')
                 
                 for uppgift in data["backlog"][lag]:
@@ -1241,40 +1399,56 @@ def admin_backlog(spel_id):
                     
                     status_class = "slutford" if uppgift["slutford"] else "pa_gang"
                     task_class = "task-completed" if uppgift["slutford"] else ""
+                    status_icon = "✅" if uppgift["slutford"] else "🔄"
                     
                     html_parts.append(f'''
                     <tr class="{status_class}">
-                        <td class="{task_class}"><strong>{uppgift["namn"]}</strong></td>
-                        <td>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Krav" value="{krav['estimaterade_hp']}" min="0">
-                            / <input type="number" name="spenderade_{uppgift['id']}_Krav" value="{krav['spenderade_hp']}" min="0">
+                        <td class="{task_class}" style="width: 35%;"><strong>{uppgift["namn"]}</strong></td>
+                        <td style="width: 15%; text-align: center; vertical-align: middle;">
+                            <input type="number" name="estimaterade_{uppgift['id']}_Krav" value="{krav['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="spenderade_{uppgift['id']}_Krav" value="{krav['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
                         </td>
-                        <td>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Design" value="{design['estimaterade_hp']}" min="0">
-                            / <input type="number" name="spenderade_{uppgift['id']}_Design" value="{design['spenderade_hp']}" min="0">
+                        <td style="width: 15%; text-align: center; vertical-align: middle;">
+                            <input type="number" name="estimaterade_{uppgift['id']}_Design" value="{design['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="spenderade_{uppgift['id']}_Design" value="{design['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
                         </td>
-                        <td>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Utveckling" value="{utveckling['estimaterade_hp']}" min="0">
-                            / <input type="number" name="spenderade_{uppgift['id']}_Utveckling" value="{utveckling['spenderade_hp']}" min="0">
+                        <td style="width: 15%; text-align: center; vertical-align: middle;">
+                            <input type="number" name="estimaterade_{uppgift['id']}_Utveckling" value="{utveckling['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="spenderade_{uppgift['id']}_Utveckling" value="{utveckling['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
                         </td>
-                        <td>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Test" value="{test['estimaterade_hp']}" min="0">
-                            / <input type="number" name="spenderade_{uppgift['id']}_Test" value="{test['spenderade_hp']}" min="0">
+                        <td style="width: 15%; text-align: center; vertical-align: middle;">
+                            <input type="number" name="estimaterade_{uppgift['id']}_Test" value="{test['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="spenderade_{uppgift['id']}_Test" value="{test['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
                         </td>
-                        <td><strong>{total_spenderade}/{total_estimaterade} HP</strong></td>
+                        <td class="status-cell" style="width: 5%; text-align: center;">
+                            <span class="status-badge">{status_icon} {total_spenderade}/{total_estimaterade}</span>
+                        </td>
                     </tr>
                     ''')
                 
-                html_parts.append('</table>')
+                html_parts.append('''
+                        </tbody>
+                    </table>
+                </div>
+                ''')
                 
             else:
                 # Alfa och STT - enkel tabell
                 html_parts.append('''
-                <table>
-                    <tr>
-                        <th>Uppgift</th>
-                        <th>Handlingspoäng</th>
-                    </tr>
+                <div class="backlog-table-container">
+                    <table class="backlog-table">
+                        <thead>
+                            <tr>
+                                <th>Uppgift</th>
+                                <th>Handlingspoäng</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                 ''')
                 
                 for uppgift in data["backlog"][lag]:
@@ -1286,42 +1460,52 @@ def admin_backlog(spel_id):
                     
                     # Only show checkmark for completed non-recurring tasks
                     task_class = "task-completed" if uppgift["slutford"] and not is_aterkommande else ""
+                    status_icon = "✅" if uppgift["slutford"] and not is_aterkommande else "🔄" if not is_aterkommande else "🔄"
                     
                     html_parts.append(f'''
                     <tr class="{status_class}">
                         <td class="{task_class}"><strong>{uppgift["namn"]}{typ_text}</strong></td>
-                        <td>
-                            <input type="number" name="estimaterade_{uppgift['id']}" value="{uppgift['estimaterade_hp']}" min="0">
-                            / <input type="number" name="spenderade_{uppgift['id']}" value="{uppgift['spenderade_hp']}" min="0">
-                            <span class="progress">({uppgift['spenderade_hp']}/{uppgift['estimaterade_hp']} HP)</span>
+                        <td class="hp-inputs">
+                            <input type="number" name="estimaterade_{uppgift['id']}" value="{uppgift['estimaterade_hp']}" min="0" class="compact-input">
+                            <span>/</span>
+                            <input type="number" name="spenderade_{uppgift['id']}" value="{uppgift['spenderade_hp']}" min="0" class="compact-input">
+                        </td>
+                        <td class="status-cell">
+                            <span class="status-badge">{status_icon} {uppgift['spenderade_hp']}/{uppgift['estimaterade_hp']}</span>
                         </td>
                     </tr>
                     ''')
                 
-                html_parts.append('</table>')
+                html_parts.append('''
+                        </tbody>
+                    </table>
+                </div>
+                ''')
             
-            # Beräkna totala HP för laget
-            if lag == "Bravo":
-                total_estimaterade = sum(sum(fas["estimaterade_hp"] for fas in uppgift["faser"]) for uppgift in data["backlog"][lag])
-                total_spenderade = sum(sum(fas["spenderade_hp"] for fas in uppgift["faser"]) for uppgift in data["backlog"][lag])
-            else:
-                total_estimaterade = sum(uppgift["estimaterade_hp"] for uppgift in data["backlog"][lag])
-                total_spenderade = sum(uppgift["spenderade_hp"] for uppgift in data["backlog"][lag])
-            
-            html_parts.append(f'<p><strong>🔁 Totalt: {total_spenderade}/{total_estimaterade} HP</strong></p>')
-            html_parts.append('<hr>')
+            html_parts.append('''
+                </div>
+            </div>
+            ''')
     
-    # Bygg komplett HTML
+    # Bygg komplett HTML med förbättrad layout
     html = f'''
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
     <div class="container">
-        <h1>Team Backlogs – Runda {data.get("runda", 1)}</h1>
-        <form method="post">
-            {''.join(html_parts)}
-            <button type="submit">Spara ändringar</button>
+        <div class="backlog-header">
+            <h1>Team Backlogs – Runda {data.get("runda", 1)}</h1>
+            <p class="backlog-subtitle">Uppdatera teamens arbete och handlingspoäng</p>
+        </div>
+        
+        <form method="post" class="backlog-form">
+            <div class="backlog-grid">
+                {''.join(html_parts)}
+            </div>
+            
+            <div class="backlog-actions">
+                <button type="submit" class="save-button">💾 Spara ändringar</button>
+                <a href="/admin/{spel_id}" class="back-button">← Tillbaka till adminpanelen</a>
+            </div>
         </form>
-        <br>
-        <a href="/admin/{spel_id}">Tillbaka till adminpanelen</a>
     </div>
     '''
     
