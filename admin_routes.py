@@ -7,21 +7,13 @@ from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG
 )
-from game_management import delete_game
+from game_management import delete_game, nollstall_regeringsstod, load_game_data
 
 admin_bp = Blueprint('admin', __name__)
 
 # ============================================================================
 # HJÄLPFUNKTIONER
 # ============================================================================
-
-def load_game_data(spel_id):
-    """Ladda speldatan från fil"""
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
-        return None
-    with open(filnamn, encoding="utf-8") as f:
-        return json.load(f)
 
 def save_checkbox_state(spel_id, checkbox_id, checked):
     """Spara checkbox-tillstånd"""
@@ -1117,12 +1109,7 @@ def admin_poang(spel_id):
     """
     return Markup(html)
 
-# Vid ny runda: nollställ regeringsstöd
-def nollstall_regeringsstod(data):
-    if "poang" in data:
-        for lag in data["poang"]:
-            data["poang"][lag]["regeringsstod"] = False
-    return data
+
 
 # Modifiera admin_ny_runda så att regeringsstöd nollställs
 @admin_bp.route("/admin/<spel_id>/ny_runda", methods=["POST"])

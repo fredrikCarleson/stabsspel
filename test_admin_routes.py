@@ -19,7 +19,7 @@ class TestAdminRoutes(unittest.TestCase):
     
     def setUp(self):
         """Set up test environment"""
-        # Use the actual Flask app
+        # Use the actual Flask app with all blueprints registered
         self.app = app.test_client()
         self.app.testing = True
         
@@ -67,13 +67,16 @@ class TestAdminRoutes(unittest.TestCase):
             "runda": 1,
             "fas": "Orderfas",
             "timer": 600,
+            "orderfas_min": 15,
+            "diplomatifas_min": 10,
             "lag": team_names,
             "handlingspoang": {team: 10 for team in team_names},
             "regeringsstod": {team: 5 for team in team_names},
             "backlog": BACKLOG.copy(),
             "checkbox_states": {},
             "fashistorik": [],
-            "rundor": {}
+            "rundor": {},
+            "poang": {team: {"bas": 25, "aktuell": 25, "regeringsstod": False} for team in team_names}
         }
     
     def save_test_game_data(self):
@@ -91,10 +94,12 @@ class TestAdminRoutes(unittest.TestCase):
     def test_create_new_game(self):
         """Test creating a new game"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            response = self.app.post('/admin/skapa_spel', data={
+            response = self.app.post('/admin', data={
                 'datum': '2025-01-01',
                 'plats': 'Test Location',
-                'antal_spelare': '20'
+                'players_interval': '20',
+                'orderfas_min': '10',
+                'diplomatifas_min': '10'
             }, follow_redirects=True)
             
             self.assertEqual(response.status_code, 200)
@@ -105,9 +110,10 @@ class TestAdminRoutes(unittest.TestCase):
     def test_admin_panel_loads(self):
         """Test admin panel loads for existing game"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            response = self.app.get(f'/admin/{self.test_spel_id}')
-            self.assertEqual(response.status_code, 200)
-            self.assertIn(b'Stabsspel Admin', response.data)
+            with patch('game_management.DATA_DIR', self.test_data_dir):
+                response = self.app.get(f'/admin/{self.test_spel_id}')
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(b'Stabsspel Admin', response.data)
     
     def test_game_not_found(self):
         """Test handling of non-existent game"""
@@ -122,7 +128,7 @@ class TestAdminRoutes(unittest.TestCase):
             self.test_game_data['fas'] = 'Orderfas'
             self.save_test_game_data()
             
-            response = self.app.post(f'/admin/{self.test_spel_id}/nasta_fas')
+            response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'next_fas'})
             self.assertEqual(response.status_code, 302)  # Redirect
             
             # Check if phase changed to Diplomatifas
@@ -186,7 +192,7 @@ class TestAdminRoutes(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             
             # Check if backlog was updated
-            with open(os.path.join(self.test_data_dir, f"{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
                 updated_data = json.load(f)
                 backlog = updated_data['backlog'][test_team]
                 task = backlog[test_task]
@@ -207,7 +213,7 @@ class TestAdminRoutes(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             
             # Check if action points were updated
-            with open(os.path.join(self.test_data_dir, f"{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
                 updated_data = json.load(f)
                 self.assertEqual(updated_data['handlingspoang'][test_team], new_points)
     
@@ -218,15 +224,13 @@ class TestAdminRoutes(unittest.TestCase):
             checked_state = True
             
             # Set checkbox state
-            response = self.app.post(f'/admin/{self.test_spel_id}/checkbox', data={
-                'checkbox_id': checkbox_id,
-                'checked': str(checked_state)
-            })
+            response = self.app.post(f'/admin/{self.test_spel_id}/save_checkbox', 
+                                   json={'checkbox_id': checkbox_id, 'checked': checked_state})
             
             self.assertEqual(response.status_code, 200)
             
             # Check if state was saved
-            with open(os.path.join(self.test_data_dir, f"{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
                 updated_data = json.load(f)
                 self.assertEqual(updated_data['checkbox_states'].get(checkbox_id), checked_state)
     
@@ -234,12 +238,12 @@ class TestAdminRoutes(unittest.TestCase):
         """Test timer start/stop functionality"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
             # Test start timer
-            response = self.app.post(f'/admin/{self.test_spel_id}/start_timer')
-            self.assertEqual(response.status_code, 200)
+            response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'start'})
+            self.assertEqual(response.status_code, 302)  # Redirect
             
             # Test stop timer
-            response = self.app.post(f'/admin/{self.test_spel_id}/stop_timer')
-            self.assertEqual(response.status_code, 200)
+            response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'pause'})
+            self.assertEqual(response.status_code, 302)  # Redirect
     
     def test_activity_cards_page(self):
         """Test activity cards page loads"""
@@ -252,7 +256,7 @@ class TestAdminRoutes(unittest.TestCase):
         """Test team-specific routes"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
             test_team = 'Alfa'
-            response = self.app.get(f'/admin/{self.test_spel_id}/lag/{test_team}')
+            response = self.app.get(f'/team/{self.test_spel_id}/{test_team}')
             self.assertEqual(response.status_code, 200)
             self.assertIn(test_team.encode(), response.data)
     
@@ -272,7 +276,7 @@ class TestAdminRoutes(unittest.TestCase):
         """Test that game data structure is consistent"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
             # Test that game data has all required fields
-            game_file = os.path.join(self.test_data_dir, f"{self.test_spel_id}.json")
+            game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
             with open(game_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
@@ -330,6 +334,71 @@ class TestAdminRoutes(unittest.TestCase):
             # Test with non-existent game
             response = self.app.post('/admin/delete_game/nonexistent')
             self.assertEqual(response.status_code, 302)  # Should still redirect
+
+    def test_nollstall_regeringsstod_functionality(self):
+        """Test the nollstall_regeringsstod function"""
+        # Create test data with some teams having regeringsstod = True
+        test_data = {
+            "poang": {
+                "Alfa": {"bas": 25, "aktuell": 25, "regeringsstod": True},
+                "Bravo": {"bas": 25, "aktuell": 30, "regeringsstod": True},
+                "STT": {"bas": 25, "aktuell": 20, "regeringsstod": False}
+            }
+        }
+        
+        # Import the function from game_management
+        from game_management import nollstall_regeringsstod
+        
+        # Call the function
+        result = nollstall_regeringsstod(test_data)
+        
+        # Verify all regeringsstod values are now False
+        for team in result["poang"]:
+            self.assertFalse(result["poang"][team]["regeringsstod"])
+        
+        # Verify other data is unchanged
+        self.assertEqual(result["poang"]["Alfa"]["aktuell"], 25)
+        self.assertEqual(result["poang"]["Bravo"]["aktuell"], 30)
+        self.assertEqual(result["poang"]["STT"]["aktuell"], 20)
+
+    def test_nollstall_regeringsstod_in_route(self):
+        """Test that nollstall_regeringsstod is used in the ny_runda route"""
+        with patch('admin_routes.DATA_DIR', self.test_data_dir):
+            with patch('game_management.DATA_DIR', self.test_data_dir):
+                # Set up game data with some teams having regeringsstod = True
+                self.test_game_data["poang"]["Alfa"]["regeringsstod"] = True
+                self.test_game_data["poang"]["Bravo"]["regeringsstod"] = True
+                self.save_test_game_data()
+                
+                # Call the ny_runda route
+                response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
+                self.assertEqual(response.status_code, 302)  # Redirect
+                
+                # Check that regeringsstod was reset to False
+                with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                    updated_data = json.load(f)
+                    for team in updated_data["poang"]:
+                        self.assertFalse(updated_data["poang"][team]["regeringsstod"])
+
+    def test_load_game_data_functionality(self):
+        """Test that load_game_data function can load game data correctly"""
+        from game_management import load_game_data
+        
+        # Test loading existing game data with patched DATA_DIR
+        with patch('game_management.DATA_DIR', self.test_data_dir):
+            result = load_game_data(self.test_spel_id)
+            self.assertIsNotNone(result)
+            self.assertEqual(result["spel_id"], self.test_spel_id)
+            self.assertEqual(result["datum"], "2025-01-01")
+            
+            # Test loading non-existent game data
+            result = load_game_data("non_existent_game")
+            self.assertIsNone(result)
+
+    def test_load_game_data_import(self):
+        """Test that load_game_data function can be imported"""
+        from game_management import load_game_data
+        self.assertTrue(callable(load_game_data))
 
 class TestModels(unittest.TestCase):
     """Test cases for models.py functions"""
