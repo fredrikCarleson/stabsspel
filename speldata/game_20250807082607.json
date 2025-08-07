@@ -1,11 +1,11 @@
 {
-  "id": "20250806133949",
-  "datum": "2025-08-06",
-  "plats": "stort",
+  "id": "20250807082607",
+  "datum": "2025-08-08",
+  "plats": "Test",
   "antal_spelare": 27,
-  "skapad": "2025-08-06T13:39:49.761523",
-  "fas": "Orderfas",
-  "runda": 1,
+  "skapad": "2025-08-07T08:26:07.126187",
+  "fas": "Diplomatifas",
+  "runda": 2,
   "lag": [
     "Alfa",
     "Bravo",
@@ -21,22 +21,22 @@
   "poang": {
     "Alfa": {
       "bas": 25,
-      "aktuell": 25,
+      "aktuell": 20,
       "regeringsstod": false
     },
     "Bravo": {
       "bas": 25,
-      "aktuell": 25,
+      "aktuell": 22,
       "regeringsstod": false
     },
     "STT": {
       "bas": 25,
-      "aktuell": 25,
+      "aktuell": 23,
       "regeringsstod": false
     },
     "FM": {
       "bas": 12,
-      "aktuell": 12,
+      "aktuell": 17,
       "regeringsstod": false
     },
     "BS": {
@@ -47,12 +47,12 @@
     "Media": {
       "bas": 15,
       "aktuell": 15,
-      "regeringsstod": true
+      "regeringsstod": false
     },
     "SÄPO": {
       "bas": 12,
       "aktuell": 12,
-      "regeringsstod": false
+      "regeringsstod": true
     },
     "Regeringen": {
       "bas": 10,
@@ -72,14 +72,14 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 0,
+        "spenderade_hp": 9,
         "slutford": false
       },
       {
         "id": "alfa_2",
         "namn": "Back-end API för inskickade röster",
         "estimaterade_hp": 25,
-        "spenderade_hp": 0,
+        "spenderade_hp": 9,
         "slutford": false
       },
       {
@@ -105,7 +105,7 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 10,
-            "spenderade_hp": 0,
+            "spenderade_hp": 5,
             "slutford": false
           },
           {
@@ -137,8 +137,8 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 4,
-            "spenderade_hp": 0,
-            "slutford": false
+            "spenderade_hp": 4,
+            "slutford": true
           },
           {
             "namn": "Design",
@@ -169,14 +169,14 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 2,
-            "spenderade_hp": 0,
-            "slutford": false
+            "spenderade_hp": 2,
+            "slutford": true
           },
           {
             "namn": "Design",
             "estimaterade_hp": 2,
-            "spenderade_hp": 0,
-            "slutford": false
+            "spenderade_hp": 2,
+            "slutford": true
           },
           {
             "namn": "Utveckling",
@@ -200,7 +200,7 @@
         "id": "stt_1",
         "namn": "Infrastruktur för val (setup, hardening, konfig)",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 12,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -208,7 +208,7 @@
         "id": "stt_2",
         "namn": "Infrastruktur för deklaration",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 12,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -248,14 +248,45 @@
   },
   "orderfas_min": 1,
   "diplomatifas_min": 1,
+  "checkbox_states": {
+    "order_check1": true,
+    "order_check2": true,
+    "order_check3": true,
+    "order_check7": true,
+    "order_check6": true,
+    "order_check4": true,
+    "order_check5": true,
+    "order_check8": true,
+    "order_check9": true,
+    "diplo_check1": true
+  },
   "timer_status": "stopped",
   "timer_start": null,
   "timer_elapsed": 0,
-  "avslutat": false,
   "fashistorik": [
     {
       "runda": 1,
       "fas": "Orderfas",
+      "status": "pågående"
+    },
+    {
+      "runda": 1,
+      "fas": "Diplomatifas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 1,
+      "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Diplomatifas",
       "status": "pågående"
     }
   ]

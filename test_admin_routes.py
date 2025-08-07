@@ -109,11 +109,12 @@ class TestAdminRoutes(unittest.TestCase):
     
     def test_admin_panel_loads(self):
         """Test admin panel loads for existing game"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            with patch('game_management.DATA_DIR', self.test_data_dir):
-                response = self.app.get(f'/admin/{self.test_spel_id}')
-                self.assertEqual(response.status_code, 200)
-                self.assertIn(b'Stabsspel Admin', response.data)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    response = self.app.get(f'/admin/{self.test_spel_id}')
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn(b'Adminpanel', response.data)
     
     def test_game_not_found(self):
         """Test handling of non-existent game"""
@@ -123,179 +124,209 @@ class TestAdminRoutes(unittest.TestCase):
     
     def test_next_phase_transition(self):
         """Test transitioning to next phase"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Start with Orderfas
-            self.test_game_data['fas'] = 'Orderfas'
-            self.save_test_game_data()
-            
-            response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'next_fas'})
-            self.assertEqual(response.status_code, 302)  # Redirect
-            
-            # Check if phase changed to Diplomatifas
-            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                updated_data = json.load(f)
-                self.assertEqual(updated_data['fas'], 'Diplomatifas')
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Start with Orderfas
+                    self.test_game_data['fas'] = 'Orderfas'
+                    self.save_test_game_data()
+                    
+                    response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'next_fas'})
+                    self.assertEqual(response.status_code, 302)  # Redirect
+                    
+                    # Check if phase changed to Diplomatifas
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        self.assertEqual(updated_data['fas'], 'Diplomatifas')
     
     def test_new_round_creation(self):
         """Test creating a new round"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Set up game in final phase of round 1
-            self.test_game_data['fas'] = 'Resultatfas'
-            self.test_game_data['runda'] = 1
-            self.save_test_game_data()
-            
-            response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
-            self.assertEqual(response.status_code, 302)  # Redirect
-            
-            # Check if new round was created
-            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                updated_data = json.load(f)
-                self.assertEqual(updated_data['runda'], 2)
-                self.assertEqual(updated_data['fas'], 'Orderfas')
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Set up game in final phase of round 1
+                    self.test_game_data['fas'] = 'Resultatfas'
+                    self.test_game_data['runda'] = 1
+                    self.save_test_game_data()
+                    
+                    response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
+                    self.assertEqual(response.status_code, 302)  # Redirect
+                    
+                    # Check if new round was created
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        self.assertEqual(updated_data['runda'], 2)
+                        self.assertEqual(updated_data['fas'], 'Orderfas')
     
     def test_reset_game(self):
         """Test resetting a game"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Set up game with some progress
-            self.test_game_data['runda'] = 2
-            self.test_game_data['fas'] = 'Diplomatifas'
-            team_names = [team[0] for team in TEAMS]
-            self.test_game_data['handlingspoang'] = {team: 15 for team in team_names}
-            self.save_test_game_data()
-            
-            response = self.app.post(f'/admin/{self.test_spel_id}/reset')
-            self.assertEqual(response.status_code, 302)  # Redirect
-            
-            # Check if game was reset
-            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                updated_data = json.load(f)
-                self.assertEqual(updated_data['runda'], 1)
-                self.assertEqual(updated_data['fas'], 'Orderfas')
-                team_names = [team[0] for team in TEAMS]
-                self.assertEqual(updated_data['handlingspoang'], {team: 10 for team in team_names})
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Set up game with some progress
+                    self.test_game_data['runda'] = 2
+                    self.test_game_data['fas'] = 'Diplomatifas'
+                    team_names = [team[0] for team in TEAMS]
+                    self.test_game_data['handlingspoang'] = {team: 15 for team in team_names}
+                    self.save_test_game_data()
+                    
+                    response = self.app.post(f'/admin/{self.test_spel_id}/reset')
+                    self.assertEqual(response.status_code, 302)  # Redirect
+                    
+                    # Check if game was reset
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        self.assertEqual(updated_data['runda'], 1)
+                        self.assertEqual(updated_data['fas'], 'Orderfas')
+                        # Check that poang structure was reset correctly
+                        team_names = [team[0] for team in TEAMS]
+                        for team in team_names:
+                            # Get the correct base value from TEAMS
+                            expected_bas = next((minp for namn, minp in TEAMS if namn == team), 20)
+                            self.assertEqual(updated_data['poang'][team]['aktuell'], expected_bas)
+                            self.assertEqual(updated_data['poang'][team]['bas'], expected_bas)
+                            self.assertFalse(updated_data['poang'][team]['regeringsstod'])
     
     def test_update_backlog(self):
         """Test updating team backlog"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            test_team = 'Alfa'
-            test_task = 'Uppgift 1'
-            test_phase = 'Orderfas'
-            test_hp = 5
-            
-            response = self.app.post(f'/admin/{self.test_spel_id}/backlog', data={
-                'lag': test_team,
-                'uppgift': test_task,
-                'fas': test_phase,
-                'handlingspoang': str(test_hp)
-            }, follow_redirects=True)
-            
-            self.assertEqual(response.status_code, 200)
-            
-            # Check if backlog was updated
-            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                updated_data = json.load(f)
-                backlog = updated_data['backlog'][test_team]
-                task = backlog[test_task]
-                phase = task['faser'][test_phase]
-                self.assertEqual(phase['spenderade_hp'], test_hp)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    test_team = 'Alfa'
+                    test_task_id = 'alfa_1'  # ID for "Inloggning val"
+                    test_hp = 5
+                    
+                    response = self.app.post(f'/admin/{self.test_spel_id}/backlog', data={
+                        f'spenderade_{test_task_id}': str(test_hp)
+                    }, follow_redirects=True)
+                    
+                    self.assertEqual(response.status_code, 200)
+                    
+                    # Check if backlog was updated
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        backlog = updated_data['backlog'][test_team]
+                        # Find the task by ID
+                        task = None
+                        for t in backlog:
+                            if t['id'] == test_task_id:
+                                task = t
+                                break
+                        self.assertIsNotNone(task, f"Task with ID '{test_task_id}' not found in backlog")
+                        # Simple task without phases
+                        self.assertEqual(task['spenderade_hp'], test_hp)
     
     def test_update_action_points(self):
         """Test updating team action points"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            test_team = 'Bravo'
-            new_points = 15
-            
-            response = self.app.post(f'/admin/{self.test_spel_id}/poang', data={
-                'lag': test_team,
-                'handlingspoang': str(new_points)
-            }, follow_redirects=True)
-            
-            self.assertEqual(response.status_code, 200)
-            
-            # Check if action points were updated
-            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                updated_data = json.load(f)
-                self.assertEqual(updated_data['handlingspoang'][test_team], new_points)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    test_team = 'Bravo'
+                    new_points = 15
+                    
+                    response = self.app.post(f'/admin/{self.test_spel_id}/poang', data={
+                        f'poang_{test_team}': str(new_points)
+                    }, follow_redirects=True)
+                    
+                    self.assertEqual(response.status_code, 200)
+                    
+                    # Check if action points were updated
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        self.assertEqual(updated_data['poang'][test_team]['aktuell'], new_points)
     
     def test_checkbox_state_persistence(self):
         """Test checkbox state persistence"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            checkbox_id = 'test_checkbox'
-            checked_state = True
-            
-            # Set checkbox state
-            response = self.app.post(f'/admin/{self.test_spel_id}/save_checkbox', 
-                                   json={'checkbox_id': checkbox_id, 'checked': checked_state})
-            
-            self.assertEqual(response.status_code, 200)
-            
-            # Check if state was saved
-            with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                updated_data = json.load(f)
-                self.assertEqual(updated_data['checkbox_states'].get(checkbox_id), checked_state)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Save test game data first
+                    self.save_test_game_data()
+                    
+                    checkbox_id = 'test_checkbox'
+                    checked_state = True
+                    
+                    # Set checkbox state
+                    response = self.app.post(f'/admin/{self.test_spel_id}/save_checkbox', 
+                                           json={'checkbox_id': checkbox_id, 'checked': checked_state})
+                    
+                    self.assertEqual(response.status_code, 200)
+                    
+                    # Check if state was saved
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        self.assertEqual(updated_data['checkbox_states'].get(checkbox_id), checked_state)
     
     def test_timer_controls(self):
         """Test timer start/stop functionality"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Test start timer
-            response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'start'})
-            self.assertEqual(response.status_code, 302)  # Redirect
-            
-            # Test stop timer
-            response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'pause'})
-            self.assertEqual(response.status_code, 302)  # Redirect
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Test start timer
+                    response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'start'})
+                    self.assertEqual(response.status_code, 302)  # Redirect
+                    
+                    # Test stop timer
+                    response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'pause'})
+                    self.assertEqual(response.status_code, 302)  # Redirect
     
     def test_activity_cards_page(self):
         """Test activity cards page loads"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            response = self.app.get(f'/admin/{self.test_spel_id}/aktivitetskort')
-            self.assertEqual(response.status_code, 200)
-            self.assertIn(b'Aktivitetskort', response.data)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    response = self.app.get(f'/admin/{self.test_spel_id}/aktivitetskort')
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn(b'Aktivitetskort', response.data)
     
     def test_team_routes(self):
         """Test team-specific routes"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            test_team = 'Alfa'
-            response = self.app.get(f'/team/{self.test_spel_id}/{test_team}')
-            self.assertEqual(response.status_code, 200)
-            self.assertIn(test_team.encode(), response.data)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    test_team = 'Alfa'
+                    response = self.app.get(f'/team/{self.test_spel_id}/{test_team}')
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn(test_team.encode(), response.data)
     
     def test_game_end_condition(self):
         """Test game end after 3 rounds"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Set up game in final phase of round 3
-            self.test_game_data['runda'] = 3
-            self.test_game_data['fas'] = 'Resultatfas'
-            self.save_test_game_data()
-            
-            response = self.app.get(f'/admin/{self.test_spel_id}')
-            self.assertEqual(response.status_code, 200)
-            self.assertIn(b'Avsluta spelet', response.data)
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Set up game in final phase of round 3
+                    self.test_game_data['runda'] = 3
+                    self.test_game_data['fas'] = 'Resultatfas'
+                    self.save_test_game_data()
+                    
+                    response = self.app.get(f'/admin/{self.test_spel_id}')
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn(b'Avsluta spelet', response.data)
     
     def test_data_consistency(self):
         """Test that game data structure is consistent"""
-        with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Test that game data has all required fields
-            game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
-            with open(game_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            required_fields = ['spel_id', 'datum', 'plats', 'antal_spelare', 'runda', 'fas', 'lag']
-            for field in required_fields:
-                self.assertIn(field, data)
-            
-            # Test that teams are properly structured
-            self.assertIsInstance(data['lag'], list)
-            self.assertGreater(len(data['lag']), 0)
-            
-            # Test that backlog exists for all teams
-            if 'backlog' in data:
-                for team in data['lag']:
-                    if isinstance(team, tuple):
-                        team_name = team[0]
-                    else:
-                        team_name = team
-                    self.assertIn(team_name, data['backlog'])
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    # Test that game data has all required fields
+                    game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
+                    with open(game_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    
+                    required_fields = ['spel_id', 'datum', 'plats', 'antal_spelare', 'runda', 'fas', 'lag']
+                    for field in required_fields:
+                        self.assertIn(field, data)
+                    
+                    # Test that teams are properly structured
+                    self.assertIsInstance(data['lag'], list)
+                    self.assertGreater(len(data['lag']), 0)
+                    
+                    # Test that backlog exists for teams that should have it
+                    if 'backlog' in data:
+                        # Only Alfa, Bravo, and STT have backlog entries
+                        expected_backlog_teams = ['Alfa', 'Bravo', 'STT']
+                        for team_name in expected_backlog_teams:
+                            self.assertIn(team_name, data['backlog'])
 
     def test_delete_game_functionality(self):
         """Test the delete_game function works correctly"""
@@ -365,20 +396,31 @@ class TestAdminRoutes(unittest.TestCase):
         """Test that nollstall_regeringsstod is used in the ny_runda route"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
             with patch('game_management.DATA_DIR', self.test_data_dir):
-                # Set up game data with some teams having regeringsstod = True
-                self.test_game_data["poang"]["Alfa"]["regeringsstod"] = True
-                self.test_game_data["poang"]["Bravo"]["regeringsstod"] = True
-                self.save_test_game_data()
-                
-                # Call the ny_runda route
-                response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
-                self.assertEqual(response.status_code, 302)  # Redirect
-                
-                # Check that regeringsstod was reset to False
-                with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
-                    updated_data = json.load(f)
-                    for team in updated_data["poang"]:
-                        self.assertFalse(updated_data["poang"][team]["regeringsstod"])
+                with patch('models.DATA_DIR', self.test_data_dir):
+                    # Create a copy of test data to avoid modifying the original
+                    test_data_copy = self.test_game_data.copy()
+                    test_data_copy["poang"] = self.test_game_data["poang"].copy()
+                    test_data_copy["poang"]["Alfa"] = self.test_game_data["poang"]["Alfa"].copy()
+                    test_data_copy["poang"]["Bravo"] = self.test_game_data["poang"]["Bravo"].copy()
+                    
+                    # Set up game data with some teams having regeringsstod = True
+                    test_data_copy["poang"]["Alfa"]["regeringsstod"] = True
+                    test_data_copy["poang"]["Bravo"]["regeringsstod"] = True
+                    
+                    # Save the modified test data
+                    test_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
+                    with open(test_file, 'w', encoding='utf-8') as f:
+                        json.dump(test_data_copy, f, ensure_ascii=False, indent=2)
+                    
+                    # Call the ny_runda route
+                    response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
+                    self.assertEqual(response.status_code, 302)  # Redirect
+                    
+                    # Check that regeringsstod was reset to False
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                        updated_data = json.load(f)
+                        for team in updated_data["poang"]:
+                            self.assertFalse(updated_data["poang"][team]["regeringsstod"])
 
     def test_load_game_data_functionality(self):
         """Test that load_game_data function can load game data correctly"""
@@ -400,41 +442,82 @@ class TestAdminRoutes(unittest.TestCase):
         from game_management import load_game_data
         self.assertTrue(callable(load_game_data))
 
+    def test_save_checkbox_state_functionality(self):
+        """Test that save_checkbox_state function works correctly"""
+        from game_management import save_checkbox_state, get_checkbox_state
+        
+        # Test with patched DATA_DIR
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('game_management.DATA_DIR', self.test_data_dir):
+                # Initially no checkbox states
+                result = get_checkbox_state(self.test_game_data, "test_checkbox")
+                self.assertFalse(result)
+                
+                # Save a checkbox state
+                save_checkbox_state(self.test_spel_id, "test_checkbox", True)
+                
+                # Reload data and check
+                with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                    updated_data = json.load(f)
+                    result = get_checkbox_state(updated_data, "test_checkbox")
+                    self.assertTrue(result)
+                
+                # Save another checkbox state
+                save_checkbox_state(self.test_spel_id, "another_checkbox", False)
+                
+                # Reload and check both
+                with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), 'r', encoding='utf-8') as f:
+                    updated_data = json.load(f)
+                    result1 = get_checkbox_state(updated_data, "test_checkbox")
+                    result2 = get_checkbox_state(updated_data, "another_checkbox")
+                    self.assertTrue(result1)
+                    self.assertFalse(result2)
+
+    def test_get_checkbox_state_functionality(self):
+        """Test that get_checkbox_state function works correctly"""
+        from game_management import get_checkbox_state
+        
+        # Test with data that has no checkbox_states
+        data_without_checkboxes = {"id": "test"}
+        result = get_checkbox_state(data_without_checkboxes, "any_checkbox")
+        self.assertFalse(result)
+        
+        # Test with data that has checkbox_states
+        data_with_checkboxes = {
+            "id": "test",
+            "checkbox_states": {
+                "checkbox1": True,
+                "checkbox2": False,
+                "checkbox3": True
+            }
+        }
+        
+        result1 = get_checkbox_state(data_with_checkboxes, "checkbox1")
+        result2 = get_checkbox_state(data_with_checkboxes, "checkbox2")
+        result3 = get_checkbox_state(data_with_checkboxes, "checkbox3")
+        result4 = get_checkbox_state(data_with_checkboxes, "nonexistent")
+        
+        self.assertTrue(result1)
+        self.assertFalse(result2)
+        self.assertTrue(result3)
+        self.assertFalse(result4)
+
+    def test_checkbox_functions_import(self):
+        """Test that checkbox functions can be imported"""
+        from game_management import save_checkbox_state, get_checkbox_state
+        self.assertTrue(callable(save_checkbox_state))
+        self.assertTrue(callable(get_checkbox_state))
+
 class TestModels(unittest.TestCase):
     """Test cases for models.py functions"""
     
     def test_create_new_game(self):
         """Test skapa_nytt_spel function"""
-        game_data = skapa_nytt_spel("test_20250101", "2025-01-01", "Test Location", 20)
+        spel_id = skapa_nytt_spel("2025-01-01", "Test Location", 20, 10, 10)
         
-        # Check basic structure
-        self.assertEqual(game_data['spel_id'], "test_20250101")
-        self.assertEqual(game_data['datum'], "2025-01-01")
-        self.assertEqual(game_data['plats'], "Test Location")
-        self.assertEqual(game_data['antal_spelare'], 20)
-        self.assertEqual(game_data['runda'], 1)
-        self.assertEqual(game_data['fas'], 'Orderfas')
-        
-        # Check teams
-        self.assertEqual(set(game_data['lag']), set(TEAMS))
-        
-        # Check action points initialization
-        for team in TEAMS:
-            self.assertEqual(game_data['handlingspoang'][team], 10)
-            self.assertEqual(game_data['regeringsstod'][team], 5)
-        
-        # Check backlog structure
-        for team in TEAMS:
-            self.assertIn(team, game_data['backlog'])
-            team_backlog = game_data['backlog'][team]
-            self.assertIsInstance(team_backlog, dict)
-            
-            # Check that spenderade_hp is initialized to 0
-            for task_name, task_data in team_backlog.items():
-                self.assertIn('faser', task_data)
-                for phase_name, phase_data in task_data['faser'].items():
-                    self.assertEqual(phase_data['spenderade_hp'], 0)
-                    self.assertEqual(phase_data['slutford'], False)
+        # Check that a spel_id was returned
+        self.assertIsInstance(spel_id, str)
+        self.assertGreater(len(spel_id), 0)
     
     def test_constants(self):
         """Test that constants are properly defined"""

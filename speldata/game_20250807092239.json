@@ -1,9 +1,9 @@
 {
-  "id": "20250806133949",
-  "datum": "2025-08-06",
-  "plats": "stort",
-  "antal_spelare": 27,
-  "skapad": "2025-08-06T13:39:49.761523",
+  "id": "20250807092239",
+  "datum": "2025-01-01",
+  "plats": "Test Location",
+  "antal_spelare": 20,
+  "skapad": "2025-08-07T09:22:39.063332",
   "fas": "Orderfas",
   "runda": 1,
   "lag": [
@@ -11,60 +11,10 @@
     "Bravo",
     "STT",
     "FM",
-    "BS",
-    "Media",
-    "SÄPO",
-    "Regeringen",
-    "USA"
+    "BS"
   ],
   "order": {},
-  "poang": {
-    "Alfa": {
-      "bas": 25,
-      "aktuell": 25,
-      "regeringsstod": false
-    },
-    "Bravo": {
-      "bas": 25,
-      "aktuell": 25,
-      "regeringsstod": false
-    },
-    "STT": {
-      "bas": 25,
-      "aktuell": 25,
-      "regeringsstod": false
-    },
-    "FM": {
-      "bas": 12,
-      "aktuell": 12,
-      "regeringsstod": false
-    },
-    "BS": {
-      "bas": 12,
-      "aktuell": 12,
-      "regeringsstod": false
-    },
-    "Media": {
-      "bas": 15,
-      "aktuell": 15,
-      "regeringsstod": true
-    },
-    "SÄPO": {
-      "bas": 12,
-      "aktuell": 12,
-      "regeringsstod": false
-    },
-    "Regeringen": {
-      "bas": 10,
-      "aktuell": 10,
-      "regeringsstod": false
-    },
-    "USA": {
-      "bas": 12,
-      "aktuell": 12,
-      "regeringsstod": false
-    }
-  },
+  "poang": {},
   "resultat": [],
   "backlog": {
     "Alfa": [
@@ -246,17 +196,6 @@
       }
     ]
   },
-  "orderfas_min": 1,
-  "diplomatifas_min": 1,
-  "timer_status": "stopped",
-  "timer_start": null,
-  "timer_elapsed": 0,
-  "avslutat": false,
-  "fashistorik": [
-    {
-      "runda": 1,
-      "fas": "Orderfas",
-      "status": "pågående"
-    }
-  ]
+  "orderfas_min": 10,
+  "diplomatifas_min": 10
 }

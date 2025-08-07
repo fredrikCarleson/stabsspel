@@ -7,7 +7,7 @@ from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG
 )
-from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
+from game_management import delete_game, nollstall_regeringsstod, load_game_data
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -15,7 +15,31 @@ admin_bp = Blueprint('admin', __name__)
 # HJÄLPFUNKTIONER
 # ============================================================================
 
+def load_game_data(spel_id):
+    """Ladda speldatan från fil"""
+    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
+    if not os.path.exists(filnamn):
+        return None
+    with open(filnamn, encoding="utf-8") as f:
+        return json.load(f)
 
+def save_checkbox_state(spel_id, checkbox_id, checked):
+    """Spara checkbox-tillstånd"""
+    data = load_game_data(spel_id)
+    if not data:
+        return
+    
+    if "checkbox_states" not in data:
+        data["checkbox_states"] = {}
+    
+    data["checkbox_states"][checkbox_id] = checked
+    save_game_data(spel_id, data)
+
+def get_checkbox_state(data, checkbox_id):
+    """Hämta checkbox-tillstånd"""
+    if "checkbox_states" not in data:
+        return False
+    return data["checkbox_states"].get(checkbox_id, False)
 
 def create_team_info_js():
     """Skapa JavaScript för team-information"""
