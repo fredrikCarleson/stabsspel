@@ -9,6 +9,9 @@ app = Flask(__name__)
 app.register_blueprint(admin_bp)
 app.register_blueprint(team_bp)
 
+# Configure for production
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
 @app.route("/")
 def startsida():
     # Lista befintliga spel
@@ -328,4 +331,8 @@ def get_teams(num_players):
     return f"Antal spelare: {num_players}<br>Föreslagna lag: {', '.join(teams)}"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Use environment variable for port, default to 5000 for local development
+    port = int(os.environ.get('PORT', 5000))
+    # Only use debug mode in development
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)
