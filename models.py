@@ -2,6 +2,8 @@ import os
 import json
 from datetime import datetime
 import time
+import secrets
+import hashlib
 
 TEAMS = [
     ("Alfa", 25),
@@ -240,10 +242,92 @@ def get_fas_minutes(data):
     else:
         return 0
 
-def save_game_data(spel_id, data):
+def load_game_data(spel_id):
+    """Ladda speldata från fil med felhantering"""
     filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    with open(filnamn, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    if not os.path.exists(filnamn):
+        return None
+    
+    try:
+        with open(filnamn, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error in {filnamn}: {e}")
+        # Försök läsa backup om den finns
+        backup_filnamn = filnamn + ".backup"
+        if os.path.exists(backup_filnamn):
+            try:
+                with open(backup_filnamn, encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return None
+    except Exception as e:
+        print(f"Error loading game data from {filnamn}: {e}")
+        return None
+
+def save_game_data(spel_id, data):
+    """Spara speldata till fil med atomisk skrivning för att undvika korruption"""
+    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
+    temp_filnamn = filnamn + ".tmp"
+    backup_filnamn = filnamn + ".backup"
+    
+    # Försök flera gånger på Windows för att hantera fil-låsning
+    max_retries = 3
+    retry_delay = 0.1
+    
+    for attempt in range(max_retries):
+        try:
+            # Skapa backup av nuvarande fil om den finns
+            if os.path.exists(filnamn):
+                try:
+                    import shutil
+                    shutil.copy2(filnamn, backup_filnamn)
+                except:
+                    pass  # Ignorera backup-fel
+            
+            # Skriv till temporär fil först
+            with open(temp_filnamn, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            # Atomisk flytt av temporär fil till slutgiltig fil
+            if os.name == 'nt':  # Windows
+                # På Windows behöver vi hantera fil-låsning
+                try:
+                    # Försök att flytta direkt först
+                    if os.path.exists(filnamn):
+                        os.remove(filnamn)
+                    os.rename(temp_filnamn, filnamn)
+                except PermissionError:
+                    # Om det misslyckas, vänta lite och försök igen
+                    import time
+                    time.sleep(retry_delay)
+                    if os.path.exists(filnamn):
+                        os.remove(filnamn)
+                    os.rename(temp_filnamn, filnamn)
+            else:  # Unix/Linux
+                os.replace(temp_filnamn, filnamn)
+            
+            # Om vi kom hit så lyckades det
+            break
+            
+        except PermissionError as e:
+            if attempt < max_retries - 1:
+                # Vänta lite innan nästa försök
+                import time
+                time.sleep(retry_delay * (attempt + 1))
+                continue
+            else:
+                # Sista försöket misslyckades
+                raise e
+        except Exception as e:
+            # Rensa upp temporär fil om något går fel
+            if os.path.exists(temp_filnamn):
+                try:
+                    os.remove(temp_filnamn)
+                except:
+                    pass
+            raise e
 
 def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min):
     spel_id = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -273,6 +357,9 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
                     ny_uppgift["slutford"] = False
                     backlog_data[lag_namn].append(ny_uppgift)
     
+    # Generera tokens för alla team
+    team_tokens = generate_team_tokens(spel_id, lag)
+    
     data = {
         "id": spel_id,
         "datum": datum,
@@ -288,6 +375,7 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
         "backlog": backlog_data,
         "orderfas_min": orderfas_min,
         "diplomatifas_min": diplomatifas_min,
+        "team_tokens": team_tokens,
     }
     with open(filnamn, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -317,3 +405,48 @@ def avsluta_spel(spel_id):
             data = json.load(f)
         data["avslutat"] = True
         save_game_data(spel_id, data) 
+
+def generate_team_token(team_name, spel_id):
+    """Generera en unik token för ett team"""
+    # Skapa en unik sträng baserad på team namn, spel ID och tid
+    unique_string = f"{team_name}_{spel_id}_{datetime.now().isoformat()}"
+    # Generera en säker token
+    token = secrets.token_urlsafe(16)
+    # Skapa en hash för extra säkerhet
+    token_hash = hashlib.sha256(f"{unique_string}_{token}".encode()).hexdigest()[:12]
+    return f"{token}_{token_hash}"
+
+def generate_team_tokens(spel_id, teams):
+    """Generera tokens för alla team i ett spel"""
+    tokens = {}
+    for team in teams:
+        tokens[team] = generate_team_token(team, spel_id)
+    return tokens
+
+def validate_team_token(spel_id, team_name, token):
+    """Validera att en token tillhör rätt team och spel"""
+    try:
+        # Ladda speldata för att hämta tokens
+        data = load_game_data(spel_id)
+        if not data:
+            return False
+        
+        team_tokens = data.get("team_tokens", {})
+        return team_tokens.get(team_name) == token
+    except:
+        return False
+
+def get_team_by_token(spel_id, token):
+    """Hitta team baserat på token"""
+    try:
+        data = load_game_data(spel_id)
+        if not data:
+            return None
+        
+        team_tokens = data.get("team_tokens", {})
+        for team_name, team_token in team_tokens.items():
+            if team_token == token:
+                return team_name
+        return None
+    except:
+        return None 

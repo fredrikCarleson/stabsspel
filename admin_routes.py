@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for
+from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string
 from markupsafe import Markup
 import os
 import json
@@ -15,6 +15,23 @@ admin_bp = Blueprint('admin', __name__)
 # ============================================================================
 # HJÄLPFUNKTIONER
 # ============================================================================
+
+def auto_submit_unsaved_orders(data, current_round):
+    """Auto-submit any unsaved orders when changing phases"""
+    if "team_orders" not in data:
+        return
+    
+    orders_key = f"orders_round_{current_round}"
+    if orders_key not in data["team_orders"]:
+        return
+    
+    # Check each team's orders
+    for team_name, team_orders in data["team_orders"][orders_key].items():
+        # If order exists but not marked as final, mark it as final
+        if team_orders and not team_orders.get("final", False):
+            team_orders["final"] = True
+            team_orders["auto_submitted"] = True
+            team_orders["submitted_at"] = time.time()
 
 
 
@@ -71,6 +88,163 @@ def create_team_info_js():
         updateTeamInfo();
     };
     </script>
+    '''
+
+def generate_order_view_html(spel_id, team_name, team_orders, data):
+    """Generera HTML för att visa en inskickad order"""
+    from datetime import datetime
+    
+    order_data = team_orders.get("orders", {})
+    activities = order_data.get("activities", [])
+    submitted_at = team_orders.get("submitted_at", 0)
+    submitted_time = datetime.fromtimestamp(submitted_at).strftime("%Y-%m-%d %H:%M:%S") if submitted_at > 0 else "Okänd"
+    
+    activities_html = ""
+    total_hp = 0
+    
+    for i, activity in enumerate(activities, 1):
+        hp = activity.get("hp", 0)
+        total_hp += hp
+        
+        activities_html += f'''
+        <div class="activity-view" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+            <div class="activity-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: #2c3e50;">Aktivitet {i}</h4>
+                <span style="background: #667eea; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem;">{hp} HP</span>
+            </div>
+            
+            <div class="activity-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <strong>Aktivitet:</strong><br>
+                    <p style="margin: 5px 0; color: #495057;">{activity.get('aktivitet', 'Ingen aktivitet angiven')}</p>
+                </div>
+                <div>
+                    <strong>Syfte/Mål:</strong><br>
+                    <p style="margin: 5px 0; color: #495057;">{activity.get('syfte', 'Inget syfte angivet')}</p>
+                </div>
+                <div>
+                    <strong>Målområde:</strong><br>
+                    <p style="margin: 5px 0; color: #495057;">{'Eget mål' if activity.get('malomrade') == 'eget' else 'Annat mål'}</p>
+                </div>
+                <div>
+                    <strong>Typ av handling:</strong><br>
+                    <p style="margin: 5px 0; color: #495057;">{'Bygga/Förstärka' if activity.get('typ') == 'bygga' else 'Förstöra/Störa'}</p>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <strong>Påverkar:</strong><br>
+                    <p style="margin: 5px 0; color: #495057;">{', '.join(activity.get('paverkar', [])) if activity.get('paverkar') else 'Ingen påverkan angiven'}</p>
+                </div>
+            </div>
+        </div>
+        '''
+    
+    return f'''
+    <!DOCTYPE html>
+    <html lang="sv">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order - {team_name}</title>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: #f5f5f5;
+                color: #333;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 12px;
+                padding: 30px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }}
+            .header {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 30px;
+                text-align: center;
+            }}
+            .header h1 {{
+                margin: 0 0 10px 0;
+                font-size: 2rem;
+            }}
+            .order-info {{
+                background: #e9ecef;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+            }}
+            .order-info h3 {{
+                margin: 0 0 10px 0;
+                color: #2c3e50;
+            }}
+            .hp-summary {{
+                background: #d4edda;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                border: 1px solid #c3e6cb;
+            }}
+            .hp-summary h4 {{
+                margin: 0 0 10px 0;
+                color: #155724;
+            }}
+            .back-button {{
+                background: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                text-decoration: none;
+                display: inline-block;
+                margin-bottom: 20px;
+                font-size: 14px;
+            }}
+            .back-button:hover {{
+                background: #5a6268;
+            }}
+            @media (max-width: 768px) {{
+                .activity-content {{
+                    grid-template-columns: 1fr !important;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <a href="/admin/{spel_id}" class="back-button">← Tillbaka till admin</a>
+            
+            <div class="header">
+                <h1>📋 Order från {team_name}</h1>
+                <p>Spel: {data.get('id', 'Okänt')} | Runda: {data.get('runda', 'Okänt')} | Fas: {data.get('fas', 'Okänt')}</p>
+            </div>
+            
+            <div class="order-info">
+                <h3>📅 Orderinformation</h3>
+                <p><strong>Inskickad:</strong> {submitted_time}</p>
+                <p><strong>Antal aktiviteter:</strong> {len(activities)}</p>
+            </div>
+            
+            <div class="hp-summary">
+                <h4>💪 Handlingspoäng</h4>
+                <p><strong>Totalt använt:</strong> {total_hp} HP</p>
+            </div>
+            
+            <div class="activities">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">📝 Aktiviteter</h3>
+                {activities_html if activities_html else '<p style="color: #6c757d; text-align: center;">Inga aktiviteter hittades</p>'}
+            </div>
+        </div>
+    </body>
+    </html>
     '''
 
 def create_compact_header(data, lag_html):
@@ -134,8 +308,33 @@ def create_orderfas_checklist(spel_id, data):
     checklist_html = f'''
     <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #28a745; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">📋 Checklista: Ordrar från alla team</h3>
+        
+        <!-- Test Mode Toggle -->
+        <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+            <label style="display: flex; align-items: center; cursor: pointer; font-weight: 600; color: #856404;">
+                <input type="checkbox" id="test_mode_toggle" style="margin-right: 10px; transform: scale(1.2);" onchange="toggleTestMode()" checked>
+                🧪 Test Mode (Admin Cheat Links)
+            </label>
+            
+            <!-- Auto-fill Orders Button (only visible in test mode) -->
+            <div id="auto_fill_section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ffeaa7;">
+                <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 1em;">🚀 Auto-fyll Test Data</h4>
+                <p style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
+                <button onclick="autoFillOrders()" style="background: #ffc107; color: #856404; border: 1px solid #ffeaa7; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.3s;">
+                    🚀 Auto-fyll Alla Orders
+                </button>
+            </div>
+        </div>
+        
         <div style="margin: 15px 0;">
     '''
+    
+    # Check for submitted orders
+    orders_key = f"orders_round_{data['runda']}"
+    team_orders = data.get("team_orders", {}).get(orders_key, {})
+    
+    # Get team tokens for admin cheat links
+    team_tokens = data.get("team_tokens", {})
     
     # Skapa checkbox för varje lag
     for i, lag in enumerate(data["lag"], 1):
@@ -143,14 +342,49 @@ def create_orderfas_checklist(spel_id, data):
         is_checked = get_checkbox_state(data, checkbox_id)
         checked_attr = "checked" if is_checked else ""
         
+        # Check if team has submitted orders
+        has_submitted = lag in team_orders and team_orders[lag].get("final", False)
+        submitted_status = "✅" if has_submitted else "⏳"
+        submitted_text = " (Inskickad)" if has_submitted else " (Väntar)"
+        
+        # Create view order link if submitted
+        view_order_link = ""
+        if has_submitted:
+            view_order_link = f'''
+                <a href="/admin/{spel_id}/view_order/{lag}" target="_blank" style="margin-left: 10px; color: #007bff; text-decoration: none; font-size: 12px;">
+                    👁️ Visa order
+                </a>
+            '''
+        
+        # Create admin cheat link for test mode
+        admin_cheat_link = ""
+        if lag in team_tokens:
+            token = team_tokens[lag]
+            admin_cheat_link = f'''
+                <a href="/team/{spel_id}/{token}/enter_order" target="_blank" class="admin-cheat-link" style="margin-left: 10px; color: #dc3545; text-decoration: none; font-size: 12px; display: none;">
+                    🔗 Admin: Ange order
+                </a>
+            '''
+        
         checklist_html += f'''
             <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
                 <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
-                <span style="font-size: 14px; color: #495057;">Ordrar från {lag}</span>
+                <span style="font-size: 14px; color: #495057;">{submitted_status} Ordrar från {lag}{submitted_text}</span>
+                {view_order_link}
+                {admin_cheat_link}
             </label>
         '''
     
     checklist_html += f'''
+        </div>
+        
+        <!-- Order Summary Button (only visible in Diplomati phase) -->
+        <div style="margin: 15px 0; padding: 15px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
+            <h4 style="margin: 0 0 10px 0; color: #1976d2; font-size: 1.1em;">📋 ChatGPT Order Sammanfattning</h4>
+            <p style="margin: 0 0 15px 0; color: #1976d2; font-size: 0.9em;">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
+            <a href="/admin/{spel_id}/order_summary" target="_blank" style="display: inline-block; background: #2196f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; transition: background 0.3s;">
+                📋 Visa Order Sammanfattning
+            </a>
         </div>
     </div>
     
@@ -200,9 +434,92 @@ def create_orderfas_checklist(spel_id, data):
         }}
     }}
     
+    function toggleTestMode() {{
+        const testModeToggle = document.getElementById('test_mode_toggle');
+        const adminCheatLinks = document.querySelectorAll('.admin-cheat-link');
+        const autoFillSection = document.getElementById('auto_fill_section');
+        
+        if (testModeToggle.checked) {{
+            // Show admin cheat links and auto-fill section
+            adminCheatLinks.forEach(link => {{
+                link.style.display = 'inline';
+            }});
+            if (autoFillSection) {{
+                autoFillSection.style.display = 'block';
+            }}
+        }} else {{
+            // Hide admin cheat links and auto-fill section
+            adminCheatLinks.forEach(link => {{
+                link.style.display = 'none';
+            }});
+            if (autoFillSection) {{
+                autoFillSection.style.display = 'none';
+            }}
+        }}
+    }}
+    
+    function autoFillOrders() {{
+        if (!confirm('Är du säker på att du vill auto-fylla alla teams order med test data? Detta kommer att ersätta eventuella befintliga order.')) {{
+            return;
+        }}
+        
+        fetch('/admin/{spel_id}/auto_fill_orders', {{
+            method: 'POST',
+            headers: {{
+                'Content-Type': 'application/json',
+            }}
+        }})
+        .then(response => response.json())
+        .then(data => {{
+            if (data.success) {{
+                alert('✅ ' + data.message);
+                // Ladda om sidan för att visa uppdateringarna
+                location.reload();
+            }} else {{
+                alert('❌ Fel: ' + data.error);
+            }}
+        }})
+        .catch(error => {{
+            console.error('Error:', error);
+            alert('❌ Ett fel uppstod vid auto-fyllning av orders');
+        }});
+    }}
+    
+    // Auto-refresh checklist every 5 seconds
+    function refreshChecklist() {{
+        fetch('/admin/{spel_id}/checklist_status')
+            .then(response => response.json())
+            .then(data => {{
+                // Update checkboxes based on submitted orders
+                data.team_status.forEach((status, index) => {{
+                    const checkbox = document.getElementById('order_check' + (index + 1));
+                    if (checkbox) {{
+                        checkbox.checked = status.submitted;
+                        // Update the status text
+                        const statusSpan = checkbox.parentElement.querySelector('span');
+                        if (statusSpan) {{
+                            statusSpan.innerHTML = status.status_text;
+                        }}
+                        // Show/hide view order link
+                        const viewLink = checkbox.parentElement.querySelector('a[href*="/view_order/"]');
+                        if (viewLink) {{
+                            viewLink.style.display = status.submitted ? 'inline' : 'none';
+                        }}
+                    }}
+                }});
+                updateNextFasButton();
+            }})
+            .catch(error => console.error('Error refreshing checklist:', error));
+    }}
+    
+    // Start auto-refresh every 5 seconds
+    setInterval(refreshChecklist, 5000);
+    
     // Initiera knappen när sidan laddas
     window.onload = function() {{
         updateNextFasButton();
+        // Show admin cheat links by default (test mode)
+        toggleTestMode();
     }};
     </script>
     '''
@@ -238,6 +555,15 @@ def create_diplomatifas_checklist(spel_id):
         '''
     
     checklist_html += f'''
+        </div>
+        
+        <!-- Order Summary Button for ChatGPT -->
+        <div style="margin: 15px 0; padding: 15px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0; color: #1976d2; font-size: 1.1em;">📋 ChatGPT Order Sammanfattning</h4>
+            <p style="margin: 0 0 15px 0; color: #1976d2; font-size: 0.9em;">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
+            <a href="/admin/{spel_id}/order_summary" target="_blank" style="display: inline-block; background: #2196f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; transition: background 0.3s;">
+                📋 Visa Order Sammanfattning
+            </a>
         </div>
     </div>
     
@@ -985,45 +1311,89 @@ def save_checkbox_state_route(spel_id):
     except Exception as e:
         return {"success": False, "error": str(e)}, 500
 
+@admin_bp.route("/admin/<spel_id>/checklist_status")
+def checklist_status(spel_id):
+    """Get current status of team orders for auto-refresh"""
+    try:
+        data = load_game_data(spel_id)
+        if not data:
+            return {"error": "Game not found"}, 404
+        
+        orders_key = f"orders_round_{data['runda']}"
+        team_orders = data.get("team_orders", {}).get(orders_key, {})
+        
+        team_status = []
+        for lag in data["lag"]:
+            has_submitted = lag in team_orders and team_orders[lag].get("final", False)
+            submitted_status = "✅" if has_submitted else "⏳"
+            submitted_text = " (Inskickad)" if has_submitted else " (Väntar)"
+            
+            team_status.append({
+                "team": lag,
+                "submitted": has_submitted,
+                "status_text": f"{submitted_status} Ordrar från {lag}{submitted_text}"
+            })
+        
+        return {"team_status": team_status}
+    except Exception as e:
+        return {"error": str(e)}, 500
+
 @admin_bp.route("/admin/<spel_id>/timer", methods=["POST"])
 def admin_timer_action(spel_id):
-    action = request.form.get("action")
-    data = load_game_data(spel_id)
-    if not data:
-        return "Spelet hittades inte.", 404
-    now = int(time.time())
-    if action == "start":
-        data["timer_status"] = "running"
-        data["timer_start"] = now
-    elif action == "pause":
-        if data.get("timer_status") == "running":
-            elapsed = now - data.get("timer_start", now)
-            data["timer_status"] = "paused"
-            data["timer_elapsed"] = elapsed + data.get("timer_elapsed", 0)
-    elif action == "reset":
-        data["timer_status"] = "stopped"
-        data["timer_start"] = None
-        data["timer_elapsed"] = 0
-    elif action == "next_fas":
-        # Avsluta aktuell fas i historiken
-        data = avsluta_aktuell_fas(data)
-        # Byt fas och nollställ timer
-        nuvarande_fas = data["fas"]
-        nuvarande_runda = data.get("runda", 1)
-        next_fas = get_next_fas(nuvarande_fas, nuvarande_runda)
-        data["fas"] = next_fas
-        data["timer_status"] = "stopped"
-        data["timer_start"] = None
-        data["timer_elapsed"] = 0
-        # Lägg till ny fas i historiken
-        if next_fas == "Orderfas":
-            # Om vi går från Resultatfas till Orderfas, öka runda
-            data["runda"] = nuvarande_runda + 1
-            add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
-        else:
-            add_fashistorik_entry(data, nuvarande_runda, next_fas, "pågående")
-    save_game_data(spel_id, data)
-    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+    try:
+        action = request.form.get("action")
+        data = load_game_data(spel_id)
+        if not data:
+            return "Spelet hittades inte.", 404
+        now = int(time.time())
+        if action == "start":
+            data["timer_status"] = "running"
+            data["timer_start"] = now
+            # Set fas_start_time when starting a phase timer
+            data["fas_start_time"] = now
+        elif action == "pause":
+            if data.get("timer_status") == "running":
+                elapsed = now - data.get("timer_start", now)
+                data["timer_status"] = "paused"
+                data["timer_elapsed"] = elapsed + data.get("timer_elapsed", 0)
+        elif action == "reset":
+            data["timer_status"] = "stopped"
+            data["timer_start"] = None
+            data["timer_elapsed"] = 0
+            # Clear fas_start_time when resetting
+            if "fas_start_time" in data:
+                del data["fas_start_time"]
+        elif action == "next_fas":
+            # Get current round before changing phase
+            nuvarande_runda = data.get("runda", 1)
+            
+            # Auto-submit any unsaved orders before changing phase
+            auto_submit_unsaved_orders(data, nuvarande_runda)
+            
+            # Avsluta aktuell fas i historiken
+            data = avsluta_aktuell_fas(data)
+            # Byt fas och nollställ timer
+            nuvarande_fas = data["fas"]
+            next_fas = get_next_fas(nuvarande_fas, nuvarande_runda)
+            data["fas"] = next_fas
+            data["timer_status"] = "stopped"
+            data["timer_start"] = None
+            data["timer_elapsed"] = 0
+            # Clear fas_start_time when changing phases
+            if "fas_start_time" in data:
+                del data["fas_start_time"]
+            # Lägg till ny fas i historiken
+            if next_fas == "Orderfas":
+                # Om vi går från Resultatfas till Orderfas, öka runda
+                data["runda"] = nuvarande_runda + 1
+                add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
+            else:
+                add_fashistorik_entry(data, nuvarande_runda, next_fas, "pågående")
+        save_game_data(spel_id, data)
+        return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+    except Exception as e:
+        print(f"Error in admin_timer_action: {e}")
+        return f"Ett fel uppstod: {str(e)}", 500
 
 @admin_bp.route("/admin/<spel_id>/slut", methods=["POST"])
 def admin_slut(spel_id):
@@ -1144,6 +1514,14 @@ def admin_reset(spel_id):
     # Nollställ checkbox-tillstånd
     if "checkbox_states" in data:
         data["checkbox_states"] = {}
+    
+    # Nollställ team orders
+    if "team_orders" in data:
+        data["team_orders"] = {}
+    
+    # Rensa fas_start_time
+    if "fas_start_time" in data:
+        del data["fas_start_time"]
     
     # Nollställ teamens arbete (backlog)
     if "backlog" in data:
@@ -1383,6 +1761,378 @@ def admin_orderkort_runda(spel_id, runda):
     
     return orderkort_html
 
+@admin_bp.route("/admin/<spel_id>/view_order/<team_name>")
+def admin_view_order(spel_id, team_name):
+    """Visa inskickad order för ett specifikt team"""
+    try:
+        # Ladda speldata
+        data = load_game_data(spel_id)
+        if not data:
+            return "Spel hittades inte", 404
+        
+        # Kontrollera att teamet finns
+        if team_name not in data.get("lag", []):
+            return "Team hittades inte", 404
+        
+        # Hämta order för aktuell runda
+        orders_key = f"orders_round_{data['runda']}"
+        team_orders = data.get("team_orders", {}).get(orders_key, {}).get(team_name)
+        
+        if not team_orders:
+            return "Ingen order hittad för detta team", 404
+        
+        # Generera HTML för att visa ordern
+        order_html = generate_order_view_html(spel_id, team_name, team_orders, data)
+        
+        return order_html
+    except Exception as e:
+        return f"Fel: {str(e)}", 500
+
+def format_orders_for_chatgpt(data, all_orders):
+    """Formatera order för ChatGPT enligt den nya standarden"""
+    try:
+        team_codes = {
+            'Alfa': 'AL', 'Bravo': 'BR', 'STT': 'ST', 'FM': 'FM', 
+            'BS': 'BS', 'SÄPO': 'SE', 'Regeringen': 'RG', 'USA': 'US', 'Media': 'ME'
+        }
+        
+        formatted_lines = []
+        formatted_lines.append(f"SPEL: {data['id']} | RUNDA: {data['runda']} | FAS: {data['fas']} | DATUM: {data['datum']}")
+        formatted_lines.append("")
+        
+        for team_name, team_orders in all_orders.items():
+            if team_orders and team_orders.get('orders') and team_orders['orders'].get('activities'):
+                team_code = team_codes.get(team_name, team_name)
+                total_hp = 0
+                
+                for i, activity in enumerate(team_orders['orders']['activities'], 1):
+                    # Beräkna total HP
+                    total_hp += activity['hp']
+                    
+                    # Bestäm typ
+                    activity_typ = 'BYGGA' if activity['typ'] == 'bygga' else 'STÖRA'
+                    
+                    # Bestäm mål
+                    activity_mal = 'EGET' if activity['malomrade'] == 'eget' else 'ANNAT'
+                    
+                    # Bestäm miljö baserat på aktivitet
+                    aktivitet_lower = activity['aktivitet'].lower()
+                    if any(word in aktivitet_lower for word in ['utveckling', 'bygga', 'implementera', 'pipeline', 'api']):
+                        miljo = 'DEV'
+                    elif 'test' in aktivitet_lower:
+                        miljo = 'TEST'
+                    elif any(word in aktivitet_lower for word in ['produktion', 'server', 'valservern']):
+                        miljo = 'PROD'
+                    else:
+                        miljo = '-'
+                    
+                    # Prioritet baserat på ordning
+                    priority = i
+                    
+                    # Formatera påverkar
+                    paverkar_codes = []
+                    for paverkar_team in activity.get('paverkar', []):
+                        if paverkar_team in team_codes:
+                            paverkar_codes.append(team_codes[paverkar_team])
+                    paverkar_text = ','.join(paverkar_codes) if paverkar_codes else '-'
+                    
+                    # Skapa raden
+                    line = f"TEAM: {team_code} | AKT: {activity['aktivitet'][:120]} | SYFTE: {activity['syfte'][:160]} | HP: {activity['hp']} | PÅVERKAR: {paverkar_text} | TYP: {activity_typ} | MÅL: {activity_mal} | PRIO: {priority} | MILJÖ: {miljo}"
+                    formatted_lines.append(line)
+                
+                # Lägg till summa för teamet
+                formatted_lines.append(f"SUM HP TEAM {team_code} = {total_hp}")
+                formatted_lines.append("")
+        
+        result = '\n'.join(formatted_lines)
+        return result
+    except Exception as e:
+        print(f"Error in format_orders_for_chatgpt: {e}")
+        return "Fel vid formatering av order"
+
+@admin_bp.route("/admin/<spel_id>/order_summary")
+def order_summary(spel_id):
+    """Visa sammanfattning av alla teams order för ChatGPT"""
+    try:
+        data = load_game_data(spel_id)
+        if not data:
+            return "Spelet hittades inte.", 404
+        
+        orders_key = f"orders_round_{data['runda']}"
+        all_orders = data.get("team_orders", {}).get(orders_key, {})
+        
+        # Formatera order för ChatGPT
+        formatted_text = format_orders_for_chatgpt(data, all_orders)
+        
+        return render_template_string(ORDER_SUMMARY_TEMPLATE, 
+                                      spel_id=spel_id,
+                                      data=data,
+                                      all_orders=all_orders,
+                                      formatted_text=formatted_text)
+    except Exception as e:
+        return f"Fel: {str(e)}", 500
+
+@admin_bp.route("/admin/<spel_id>/auto_fill_orders", methods=["POST"])
+def auto_fill_orders(spel_id):
+    """Auto-fyll alla teams order med test data"""
+    try:
+        data = load_game_data(spel_id)
+        if not data:
+            return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+        
+        orders_key = f"orders_round_{data['runda']}"
+        if "team_orders" not in data:
+            data["team_orders"] = {}
+        if orders_key not in data["team_orders"]:
+            data["team_orders"][orders_key] = {}
+        
+        # Test data för varje team
+        test_orders = {
+            "Alfa": [
+                {
+                    "id": int(time.time() * 1000) + 1,
+                    "aktivitet": "Implementera en ny CI/CD-pipeline",
+                    "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa", "STT"],
+                    "typ": "bygga",
+                    "hp": 10
+                },
+                {
+                    "id": int(time.time() * 1000) + 2,
+                    "aktivitet": "Leverera en första version av röst-API:t",
+                    "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa", "STT"],
+                    "typ": "bygga",
+                    "hp": 9
+                },
+                {
+                    "id": int(time.time() * 1000) + 3,
+                    "aktivitet": "Kampanja mot Bravo i korridorerna",
+                    "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
+                    "malomrade": "eget",
+                    "paverkar": ["Media", "Bravo"],
+                    "typ": "bygga",
+                    "hp": 6
+                }
+            ],
+            "Bravo": [
+                {
+                    "id": int(time.time() * 1000) + 4,
+                    "aktivitet": "Genomföra en tvåveckors kravworkshop",
+                    "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
+                    "malomrade": "eget",
+                    "paverkar": ["Bravo"],
+                    "typ": "bygga",
+                    "hp": 12
+                },
+                {
+                    "id": int(time.time() * 1000) + 5,
+                    "aktivitet": "Kontakta regeringen för extra resurser",
+                    "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
+                    "malomrade": "eget",
+                    "paverkar": ["Regeringen", "Alfa"],
+                    "typ": "bygga",
+                    "hp": 7
+                },
+                {
+                    "id": int(time.time() * 1000) + 6,
+                    "aktivitet": "Sprida rykten om Alfa",
+                    "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
+                    "malomrade": "eget",
+                    "paverkar": ["Media", "Alfa"],
+                    "typ": "bygga",
+                    "hp": 6
+                }
+            ],
+            "STT": [
+                {
+                    "id": int(time.time() * 1000) + 7,
+                    "aktivitet": "Hardening av valservern",
+                    "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
+                    "malomrade": "eget",
+                    "paverkar": ["STT"],
+                    "typ": "bygga",
+                    "hp": 12
+                },
+                {
+                    "id": int(time.time() * 1000) + 8,
+                    "aktivitet": "Säkerställa drift under deklarationstid",
+                    "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa", "Bravo"],
+                    "typ": "bygga",
+                    "hp": 7
+                },
+                {
+                    "id": int(time.time() * 1000) + 9,
+                    "aktivitet": "Förhandla om prioritet",
+                    "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa", "Bravo"],
+                    "typ": "bygga",
+                    "hp": 6
+                }
+            ],
+            "FM": [
+                {
+                    "id": int(time.time() * 1000) + 10,
+                    "aktivitet": "Massiv DDOS-attack mot valservern",
+                    "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
+                    "malomrade": "eget",
+                    "paverkar": ["STT"],
+                    "typ": "forstora",
+                    "hp": 8
+                },
+                {
+                    "id": int(time.time() * 1000) + 11,
+                    "aktivitet": "Desinformationskampanj på sociala medier",
+                    "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
+                    "malomrade": "eget",
+                    "paverkar": ["Regeringen", "Media"],
+                    "typ": "forstora",
+                    "hp": 4
+                }
+            ],
+            "BS": [
+                {
+                    "id": int(time.time() * 1000) + 12,
+                    "aktivitet": "Utpressa en STT-medlem",
+                    "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
+                    "malomrade": "eget",
+                    "paverkar": ["STT"],
+                    "typ": "forstora",
+                    "hp": 7
+                },
+                {
+                    "id": int(time.time() * 1000) + 13,
+                    "aktivitet": "Manipulera databasen",
+                    "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa", "Bravo"],
+                    "typ": "forstora",
+                    "hp": 5
+                }
+            ],
+            "SÄPO": [
+                {
+                    "id": int(time.time() * 1000) + 14,
+                    "aktivitet": "Spaning på Alfa",
+                    "syfte": "Misstänker infiltration i Team Alfa. SÄPO skickar underrättelsepersonal för att övervaka deras aktiviteter och identifiera spioner.",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa"],
+                    "typ": "bygga",
+                    "hp": 7
+                },
+                {
+                    "id": int(time.time() * 1000) + 15,
+                    "aktivitet": "Samarbete med Media",
+                    "syfte": "Läckor planeras där SÄPO framstår som garant för säkerheten. De vill bygga narrativ om att myndigheten är nödvändig.",
+                    "malomrade": "eget",
+                    "paverkar": ["Media"],
+                    "typ": "bygga",
+                    "hp": 5
+                }
+            ],
+            "Regeringen": [
+                {
+                    "id": int(time.time() * 1000) + 16,
+                    "aktivitet": "Fördela extra resurser till Bravo",
+                    "syfte": "Regeringen vill stödja det mest strukturerade teamet för att minska risken för kaos. De hoppas på ett lugnare narrativ i media.",
+                    "malomrade": "eget",
+                    "paverkar": ["Bravo"],
+                    "typ": "bygga",
+                    "hp": 6
+                },
+                {
+                    "id": int(time.time() * 1000) + 17,
+                    "aktivitet": "Mörka säkerhetsbrister",
+                    "syfte": "I samråd med PR-konsulter beslutar regeringen att tona ned problem med valets IT-system för att inte väcka panik.",
+                    "malomrade": "eget",
+                    "paverkar": ["Media", "STT"],
+                    "typ": "bygga",
+                    "hp": 4
+                }
+            ],
+            "USA": [
+                {
+                    "id": int(time.time() * 1000) + 18,
+                    "aktivitet": "Pressa regeringen att gynna ett extremparti",
+                    "syfte": "USA kopplar bistånd och IT-stöd till politiska krav. Hotar att strypa tillgången till Office 365-licenser om regeringen inte samarbetar.",
+                    "malomrade": "eget",
+                    "paverkar": ["Regeringen"],
+                    "typ": "bygga",
+                    "hp": 8
+                },
+                {
+                    "id": int(time.time() * 1000) + 19,
+                    "aktivitet": "Erbjuda säkerhetsinformation till STT",
+                    "syfte": "Lämna \"strategiska tips\" om FM:s metoder, men med syfte att skapa beroende av amerikansk teknologi.",
+                    "malomrade": "eget",
+                    "paverkar": ["STT"],
+                    "typ": "bygga",
+                    "hp": 4
+                }
+            ],
+            "Media": [
+                {
+                    "id": int(time.time() * 1000) + 20,
+                    "aktivitet": "Publicera artikel om misstänkt sabotage i Alfa",
+                    "syfte": "Skapa rubriker om att utvecklingen är saboterad. Oavsett fakta får detta klick och skadar Alfas rykte.",
+                    "malomrade": "eget",
+                    "paverkar": ["Alfa"],
+                    "typ": "bygga",
+                    "hp": 7
+                },
+                {
+                    "id": int(time.time() * 1000) + 21,
+                    "aktivitet": "Granskning av regeringens mörkläggning",
+                    "syfte": "Publicera uppgifter om att regeringen undanhåller allvarliga säkerhetsproblem. Detta ger stort genomslag internationellt.",
+                    "malomrade": "eget",
+                    "paverkar": ["Regeringen"],
+                    "typ": "bygga",
+                    "hp": 5
+                }
+            ]
+        }
+        
+        # Fyll i order för varje team
+        base_time = int(time.time() * 1000)
+        for i, team_name in enumerate(data["lag"]):
+            if team_name in test_orders:
+                # Skapa unika ID:n för varje aktivitet
+                team_orders = []
+                for j, activity in enumerate(test_orders[team_name]):
+                    activity_copy = activity.copy()
+                    activity_copy["id"] = base_time + (i * 100) + j
+                    team_orders.append(activity_copy)
+                
+                data["team_orders"][orders_key][team_name] = {
+                    "submitted_at": time.time(),
+                    "phase": data["fas"],
+                    "round": data["runda"],
+                    "orders": {
+                        "activities": team_orders,
+                        "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+                    },
+                    "final": True
+                }
+        
+        save_game_data(spel_id, data)
+        
+        # Return info about which teams were processed
+        processed_teams = [team for team in data["lag"] if team in test_orders]
+        return jsonify({
+            "success": True, 
+            "message": f"Auto-fyllde order för {len(processed_teams)} team: {', '.join(processed_teams)}",
+            "processed_teams": processed_teams,
+            "total_teams": len(data["lag"])
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Fel: {str(e)}"}), 500
+
 @admin_bp.route("/admin/<spel_id>/backlog", methods=["GET", "POST"])
 def admin_backlog(spel_id):
     data = load_game_data(spel_id)
@@ -1602,4 +2352,374 @@ def admin_backlog(spel_id):
 @admin_bp.route("/admin/delete_game/<spel_id>", methods=["POST"])
 def delete_game_route(spel_id):
     """Route handler for deleting a game - delegates to game_management.delete_game"""
-    return delete_game(spel_id) 
+    try:
+        result = delete_game(spel_id)
+        # If delete_game returns a redirect, follow it
+        if hasattr(result, 'status_code') and result.status_code == 302:
+            return result
+        # Otherwise, redirect to admin start page
+        return redirect(url_for("admin.admin_start"))
+    except Exception as e:
+        print(f"Error deleting game {spel_id}: {e}")
+        return redirect(url_for("admin.admin_start"))
+
+# HTML Template för order sammanfattning för ChatGPT
+ORDER_SUMMARY_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Sammanfattning - ChatGPT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .game-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .game-info span {
+            background: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .copy-section {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .copy-section h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .copy-text {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .copy-button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            margin-top: 15px;
+            display: block;
+            width: fit-content;
+        }
+        
+        .copy-button:hover {
+            background: #1976d2;
+        }
+        
+        .team-section {
+            margin-bottom: 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .team-header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 20px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .team-header.alfa { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); }
+        .team-header.bravo { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
+        .team-header.stt { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); }
+        .team-header.fm { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+        .team-header.bs { background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); }
+        .team-header.sapo { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
+        .team-header.regeringen { background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%); }
+        .team-header.usa { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
+        .team-header.media { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); }
+        
+        .team-content {
+            padding: 20px;
+        }
+        
+        .activity {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .activity:last-child {
+            margin-bottom: 0;
+        }
+        
+        .activity h4 {
+            color: #007bff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .activity-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .detail-item {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .detail-value {
+            color: #333;
+            margin-top: 2px;
+        }
+        
+        .no-orders {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .back-button {
+            display: inline-block;
+            background: #6c757d;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+        
+        .back-button:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Order Sammanfattning</h1>
+            <p>Kopiera texten nedan och klistra in i ChatGPT för att få förslag på konsekvenser</p>
+        </div>
+        
+        <div class="game-info">
+            <span>🎮 Spel: {{ data.id }}</span>
+            <span>🔄 Runda: {{ data.runda }}</span>
+            <span>⏱️ Fas: {{ data.fas }}</span>
+            <span>📅 Datum: {{ data.datum }}</span>
+        </div>
+        
+        <div class="content">
+            <div class="copy-section">
+                <h3>📋 Kopiera till ChatGPT</h3>
+                <div class="copy-text" id="copyText">
+{% if formatted_text %}
+{{ formatted_text }}
+
+Baserat på dessa order, ge förslag på:
+1. Nyhetsrubriker som kan uppstå
+2. Plus/minus poäng för varje team
+3. Konsekvenser av teamens handlingar
+4. Eventuella konflikter mellan team
+{% else %}
+Inga order har skickats in ännu.
+{% endif %}
+                </div>
+                <button class="copy-button" onclick="copyToClipboard()">📋 Kopiera</button>
+            </div>
+            
+            <h2>📊 Detaljerad Översikt</h2>
+            
+            {% if all_orders %}
+                {% for team_name, team_orders in all_orders.items() %}
+                    {% if team_orders and team_orders.orders and team_orders.orders.activities %}
+                    <div class="team-section">
+                        <div class="team-header {{ team_name.lower() }}">
+                            🟢 Team {{ team_name }}
+                        </div>
+                        <div class="team-content">
+                            {% for activity in team_orders.orders.activities %}
+                            <div class="activity">
+                                <h4>{{ activity.aktivitet }}</h4>
+                                <p><strong>Syfte/Mål:</strong> {{ activity.syfte }}</p>
+                                <div class="activity-details">
+                                    <div class="detail-item">
+                                        <div class="detail-label">HP</div>
+                                        <div class="detail-value">{{ activity.hp }}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Påverkar</div>
+                                        <div class="detail-value">{{ ', '.join(activity.paverkar) if activity.paverkar else 'Ingen' }}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Typ</div>
+                                        <div class="detail-value">{{ activity.typ }}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Målområde</div>
+                                        <div class="detail-value">{{ activity.malomrade }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="no-orders">
+                    <h3>Inga order har skickats in ännu</h3>
+                    <p>När teamen skickar in sina order kommer de att visas här.</p>
+                </div>
+            {% endif %}
+            
+            <a href="/admin/{{ spel_id }}" class="back-button">← Tillbaka till Admin Panel</a>
+        </div>
+    </div>
+    
+    <script>
+        function copyToClipboard() {
+            const textElement = document.getElementById('copyText');
+            const text = textElement.textContent || textElement.innerText;
+            
+            // Fallback för äldre webbläsare
+            if (navigator.clipboard && window.isSecureContext) {
+                // Modern metod
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopySuccess();
+                }).catch(function(err) {
+                    console.error('Kunde inte kopiera text: ', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                // Fallback för äldre webbläsare
+                fallbackCopyTextToClipboard(text);
+            }
+        }
+        
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    alert('Kunde inte kopiera text. Kopiera manuellt istället.');
+                }
+            } catch (err) {
+                console.error('Fallback: Kunde inte kopiera text: ', err);
+                alert('Kunde inte kopiera text. Kopiera manuellt istället.');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        function showCopySuccess() {
+            const button = document.querySelector('.copy-button');
+            const originalText = button.textContent;
+            button.textContent = '✅ Kopierat!';
+            button.style.background = '#28a745';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '#2196f3';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
+"""

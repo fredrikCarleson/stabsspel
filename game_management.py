@@ -72,11 +72,17 @@ def delete_game(spel_id):
     Returns:
         Flask redirect: Redirects to admin start page
     """
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if os.path.exists(filnamn):
-        os.remove(filnamn)
+    try:
+        filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
+        if os.path.exists(filnamn):
+            os.remove(filnamn)
+            print(f"Successfully deleted game file: {filnamn}")
+        else:
+            print(f"Game file not found: {filnamn}")
         return redirect(url_for("admin.admin_start"))
-    return redirect(url_for("admin.admin_start"))
+    except Exception as e:
+        print(f"Error deleting game {spel_id}: {e}")
+        return redirect(url_for("admin.admin_start"))
 
 
 def nollstall_regeringsstod(data):

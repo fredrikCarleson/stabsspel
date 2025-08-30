@@ -1,6 +1,7 @@
 from flask import Flask
 from admin_routes import admin_bp
 from team_routes import team_bp
+from team_order_routes import team_order_bp
 from models import suggest_teams, DATA_DIR
 import os
 import json
@@ -8,6 +9,7 @@ import json
 app = Flask(__name__)
 app.register_blueprint(admin_bp)
 app.register_blueprint(team_bp)
+app.register_blueprint(team_order_bp)
 
 # Configure for production
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -32,7 +34,7 @@ def startsida():
             </div>
             <div class="game-actions">
                 <a href="/admin/{s["id"]}" class="btn btn-primary">Öppna</a>
-                <form method="post" action="/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
+                <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
                     <button type="submit" class="btn btn-danger">Ta bort</button>
                 </form>
             </div>
