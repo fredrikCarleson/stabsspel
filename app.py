@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, make_response
+from flask import Flask, send_from_directory, make_response, jsonify
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
@@ -181,6 +181,16 @@ def test_timer_maximize():
 </body>
 </html>
     '''
+
+@app.route("/health")
+def health_check():
+    """Health check endpoint for production monitoring"""
+    return jsonify({
+        "status": "healthy",
+        "service": "Stabsspel",
+        "version": "1.1",
+        "timestamp": time.time()
+    })
 
 @app.route("/")
 def startsida():
@@ -816,8 +826,19 @@ def timer_window(spel_id):
     return response
 
 if __name__ == "__main__":
-    # Use environment variable for port, default to 5000 for local development
+    # Production configuration
     port = int(os.environ.get('PORT', 5000))
-    # Only use debug mode in development
     debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    # Ensure secret key is set for production
+    if not app.config['SECRET_KEY'] or app.config['SECRET_KEY'] == 'dev-secret-key-change-in-production':
+        if os.environ.get('SECRET_KEY'):
+            app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+        else:
+            print("⚠️  WARNING: No SECRET_KEY set. Using development key.")
+    
+    print(f"🚀 Starting Stabsspelet on port {port}")
+    print(f"🔧 Debug mode: {debug}")
+    print(f"🌍 Environment: {os.environ.get('FLASK_ENV', 'production')}")
+    
     app.run(host='0.0.0.0', port=port, debug=debug)

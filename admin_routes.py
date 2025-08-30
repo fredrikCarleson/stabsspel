@@ -2717,6 +2717,7 @@ Baserat på dessa order, ge förslag på:
 2. Plus/minus poäng för varje team
 3. Konsekvenser av teamens handlingar
 4. Eventuella konflikter mellan team
+5. Samlad resultatrapport i tidningsformat
 {% else %}
 Inga order har skickats in ännu.
 {% endif %}
