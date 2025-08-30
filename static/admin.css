@@ -13,6 +13,16 @@
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     text-decoration: none;
+    /* Standardized button sizing */
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn-base:hover {
@@ -170,9 +180,16 @@
     text-decoration: none;
     background: #27ae60;
     color: white;
-    padding: 12px 24px;
-    font-size: 16px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
     margin: 0 8px;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .timer-container .btn:hover {
@@ -213,9 +230,16 @@
     text-decoration: none;
     background: #6c757d;
     color: white;
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
     margin: 0 8px;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .maximize-btn:hover, .minimize-btn:hover {
@@ -405,7 +429,15 @@
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     text-decoration: none;
-    font-size: 16px;
+    font-size: 0.9rem;
+    padding: 10px 20px;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn:hover {
@@ -441,13 +473,17 @@
 
 /* Button sizes */
 .btn-sm {
-    font-size: 14px;
+    font-size: 0.8rem;
     padding: 8px 16px;
+    min-width: 70px;
+    height: 35px;
 }
 
 .btn-lg {
-    font-size: 18px;
-    padding: 15px 30px;
+    font-size: 1rem;
+    padding: 12px 24px;
+    min-width: 100px;
+    height: 45px;
 }
 
 .btn-disabled {
@@ -967,6 +1003,15 @@
     background: #3498db;
     color: white;
     border: 2px solid #3498db;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn-team-alfa:hover {
@@ -978,6 +1023,15 @@
     background: #2ecc71;
     color: white;
     border: 2px solid #2ecc71;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn-team-bravo:hover {
@@ -989,6 +1043,15 @@
     background: #f1c40f;
     color: #2c3e50;
     border: 2px solid #f1c40f;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn-team-stt:hover {
@@ -1000,6 +1063,15 @@
     background: #e74c3c;
     color: white;
     border: 2px solid #e74c3c;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn-team-fm:hover {
@@ -1011,6 +1083,15 @@
     background: #2c3e50;
     color: white;
     border: 2px solid #2c3e50;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 80px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
 }
 
 .btn-team-bs:hover {
