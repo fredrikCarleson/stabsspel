@@ -1129,3 +1129,78 @@ button:hover, .btn:hover, input[type="submit"]:hover, input[type="button"]:hover
         height: 40px !important;
     }
 }
+
+/* ============================================================================
+   ULTIMATE BUTTON HEIGHT FIX - OVERRIDE EVERYTHING
+   ============================================================================ */
+
+/* This rule has maximum specificity to override ALL other button styles */
+button, button.btn, button.btn-primary, button.btn-danger, button.btn-warning, button.btn-secondary, button.btn-info,
+.btn, .btn.btn-primary, .btn.btn-danger, .btn.btn-warning, .btn.btn-secondary, .btn.btn-info,
+input[type="submit"], input[type="button"],
+.timer-container button, .timer-container .btn,
+.maximize-btn, .minimize-btn,
+.action-button button,
+.test-mode-button,
+.chatgpt-button {
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 10px 20px !important;
+    font-size: 0.9rem !important;
+    min-width: 80px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    text-decoration: none !important;
+    border: none !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* ============================================================================
+   FINAL OVERRIDE - MAXIMUM SPECIFICITY FOR ALL BUTTONS
+   ============================================================================ */
+
+/* This rule overrides even style.css and any other CSS files */
+html body button,
+html body .btn,
+html body input[type="submit"],
+html body input[type="button"],
+html body .timer-container button,
+html body .timer-container .btn,
+html body .maximize-btn,
+html body .minimize-btn,
+html body .action-button button,
+html body .test-mode-button,
+html body .chatgpt-button,
+html body .save-button,
+html body .back-button {
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 10px 20px !important;
+    font-size: 0.9rem !important;
+    min-width: 80px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    text-decoration: none !important;
+    border: none !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
