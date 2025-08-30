@@ -51,32 +51,32 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
         total_hp += hp
         
         activities_html += f'''
-        <div class="activity-view" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-            <div class="activity-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h4 style="margin: 0; color: #2c3e50;">Aktivitet {i}</h4>
-                <span style="background: #667eea; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem;">{hp} HP</span>
+        <div class="activity-view">
+            <div class="activity-header">
+                <h4 class="margin-0 text-dark">Aktivitet {i}</h4>
+                <span class="bg-primary text-white padding-4-8 border-radius-4 font-size-12">{hp} HP</span>
             </div>
             
-            <div class="activity-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="activity-content">
                 <div>
                     <strong>Aktivitet:</strong><br>
-                    <p style="margin: 5px 0; color: #495057;">{activity.get('aktivitet', 'Ingen aktivitet angiven')}</p>
+                    <p class="margin-5-0 text-muted">{activity.get('aktivitet', 'Ingen aktivitet angiven')}</p>
                 </div>
                 <div>
                     <strong>Syfte/Mål:</strong><br>
-                    <p style="margin: 5px 0; color: #495057;">{activity.get('syfte', 'Inget syfte angivet')}</p>
+                    <p class="margin-5-0 text-muted">{activity.get('syfte', 'Inget syfte angivet')}</p>
                 </div>
                 <div>
                     <strong>Målområde:</strong><br>
-                    <p style="margin: 5px 0; color: #495057;">{'Eget mål' if activity.get('malomrade') == 'eget' else 'Annat mål'}</p>
+                    <p class="margin-5-0 text-muted">{'Eget mål' if activity.get('malomrade') == 'eget' else 'Annat mål'}</p>
                 </div>
                 <div>
                     <strong>Typ av handling:</strong><br>
-                    <p style="margin: 5px 0; color: #495057;">{'Bygga/Förstärka' if activity.get('typ') == 'bygga' else 'Förstöra/Störa'}</p>
+                    <p class="margin-5-0 text-muted">{'Bygga/Förstärka' if activity.get('typ') == 'bygga' else 'Förstöra/Störa'}</p>
                 </div>
-                <div style="grid-column: 1 / -1;">
+                <div class="grid-full">
                     <strong>Påverkar:</strong><br>
-                    <p style="margin: 5px 0; color: #495057;">{', '.join(activity.get('paverkar', [])) if activity.get('paverkar') else 'Ingen påverkan angiven'}</p>
+                    <p class="margin-5-0 text-muted">{', '.join(activity.get('paverkar', [])) if activity.get('paverkar') else 'Ingen påverkan angiven'}</p>
                 </div>
             </div>
         </div>
@@ -198,27 +198,27 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
 def create_orderfas_checklist(spel_id, data):
     """Skapa checklista för Orderfas"""
     checklist_html = f'''
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #28a745; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">📋 Checklista: Ordrar från alla team</h3>
+    <div class="checklist-container border-left-success">
+        <h3 class="checklist-title">📋 Checklista: Ordrar från alla team</h3>
         
         <!-- Test Mode Toggle -->
-        <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
-            <label style="display: flex; align-items: center; cursor: pointer; font-weight: 600; color: #856404;">
-                <input type="checkbox" id="test_mode_toggle" style="margin-right: 10px; transform: scale(1.2);" onchange="toggleTestMode()" checked>
+        <div class="test-mode-container">
+            <label class="test-mode-label">
+                <input type="checkbox" id="test_mode_toggle" class="checkbox-large" onchange="toggleTestMode()" checked>
                 🧪 Test Mode (Admin Cheat Links)
             </label>
             
             <!-- Auto-fill Orders Button (only visible in test mode) -->
-            <div id="auto_fill_section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ffeaa7;">
-                <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 1em;">🚀 Auto-fyll Test Data</h4>
-                <p style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
-                <button onclick="autoFillOrders()" style="background: #ffc107; color: #856404; border: 1px solid #ffeaa7; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.3s;">
+            <div id="auto_fill_section" class="test-mode-section">
+                <h4 class="test-mode-title">🚀 Auto-fyll Test Data</h4>
+                <p class="test-mode-description">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
+                <button onclick="autoFillOrders()" class="test-mode-button">
                     🚀 Auto-fyll Alla Orders
                 </button>
             </div>
         </div>
         
-        <div style="margin: 15px 0;">
+        <div class="checklist-content">
     '''
     
     # Check for submitted orders
@@ -243,7 +243,7 @@ def create_orderfas_checklist(spel_id, data):
         view_order_link = ""
         if has_submitted:
             view_order_link = f'''
-                <a href="/admin/{spel_id}/view_order/{lag}" target="_blank" style="margin-left: 10px; color: #007bff; text-decoration: none; font-size: 12px;">
+                <a href="/admin/{spel_id}/view_order/{lag}" target="_blank" class="status-indicator">
                     👁️ Visa order
                 </a>
             '''
@@ -253,15 +253,15 @@ def create_orderfas_checklist(spel_id, data):
         if lag in team_tokens:
             token = team_tokens[lag]
             admin_cheat_link = f'''
-                <a href="/team/{spel_id}/{token}/enter_order" target="_blank" class="admin-cheat-link" style="margin-left: 10px; color: #dc3545; text-decoration: none; font-size: 12px; display: none;">
+                <a href="/team/{spel_id}/{token}/enter_order" target="_blank" class="cheat-link">
                     🔗 Admin: Ange order
                 </a>
             '''
         
         checklist_html += f'''
-            <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
-                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
-                <span style="font-size: 14px; color: #495057;">{submitted_status} Ordrar från {lag}{submitted_text}</span>
+            <label class="checklist-item">
+                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                <span class="font-size-14 text-muted">{submitted_status} Ordrar från {lag}{submitted_text}</span>
                 {view_order_link}
                 {admin_cheat_link}
             </label>
@@ -271,18 +271,18 @@ def create_orderfas_checklist(spel_id, data):
         </div>
         
         <!-- Order Summary Button (only visible in Diplomati phase) -->
-        <div style="margin: 15px 0; padding: 15px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
-            <h4 style="margin: 0 0 10px 0; color: #1976d2; font-size: 1.1em;">📋 ChatGPT Order Sammanfattning</h4>
-            <p style="margin: 0 0 15px 0; color: #1976d2; font-size: 0.9em;">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" style="display: inline-block; background: #2196f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; transition: background 0.3s;">
+        <div class="chatgpt-container" style="display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
+            <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
+            <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="chatgpt-button">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
     </div>
     
-    <div style="margin: 20px 0;">
-        <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-            <button name="action" value="next_fas" id="next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; transition: all 0.3s;">Nästa fas</button>
+    <div class="margin-20-0">
+        <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
+            <button name="action" value="next_fas" id="next-fas-btn" disabled class="btn btn-secondary btn-disabled">Nästa fas</button>
         </form>
     </div>
     
@@ -423,9 +423,9 @@ def create_diplomatifas_checklist(spel_id):
     data = load_game_data(spel_id)
     
     checklist_html = f'''
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #17a2b8; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">📋 Checklista: Diplomatifas</h3>
-        <div style="margin: 15px 0;">
+    <div class="checklist-container border-left-info">
+        <h3 class="checklist-title">📋 Checklista: Diplomatifas</h3>
+        <div class="checklist-content">
     '''
     
     # Skapa checkboxar med persistent states
@@ -440,9 +440,9 @@ def create_diplomatifas_checklist(spel_id):
         checked_attr = "checked" if is_checked else ""
         
         checklist_html += f'''
-            <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
-                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateDiploNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
-                <span style="font-size: 14px; color: #495057;">{label}</span>
+            <label class="checklist-item">
+                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateDiploNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                <span class="font-size-14 text-muted">{label}</span>
             </label>
         '''
     
@@ -450,18 +450,18 @@ def create_diplomatifas_checklist(spel_id):
         </div>
         
         <!-- Order Summary Button for ChatGPT -->
-        <div style="margin: 15px 0; padding: 15px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px;">
-            <h4 style="margin: 0 0 10px 0; color: #1976d2; font-size: 1.1em;">📋 ChatGPT Order Sammanfattning</h4>
-            <p style="margin: 0 0 15px 0; color: #1976d2; font-size: 0.9em;">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" style="display: inline-block; background: #2196f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; transition: background 0.3s;">
+        <div class="chatgpt-container">
+            <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
+            <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="chatgpt-button">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
     </div>
     
-    <div style="margin: 20px 0;">
-        <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-            <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; transition: all 0.3s;">Nästa fas</button>
+    <div class="margin-20-0">
+        <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
+            <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled class="btn btn-secondary btn-disabled">Nästa fas</button>
         </form>
     </div>
     

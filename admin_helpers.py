@@ -108,26 +108,26 @@ def create_timer_controls(spel_id, remaining, timer_status):
     """Skapa timer-kontroller med externa referenser"""
     return f'''
     <div class="timer-container">
-        <div style="margin-bottom: 25px;">
+        <div class="margin-bottom-25">
             <h2>⏰ TID KVAR</h2>
             <div id="timer">{remaining//60:02d}:{remaining%60:02d}</div>
         </div>
         
-        <div style="margin: 20px 0;">
-            <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
-                <button name="action" value="start">▶️ Starta</button>
-                <button name="action" value="pause">⏸️ Pausa</button>
-                <button name="action" value="reset">🔄 Återställ</button>
+        <div class="margin-20-0">
+            <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
+                <button name="action" value="start" class="btn btn-primary">▶️ Starta</button>
+                <button name="action" value="pause" class="btn btn-warning">⏸️ Pausa</button>
+                <button name="action" value="reset" class="btn btn-danger">🔄 Återställ</button>
             </form>
         </div>
         
-        <div style="margin-top: 20px;">
+        <div class="margin-top-20">
             <span class="status {timer_status}">Status: {timer_status.capitalize()}</span>
         </div>
         
         <!-- Öppna timer i nytt fönster -->
-        <div style="margin-top: 15px;">
-            <button type="button" onclick="openTimerWindow('{spel_id}')">🖥️ Öppna i nytt fönster</button>
+        <div class="margin-top-15">
+            <button type="button" onclick="openTimerWindow('{spel_id}')" class="btn btn-secondary">🖥️ Öppna i nytt fönster</button>
         </div>
     </div>
     '''
