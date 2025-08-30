@@ -208,6 +208,318 @@ function clearCaches() {
     }
 }
 
+// ============================================================================
+// ANIMATION FUNCTIONS - SPELIFIERING
+// ============================================================================
+
+/**
+ * Trigger score increase animation
+ * @param {string} elementId - ID of the element to animate
+ */
+function animateScoreIncrease(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.remove('score-increase');
+        void element.offsetWidth; // Trigger reflow
+        element.classList.add('score-increase');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('score-increase');
+        }, 600);
+    }
+}
+
+/**
+ * Trigger score decrease animation
+ * @param {string} elementId - ID of the element to animate
+ */
+function animateScoreDecrease(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.remove('score-decrease');
+        void element.offsetWidth; // Trigger reflow
+        element.classList.add('score-decrease');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('score-decrease');
+        }, 600);
+    }
+}
+
+/**
+ * Trigger news headline animation
+ * @param {string} elementId - ID of the element to animate
+ * @param {boolean} isBreaking - Whether this is breaking news
+ */
+function animateNewsHeadline(elementId, isBreaking = false) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        // Add breaking news class if specified
+        if (isBreaking) {
+            element.classList.add('breaking');
+        }
+        
+        element.classList.remove('news-appear');
+        void element.offsetWidth; // Trigger reflow
+        element.classList.add('news-appear');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('news-appear');
+        }, 800);
+    }
+}
+
+/**
+ * Trigger timer tick animation
+ * @param {string} elementId - ID of the timer element
+ */
+function animateTimerTick(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.remove('timer-tick');
+        void element.offsetWidth; // Trigger reflow
+        element.classList.add('timer-tick');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('timer-tick');
+        }, 300);
+    }
+}
+
+/**
+ * Trigger pulse animation for important elements
+ * @param {string} elementId - ID of the element to animate
+ */
+function animatePulse(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.add('pulse');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('pulse');
+        }, 2000);
+    }
+}
+
+/**
+ * Trigger shake animation for errors/warnings
+ * @param {string} elementId - ID of the element to animate
+ */
+function animateShake(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.remove('shake');
+        void element.offsetWidth; // Trigger reflow
+        element.classList.add('shake');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('shake');
+        }, 600);
+    }
+}
+
+/**
+ * Trigger bounce animation for success
+ * @param {string} elementId - ID of the element to animate
+ */
+function animateBounce(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.remove('bounce');
+        void element.offsetWidth; // Trigger reflow
+        element.classList.add('bounce');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            element.classList.remove('bounce');
+        }, 1000);
+    }
+}
+
+// ============================================================================
+// TEAM COLOR UTILITIES
+// ============================================================================
+
+/**
+ * Apply team color to an element
+ * @param {string} elementId - ID of the element
+ * @param {string} teamName - Team name (alfa, bravo, stt, fm, bs, media, sapo, regeringen, usa)
+ * @param {string} type - Type of color (text, background, border, button)
+ */
+function applyTeamColor(elementId, teamName, type = 'text') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        // Remove existing team classes
+        element.classList.remove(
+            'team-alfa', 'team-bravo', 'team-stt', 'team-fm', 'team-bs', 
+            'team-media', 'team-sapo', 'team-regeringen', 'team-usa',
+            'team-bg-alfa', 'team-bg-bravo', 'team-bg-stt', 'team-bg-fm', 'team-bg-bs',
+            'team-bg-media', 'team-bg-sapo', 'team-bg-regeringen', 'team-bg-usa',
+            'team-border-alfa', 'team-border-bravo', 'team-border-stt', 'team-border-fm', 'team-border-bs',
+            'team-border-media', 'team-border-sapo', 'team-border-regeringen', 'team-border-usa',
+            'btn-team-alfa', 'btn-team-bravo', 'btn-team-stt', 'btn-team-fm', 'btn-team-bs',
+            'btn-team-media', 'btn-team-sapo', 'btn-team-regeringen', 'btn-team-usa'
+        );
+        
+        // Add appropriate team class
+        switch (type) {
+            case 'text':
+                element.classList.add(`team-${teamName}`);
+                break;
+            case 'background':
+                element.classList.add(`team-bg-${teamName}`);
+                break;
+            case 'border':
+                element.classList.add(`team-border-${teamName}`);
+                break;
+            case 'button':
+                element.classList.add(`btn-team-${teamName}`);
+                break;
+        }
+    }
+}
+
+/**
+ * Create team indicator element
+ * @param {string} teamName - Team name
+ * @returns {HTMLElement} - Team indicator element
+ */
+function createTeamIndicator(teamName) {
+    const indicator = document.createElement('span');
+    indicator.className = `team-indicator ${teamName}`;
+    return indicator;
+}
+
+// ============================================================================
+// DRAMATIC TYPOGRAPHY UTILITIES
+// ============================================================================
+
+/**
+ * Apply dramatic typography to an element
+ * @param {string} elementId - ID of the element
+ * @param {string} type - Type of dramatic styling (dramatic, condensed, emphasis)
+ */
+function applyDramaticTypography(elementId, type = 'dramatic') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        // Remove existing dramatic classes
+        element.classList.remove('text-dramatic', 'text-condensed', 'text-emphasis');
+        
+        // Add appropriate class
+        switch (type) {
+            case 'dramatic':
+                element.classList.add('text-dramatic');
+                break;
+            case 'condensed':
+                element.classList.add('text-condensed');
+                break;
+            case 'emphasis':
+                element.classList.add('text-emphasis');
+                break;
+        }
+    }
+}
+
+/**
+ * Create news headline element
+ * @param {string} text - Headline text
+ * @param {boolean} isBreaking - Whether this is breaking news
+ * @returns {HTMLElement} - News headline element
+ */
+function createNewsHeadline(text, isBreaking = false) {
+    const headline = document.createElement('div');
+    headline.className = 'news-headline';
+    if (isBreaking) {
+        headline.classList.add('breaking');
+    }
+    headline.textContent = text;
+    return headline;
+}
+
+/**
+ * Create phase title element
+ * @param {string} text - Phase title text
+ * @param {string} phase - Phase type (order, diplomati, result)
+ * @returns {HTMLElement} - Phase title element
+ */
+function createPhaseTitle(text, phase = 'order') {
+    const title = document.createElement('h2');
+    title.className = 'phase-title';
+    if (phase === 'result') {
+        title.classList.add('result');
+    }
+    title.textContent = text;
+    return title;
+}
+
+// ============================================================================
+// AUTO-ANIMATION TRIGGERS
+// ============================================================================
+
+/**
+ * Set up automatic animation triggers
+ */
+function setupAnimationTriggers() {
+    // Monitor score changes
+    const scoreElements = document.querySelectorAll('[data-score]');
+    scoreElements.forEach(element => {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-score') {
+                    const oldValue = mutation.oldValue;
+                    const newValue = element.getAttribute('data-score');
+                    
+                    if (oldValue && newValue) {
+                        const oldScore = parseInt(oldValue);
+                        const newScore = parseInt(newValue);
+                        
+                        if (newScore > oldScore) {
+                            animateScoreIncrease(element.id);
+                        } else if (newScore < oldScore) {
+                            animateScoreDecrease(element.id);
+                        }
+                    }
+                }
+            });
+        });
+        
+        observer.observe(element, {
+            attributes: true,
+            attributeOldValue: true
+        });
+    });
+    
+    // Monitor timer changes
+    const timerElement = document.getElementById('timer');
+    if (timerElement) {
+        let lastTime = timerElement.textContent;
+        
+        const timerObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                    const currentTime = timerElement.textContent;
+                    if (currentTime !== lastTime) {
+                        animateTimerTick('timer');
+                        lastTime = currentTime;
+                    }
+                }
+            });
+        });
+        
+        timerObserver.observe(timerElement, {
+            childList: true,
+            characterData: true,
+            subtree: true
+        });
+    }
+}
+
 // Initialize admin functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Register service worker
@@ -238,4 +550,22 @@ document.addEventListener('DOMContentLoaded', function() {
         testModeToggle.addEventListener('change', toggleTestMode);
         toggleTestMode(); // Initial state
     }
+
+    // Initialize animations when DOM is loaded
+    setupAnimationTriggers();
+    
+    // Apply team colors to existing elements
+    const teamElements = document.querySelectorAll('[data-team]');
+    teamElements.forEach(element => {
+        const teamName = element.getAttribute('data-team');
+        const colorType = element.getAttribute('data-color-type') || 'text';
+        applyTeamColor(element.id, teamName, colorType);
+    });
+    
+    // Apply dramatic typography to existing elements
+    const dramaticElements = document.querySelectorAll('[data-dramatic]');
+    dramaticElements.forEach(element => {
+        const dramaticType = element.getAttribute('data-dramatic');
+        applyDramaticTypography(element.id, dramaticType);
+    });
 });
