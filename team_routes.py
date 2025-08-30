@@ -2,6 +2,7 @@ from flask import Blueprint, send_from_directory
 from markupsafe import Markup
 import os
 from models import DATA_DIR
+from orderkort import generate_team_orderkort_html
 
 team_bp = Blueprint('team', __name__)
 
@@ -38,12 +39,24 @@ def team_beskrivning(spel_id, lag_namn):
     return f'''
         <link rel="stylesheet" href="/static/style.css">
         <div class="container">
-        <button onclick="window.print()">Skriv ut</button>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button onclick="window.print()">Skriv ut</button>
+            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank">
+                <button>Skriv ut orderkort</button>
+            </a>
+        </div>
         <h1>{lag_namn}</h1>
         <div>{Markup(text_html)}</div>
         {img_html}
         </div>
     '''
+
+@team_bp.route("/team/<spel_id>/<lag_namn>/orderkort")
+def team_orderkort(spel_id, lag_namn):
+    """
+    Generera orderkort för ett specifikt team för alla rundor.
+    """
+    return generate_team_orderkort_html(spel_id, lag_namn)
 
 @team_bp.route("/teambeskrivning/<filename>")
 def team_bild(filename):

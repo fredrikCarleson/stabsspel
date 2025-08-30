@@ -8,6 +8,7 @@ from models import (
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
+from orderkort import generate_orderkort_html, get_available_rounds
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1311,6 +1312,76 @@ def admin_aktivitetskort(spel_id):
     '''
     
     return html
+
+@admin_bp.route("/admin/<spel_id>/orderkort")
+def admin_orderkort(spel_id):
+    """Visa orderkort för alla team för en specifik runda"""
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    
+    # Hämta tillgängliga rundor
+    available_rounds = get_available_rounds(spel_id)
+    current_round = data.get("runda", 1)
+    
+    # Skapa HTML för runda-väljare
+    round_selector = f'''
+    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3>Välj runda för orderkort</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+    '''
+    
+    for runda in available_rounds:
+        round_selector += f'''
+            <a href="/admin/{spel_id}/orderkort/{runda}" style="text-decoration: none;">
+                <button style="padding: 10px 20px; background: {'#007bff' if runda == current_round else '#6c757d'}; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    Runda {runda}
+                </button>
+            </a>
+        '''
+    
+    round_selector += '''
+        </div>
+        <p style="margin-top: 15px; font-size: 14px; color: #666;">
+            Klicka på en runda för att skriva ut orderkort för alla team.
+        </p>
+    </div>
+    '''
+    
+    html = f'''
+    <link rel="stylesheet" href="/static/style.css">
+    <div class="container">
+        <h1>Orderkort för spel {spel_id}</h1>
+        <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]}</p>
+        <p><b>Antal spelare:</b> {data["antal_spelare"]}</p>
+        <p><b>Aktuell runda:</b> {current_round}</p>
+        
+        {round_selector}
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="/admin/{spel_id}"><button type="button">Tillbaka till adminpanel</button></a>
+        </div>
+    </div>
+    '''
+    
+    return html
+
+@admin_bp.route("/admin/<spel_id>/orderkort/<int:runda>")
+def admin_orderkort_runda(spel_id, runda):
+    """Visa orderkort för en specifik runda"""
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    
+    # Kontrollera att rundan är giltig
+    available_rounds = get_available_rounds(spel_id)
+    if runda not in available_rounds:
+        return f"Runda {runda} är inte tillgänglig för detta spel.", 404
+    
+    # Generera orderkort HTML
+    orderkort_html = generate_orderkort_html(spel_id, runda)
+    
+    return orderkort_html
 
 @admin_bp.route("/admin/<spel_id>/backlog", methods=["GET", "POST"])
 def admin_backlog(spel_id):
