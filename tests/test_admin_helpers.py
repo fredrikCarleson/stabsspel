@@ -8,7 +8,7 @@ import os
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons
+from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls
 
 class TestAdminHelpers(unittest.TestCase):
     """Test cases for admin_helpers functionality"""
@@ -90,6 +90,34 @@ class TestAdminHelpers(unittest.TestCase):
         self.assertIn('Skriv ut aktivitetskort', buttons_html)
         self.assertIn('Återställ spel', buttons_html)
         self.assertIn('Tillbaka till adminstart', buttons_html)
+    
+    def test_create_script_references(self):
+        """Test create_script_references function"""
+        script_refs = create_script_references()
+        
+        # Check that it returns a string
+        self.assertIsInstance(script_refs, str)
+        
+        # Check that it contains expected script reference
+        self.assertIn('<script src="/static/admin.js"></script>', script_refs)
+    
+    def test_create_timer_controls(self):
+        """Test create_timer_controls function"""
+        spel_id = "test123"
+        remaining = 600  # 10 minutes
+        timer_status = "running"
+        
+        timer_html = create_timer_controls(spel_id, remaining, timer_status)
+        
+        # Check that it returns a string
+        self.assertIsInstance(timer_html, str)
+        
+        # Check that it contains expected content
+        self.assertIn('<div class="timer-container">', timer_html)
+        self.assertIn('10:00', timer_html)  # 600 seconds = 10:00
+        self.assertIn('test123', timer_html)
+        self.assertIn('running', timer_html)
+        self.assertIn('openTimerWindow', timer_html)
 
 if __name__ == '__main__':
     unittest.main()

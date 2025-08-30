@@ -97,3 +97,37 @@ def create_action_buttons(spel_id):
         {back_lank}
     </div>
     '''
+
+def create_script_references():
+    """Skapa referenser till externa JavaScript-filer"""
+    return '''
+    <script src="/static/admin.js"></script>
+    '''
+
+def create_timer_controls(spel_id, remaining, timer_status):
+    """Skapa timer-kontroller med externa referenser"""
+    return f'''
+    <div class="timer-container">
+        <div style="margin-bottom: 25px;">
+            <h2>⏰ TID KVAR</h2>
+            <div id="timer">{remaining//60:02d}:{remaining%60:02d}</div>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <form method="post" action="/admin/{spel_id}/timer" style="display:inline;">
+                <button name="action" value="start">▶️ Starta</button>
+                <button name="action" value="pause">⏸️ Pausa</button>
+                <button name="action" value="reset">🔄 Återställ</button>
+            </form>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <span class="status {timer_status}">Status: {timer_status.capitalize()}</span>
+        </div>
+        
+        <!-- Öppna timer i nytt fönster -->
+        <div style="margin-top: 15px;">
+            <button type="button" onclick="openTimerWindow('{spel_id}')">🖥️ Öppna i nytt fönster</button>
+        </div>
+    </div>
+    '''
