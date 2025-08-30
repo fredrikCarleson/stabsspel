@@ -205,11 +205,44 @@ def startsida():
     
     spel_html = ''
     for s in spel:
+        # Hämta speldata för att få team-information
+        try:
+            with open(os.path.join(DATA_DIR, f"game_{s['id']}.json"), encoding="utf-8") as f:
+                game_data = json.load(f)
+                teams = game_data.get("teams", [])
+                current_phase = game_data.get("current_phase", "order")
+                current_round = game_data.get("current_round", 1)
+        except:
+            teams = []
+            current_phase = "order"
+            current_round = 1
+        
+        # Bestäm status baserat på fas och runda
+        if current_phase == "finished":
+            status = "Avslutat"
+            status_class = "status-finished"
+        elif current_round > 1:
+            status = f"Runda {current_round}"
+            status_class = "status-active"
+        else:
+            status = "Aktivt"
+            status_class = "status-active"
+        
+        # Skapa team-indikatorer
+        team_indicators = ""
+        for team in teams[:4]:  # Visa max 4 team
+            team_name = team.get("name", "").lower()
+            team_indicators += f'<span class="team-indicator team-{team_name}"></span>'
+        
         spel_html += f'''
         <div class="game-card">
             <div class="game-info">
                 <h3>{s["datum"]} – {s["plats"]}</h3>
                 <p class="game-id">ID: {s["id"]}</p>
+                <div class="game-status">
+                    <span class="status-badge {status_class}">{status}</span>
+                    <div class="team-indicators">{team_indicators}</div>
+                </div>
             </div>
             <div class="game-actions">
                 <a href="/admin/{s["id"]}" class="btn btn-primary">Öppna</a>
@@ -228,17 +261,23 @@ def startsida():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Stabsspelet - Krisledningssimulation</title>
         <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/admin.css">
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <style>
+            /* Hero section with enhanced background */
             .hero-section {{
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
-                padding: 80px 20px;
+                padding: 100px 20px;
                 text-align: center;
                 position: relative;
                 overflow: hidden;
+                min-height: 60vh;
+                display: flex;
+                align-items: center;
             }}
             
+            /* Subtle background illustration */
             .hero-section::before {{
                 content: '';
                 position: absolute;
@@ -246,8 +285,26 @@ def startsida():
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-                opacity: 0.3;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+                opacity: 0.4;
+            }}
+            
+            /* Game pieces illustration */
+            .hero-section::after {{
+                content: '';
+                position: absolute;
+                top: 20%;
+                right: 10%;
+                width: 200px;
+                height: 200px;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/><circle cx="50" cy="50" r="25" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/><circle cx="50" cy="50" r="10" fill="rgba(255,255,255,0.1)"/></svg>');
+                opacity: 0.6;
+                animation: float 6s ease-in-out infinite;
+            }}
+            
+            @keyframes float {{
+                0%, 100% {{ transform: translateY(0px) rotate(0deg); }}
+                50% {{ transform: translateY(-20px) rotate(180deg); }}
             }}
             
             .hero-content {{
@@ -258,37 +315,59 @@ def startsida():
             }}
             
             .hero-title {{
-                font-size: 3.5rem;
+                font-size: 4rem;
                 font-weight: 700;
                 margin-bottom: 20px;
                 text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                letter-spacing: -1px;
             }}
             
             .hero-subtitle {{
-                font-size: 1.3rem;
+                font-size: 1.4rem;
                 font-weight: 300;
-                margin-bottom: 40px;
+                margin-bottom: 50px;
                 opacity: 0.9;
+                line-height: 1.6;
             }}
             
+            /* Enhanced CTA button */
             .cta-button {{
                 display: inline-block;
                 background: linear-gradient(45deg, #ff6b6b, #ee5a24);
                 color: white;
-                padding: 18px 36px;
+                padding: 20px 40px;
                 border-radius: 50px;
                 text-decoration: none;
-                font-weight: 600;
-                font-size: 1.1rem;
+                font-weight: 700;
+                font-size: 1.2rem;
                 transition: all 0.3s ease;
-                box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+                box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
                 border: none;
                 cursor: pointer;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .cta-button::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                transition: left 0.5s;
+            }}
+            
+            .cta-button:hover::before {{
+                left: 100%;
             }}
             
             .cta-button:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+                transform: translateY(-3px);
+                box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
             }}
             
             .description-section {{
@@ -315,10 +394,12 @@ def startsida():
                 border-radius: 15px;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.1);
                 transition: transform 0.3s ease;
+                border-left: 4px solid #667eea;
             }}
             
             .feature-card:hover {{
                 transform: translateY(-5px);
+                box-shadow: 0 8px 30px rgba(0,0,0,0.15);
             }}
             
             .feature-icon {{
@@ -355,36 +436,55 @@ def startsida():
             .games-grid {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-                gap: 20px;
+                gap: 25px;
                 margin-top: 40px;
             }}
             
+            /* Enhanced game cards with team colors */
             .game-card {{
                 background: white;
                 border: 2px solid #e9ecef;
-                border-radius: 12px;
+                border-radius: 15px;
                 padding: 25px;
                 transition: all 0.3s ease;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .game-card::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c, #f39c12);
+                opacity: 0.8;
             }}
             
             .game-card:hover {{
                 border-color: #667eea;
-                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-                transform: translateY(-2px);
+                box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
+                transform: translateY(-3px);
             }}
             
             .game-info h3 {{
                 margin: 0 0 10px 0;
                 color: #2c3e50;
-                font-size: 1.2rem;
+                font-size: 1.3rem;
                 font-weight: 600;
             }}
             
             .game-id {{
                 color: #6c757d;
                 font-size: 0.9rem;
-                margin: 0;
+                margin: 0 0 15px 0;
+                font-family: 'Courier New', monospace;
+                background: #f8f9fa;
+                padding: 5px 10px;
+                border-radius: 5px;
+                display: inline-block;
             }}
             
             .game-actions {{
@@ -429,7 +529,83 @@ def startsida():
                 padding: 60px 20px;
                 color: #6c757d;
                 font-size: 1.1rem;
+                background: #f8f9fa;
+                border-radius: 15px;
+                border: 2px dashed #dee2e6;
             }}
+            
+            /* Game status and team indicators */
+            .game-status {{
+                margin-top: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+            }}
+            
+            .status-badge {{
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }}
+            
+            .status-active {{
+                background: #27ae60;
+                color: white;
+            }}
+            
+            .status-finished {{
+                background: #6c757d;
+                color: white;
+            }}
+            
+            .team-indicators {{
+                display: flex;
+                gap: 6px;
+                align-items: center;
+            }}
+            
+            .team-indicator {{
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            }}
+            
+            /* Team color indicators */
+            .team-alfa {{ background: #3498db; }}
+            .team-bravo {{ background: #2ecc71; }}
+            .team-charlie {{ background: #e74c3c; }}
+            .team-delta {{ background: #f39c12; }}
+            .team-echo {{ background: #9b59b6; }}
+            .team-foxtrot {{ background: #1abc9c; }}
+            .team-golf {{ background: #34495e; }}
+            .team-hotel {{ background: #e67e22; }}
+            .team-india {{ background: #16a085; }}
+            .team-juliett {{ background: #8e44ad; }}
+            .team-kilo {{ background: #27ae60; }}
+            .team-lima {{ background: #d35400; }}
+            .team-mike {{ background: #c0392b; }}
+            .team-november {{ background: #2980b9; }}
+            .team-oscar {{ background: #f1c40f; }}
+            .team-papa {{ background: #e91e63; }}
+            .team-quebec {{ background: #00bcd4; }}
+            .team-romeo {{ background: #795548; }}
+            .team-sierra {{ background: #607d8b; }}
+            .team-tango {{ background: #ff9800; }}
+            .team-uniform {{ background: #4caf50; }}
+            .team-victor {{ background: #2196f3; }}
+            .team-whiskey {{ background: #ff5722; }}
+            .team-xray {{ background: #9c27b0; }}
+            .team-yankee {{ background: #00bcd4; }}
+            .team-zulu {{ background: #ffc107; }}
             
             @media (max-width: 768px) {{
                 .hero-title {{
@@ -440,12 +616,21 @@ def startsida():
                     font-size: 1.1rem;
                 }}
                 
+                .cta-button {{
+                    padding: 15px 30px;
+                    font-size: 1rem;
+                }}
+                
                 .features-grid {{
                     grid-template-columns: 1fr;
                 }}
                 
                 .games-grid {{
                     grid-template-columns: 1fr;
+                }}
+                
+                .hero-section::after {{
+                    display: none;
                 }}
             }}
         </style>
