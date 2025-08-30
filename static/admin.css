@@ -13,16 +13,6 @@
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     text-decoration: none;
-    /* Standardized button sizing */
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .btn-base:hover {
@@ -180,16 +170,9 @@
     text-decoration: none;
     background: #27ae60;
     color: white;
-    padding: 10px 20px;
-    font-size: 0.9rem;
+    padding: 12px 24px;
+    font-size: 16px;
     margin: 0 8px;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .timer-container .btn:hover {
@@ -230,16 +213,9 @@
     text-decoration: none;
     background: #6c757d;
     color: white;
-    padding: 10px 20px;
-    font-size: 0.9rem;
+    padding: 8px 16px;
+    font-size: 14px;
     margin: 0 8px;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .maximize-btn:hover, .minimize-btn:hover {
@@ -429,15 +405,7 @@
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     text-decoration: none;
-    font-size: 0.9rem;
-    padding: 10px 20px;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
+    font-size: 16px;
 }
 
 .btn:hover {
@@ -473,17 +441,13 @@
 
 /* Button sizes */
 .btn-sm {
-    font-size: 0.8rem;
+    font-size: 14px;
     padding: 8px 16px;
-    min-width: 70px;
-    height: 35px;
 }
 
 .btn-lg {
-    font-size: 1rem;
-    padding: 12px 24px;
-    min-width: 100px;
-    height: 45px;
+    font-size: 18px;
+    padding: 15px 30px;
 }
 
 .btn-disabled {
@@ -1003,15 +967,6 @@
     background: #3498db;
     color: white;
     border: 2px solid #3498db;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .btn-team-alfa:hover {
@@ -1023,15 +978,6 @@
     background: #2ecc71;
     color: white;
     border: 2px solid #2ecc71;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .btn-team-bravo:hover {
@@ -1043,15 +989,6 @@
     background: #f1c40f;
     color: #2c3e50;
     border: 2px solid #f1c40f;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .btn-team-stt:hover {
@@ -1063,15 +1000,6 @@
     background: #e74c3c;
     color: white;
     border: 2px solid #e74c3c;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .btn-team-fm:hover {
@@ -1083,15 +1011,6 @@
     background: #2c3e50;
     color: white;
     border: 2px solid #2c3e50;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    min-width: 80px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
 }
 
 .btn-team-bs:hover {
@@ -1168,5 +1087,45 @@
         font-size: 14px;
         padding: 10px 20px;
         margin: 5px;
+    }
+}
+
+/* ============================================================================
+   UNIVERSAL BUTTON STANDARDIZATION - OVERRIDE ALL BUTTONS
+   ============================================================================ */
+
+/* Force all buttons to have consistent sizing */
+button, .btn, input[type="submit"], input[type="button"] {
+    padding: 10px 20px !important;
+    font-size: 0.9rem !important;
+    min-width: 80px !important;
+    height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    text-decoration: none !important;
+    border: none !important;
+}
+
+/* Ensure hover effects work consistently */
+button:hover, .btn:hover, input[type="submit"]:hover, input[type="button"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+/* Override any conflicting media queries */
+@media (max-width: 768px) {
+    button, .btn, input[type="submit"], input[type="button"] {
+        padding: 10px 20px !important;
+        font-size: 0.9rem !important;
+        min-width: 80px !important;
+        height: 40px !important;
     }
 }
