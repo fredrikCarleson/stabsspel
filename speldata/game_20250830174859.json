@@ -259,8 +259,8 @@
     "Regeringen": "0mpWsmij382lYjiSRB-lLg_540dcb70e51c",
     "USA": "2y1H0w0HoCKM6oN6wtMTGw_2d9549c49686"
   },
-  "timer_status": "paused",
-  "timer_start": 1756586134,
+  "timer_status": "running",
+  "timer_start": 1756587406,
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
@@ -605,7 +605,7 @@
       }
     }
   },
-  "timer_elapsed": 416,
+  "timer_elapsed": 0,
   "avslutat": false,
   "fashistorik": [
     {
@@ -624,5 +624,5 @@
     "diplo_check2": true,
     "diplo_check3": false
   },
-  "fas_start_time": 1756586134
+  "fas_start_time": 1756587406
 }

@@ -1107,6 +1107,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link rel="stylesheet" href="/static/style.css">
+            <link rel="stylesheet" href="/static/admin.css">
             <script>
                 // Force cache refresh for JavaScript
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -1154,6 +1155,9 @@ def admin_panel(spel_id):
             <!-- History Section -->
             {historik_html}
         </div>
+        
+        <!-- Include admin JavaScript -->
+        {create_script_references()}
         </body>
         </html>
     '''

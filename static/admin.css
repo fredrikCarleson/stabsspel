@@ -94,7 +94,8 @@
     margin: 10px 0;
 }
 
-.timer-container button {
+/* Override button styles for timer container */
+.timer-container .btn {
     background: #27ae60;
     color: white;
     padding: 12px 24px;
@@ -108,9 +109,26 @@
     cursor: pointer;
 }
 
-.timer-container button:hover {
+.timer-container .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Specific button colors for timer */
+.timer-container .btn-primary {
+    background: #27ae60;
+}
+
+.timer-container .btn-warning {
+    background: #f39c12;
+}
+
+.timer-container .btn-danger {
+    background: #e74c3c;
+}
+
+.timer-container .btn-secondary {
+    background: #6c757d;
 }
 
 .timer-container .status {
