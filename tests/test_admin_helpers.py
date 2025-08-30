@@ -8,7 +8,7 @@ import os
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from admin_helpers import add_no_cache_headers, create_team_info_js
+from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons
 
 class TestAdminHelpers(unittest.TestCase):
     """Test cases for admin_helpers functionality"""
@@ -48,6 +48,48 @@ class TestAdminHelpers(unittest.TestCase):
         self.assertIn('SÄPO', js_code)
         self.assertIn('Regeringen', js_code)
         self.assertIn('USA', js_code)
+    
+    def test_create_compact_header(self):
+        """Test create_compact_header function"""
+        data = {
+            "datum": "2025-01-01",
+            "plats": "Stockholm",
+            "antal_spelare": 25,
+            "orderfas_min": 15,
+            "diplomatifas_min": 10
+        }
+        lag_html = "Team Alfa, Team Bravo"
+        
+        header_html = create_compact_header(data, lag_html)
+        
+        # Check that it returns a string
+        self.assertIsInstance(header_html, str)
+        
+        # Check that it contains expected content
+        self.assertIn('<div class="compact-header">', header_html)
+        self.assertIn('compact-header-content', header_html)
+        self.assertIn('2025-01-01', header_html)
+        self.assertIn('Stockholm', header_html)
+        self.assertIn('25', header_html)
+        self.assertIn('Team Alfa, Team Bravo', header_html)
+    
+    def test_create_action_buttons(self):
+        """Test create_action_buttons function"""
+        spel_id = "test123"
+        
+        buttons_html = create_action_buttons(spel_id)
+        
+        # Check that it returns a string
+        self.assertIsInstance(buttons_html, str)
+        
+        # Check that it contains expected content
+        self.assertIn('<div class="action-buttons">', buttons_html)
+        self.assertIn('action-button', buttons_html)
+        self.assertIn('test123', buttons_html)
+        self.assertIn('Visa/ändra handlingspoäng', buttons_html)
+        self.assertIn('Skriv ut aktivitetskort', buttons_html)
+        self.assertIn('Återställ spel', buttons_html)
+        self.assertIn('Tillbaka till adminstart', buttons_html)
 
 if __name__ == '__main__':
     unittest.main()

@@ -22,7 +22,7 @@ def create_team_info_js():
         if (numPlayers >= 27) {
             teamInfo.innerHTML = `
                 <h3>Team som kommer vara med (9 st):</h3>
-                <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                <div class="team-info">
                     <h4>🧩 Grundteam (5 st):</h4>
                     <ul>
                         <li>Team Alfa</li>
@@ -43,7 +43,7 @@ def create_team_info_js():
         } else {
             teamInfo.innerHTML = `
                 <h3>Team som kommer vara med (5 st):</h3>
-                <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                <div class="team-info">
                     <h4>🧩 Grundteam:</h4>
                     <ul>
                         <li>Team Alfa</li>
@@ -63,4 +63,37 @@ def create_team_info_js():
         updateTeamInfo();
     };
     </script>
+    '''
+
+def create_compact_header(data, lag_html):
+    """Skapa kompakt header med spelinformation"""
+    return f'''
+    <div class="compact-header">
+        <div class="compact-header-content">
+            <div class="compact-header-info">
+                <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
+                <p><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
+            </div>
+            <div class="compact-header-info">
+                <p><b>Lag:</b> {lag_html}</p>
+                <p>(Klicka på laget för att se dess mål)</p>
+            </div>
+        </div>
+    </div>
+    '''
+
+def create_action_buttons(spel_id):
+    """Skapa knappar för åtgärder"""
+    poang_lank = f'<a href="/admin/{spel_id}/poang" class="action-button"><button>Visa/ändra handlingspoäng</button></a>'
+    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" class="action-button"><button>Skriv ut aktivitetskort</button></a>'
+    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" class="action-button"><button type="submit">Återställ spel</button></form>'
+    back_lank = f'<a href="/admin" class="action-button"><button>Tillbaka till adminstart</button></a>'
+    
+    return f'''
+    <div class="action-buttons">
+        {poang_lank}
+        {aktivitetskort_lank}
+        {reset_lank}
+        {back_lank}
+    </div>
     '''

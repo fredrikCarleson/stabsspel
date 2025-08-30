@@ -9,7 +9,7 @@ from models import (
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
-from admin_helpers import add_no_cache_headers, create_team_info_js
+from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -191,38 +191,7 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
     </html>
     '''
 
-def create_compact_header(data, lag_html):
-    """Skapa kompakt header med spelinformation"""
-    return f'''
-    <div style="background: #ecf0f1; color: #2c3e50; padding: 12px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #3498db;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div style="flex: 1; min-width: 300px;">
-                <p style="margin: 0; font-size: 14px; color: #2c3e50;"><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]} <b>Antal spelare:</b> {data["antal_spelare"]}</p>
-                <p style="margin: 5px 0 0 0; font-size: 14px; color: #2c3e50;"><b>Orderfas:</b> {data.get("orderfas_min", "-")} min | <b>Diplomatifas:</b> {data.get("diplomatifas_min", "-")} min</p>
-            </div>
-            <div style="flex: 1; min-width: 300px;">
-                <p style="margin: 0; font-size: 14px; color: #2c3e50;"><b>Lag:</b> {lag_html}</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #7f8c8d;">(Klicka på laget för att se dess mål)</p>
-            </div>
-        </div>
-    </div>
-    '''
 
-def create_action_buttons(spel_id):
-    """Skapa knappar för åtgärder"""
-    poang_lank = f'<a href="/admin/{spel_id}/poang" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Visa/ändra handlingspoäng</button></a>'
-    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Skriv ut aktivitetskort</button></a>'
-    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: block; text-decoration: none;"><button type="submit" style="width: 100%; height: 40px;">Återställ spel</button></form>'
-    back_lank = f'<a href="/admin" style="display: block; text-decoration: none;"><button style="width: 100%; height: 40px;">Tillbaka till adminstart</button></a>'
-    
-    return f'''
-    <div style="display: flex; flex-direction: row; gap: 10px; margin: 15px 0; flex-wrap: wrap; justify-content: center;">
-        {poang_lank}
-        {aktivitetskort_lank}
-        {reset_lank}
-        {back_lank}
-    </div>
-    '''
 
 def create_timer_controls(spel_id, remaining, timer_status):
     """Skapa timer-kontroller"""

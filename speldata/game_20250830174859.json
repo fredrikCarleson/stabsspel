@@ -18,7 +18,53 @@
     "USA"
   ],
   "order": {},
-  "poang": {},
+  "poang": {
+    "Alfa": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "Bravo": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "STT": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "FM": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "BS": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "Media": {
+      "bas": 15,
+      "aktuell": 15,
+      "regeringsstod": false
+    },
+    "SÄPO": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "Regeringen": {
+      "bas": 10,
+      "aktuell": 10,
+      "regeringsstod": false
+    },
+    "USA": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    }
+  },
   "resultat": [],
   "backlog": {
     "Alfa": [
