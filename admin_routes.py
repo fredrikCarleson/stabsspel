@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string
+from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string, make_response
 from markupsafe import Markup
 import os
 import json
@@ -15,6 +15,13 @@ admin_bp = Blueprint('admin', __name__)
 # ============================================================================
 # HJÄLPFUNKTIONER
 # ============================================================================
+
+def add_no_cache_headers(response):
+    """Lägg till headers för att förhindra caching"""
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 def auto_submit_unsaved_orders(data, current_round):
     """Auto-submit any unsaved orders when changing phases"""
@@ -283,7 +290,7 @@ def create_action_buttons(spel_id):
 def create_timer_controls(spel_id, remaining, timer_status):
     """Skapa timer-kontroller"""
     return f'''
-    <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+    <div class="timer-container" style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
         <div style="margin-bottom: 25px;">
             <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ TID KVAR</h2>
             <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: 'Courier New', monospace; letter-spacing: 3px; margin: 10px 0;">{remaining//60:02d}:{remaining%60:02d}</div>
@@ -300,6 +307,33 @@ def create_timer_controls(spel_id, remaining, timer_status):
         <div style="margin-top: 20px;">
             <span class="status {timer_status}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if timer_status == 'running' else '#f39c12' if timer_status == 'paused' else '#95a5a6'}; color: white;">Status: {timer_status.capitalize()}</span>
         </div>
+        
+        <!-- Öppna timer i nytt fönster -->
+        <div style="margin-top: 15px;">
+            <button type="button" onclick="openTimerWindow()" style="background: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🖥️ Öppna i nytt fönster</button>
+        </div>
+        
+        <script>
+        function openTimerWindow() {{
+            // Hämta aktuell tid och status från admin-timern
+            var timerElement = document.getElementById('timer');
+            var statusElement = document.querySelector('.status');
+            
+            var currentTime = timerElement ? timerElement.textContent : '10:00';
+            var currentStatus = statusElement ? statusElement.textContent.toLowerCase().replace('status: ', '') : 'paused';
+            
+            // Konvertera tid till sekunder (t.ex. "09:21" -> 561)
+            var timeParts = currentTime.split(':');
+            var minutes = parseInt(timeParts[0]);
+            var seconds = parseInt(timeParts[1]);
+            var totalSeconds = minutes * 60 + seconds;
+            
+            var timerWindow = window.open(`/timer_window/{spel_id}?time=${{totalSeconds}}&status=${{currentStatus}}`, 'timerWindow', 'width=800,height=600,scrollbars=no,resizable=yes');
+            if (timerWindow) {{
+                timerWindow.focus();
+            }}
+        }}
+        </script>
     </div>
     '''
 
@@ -750,6 +784,47 @@ def create_timer_script(remaining, timer_status):
         }}
     }}
     setInterval(updateTimer, 1000);
+    
+    // Timer maximization functionality
+    function toggleTimerMaximize() {{
+        var timerContainer = document.querySelector('.timer-container');
+        var maximizeBtn = document.querySelector('.maximize-btn');
+        var minimizeBtn = document.querySelector('.minimize-btn');
+        var body = document.body;
+        
+        if (timerContainer.classList.contains('maximized')) {{
+            // Minimize timer
+            timerContainer.classList.remove('maximized');
+            body.classList.remove('timer-maximized');
+            maximizeBtn.style.display = 'inline-block';
+            minimizeBtn.style.display = 'none';
+        }} else {{
+            // Maximize timer
+            timerContainer.classList.add('maximized');
+            body.classList.add('timer-maximized');
+            maximizeBtn.style.display = 'none';
+            minimizeBtn.style.display = 'inline-block';
+        }}
+    }}
+    
+    // Keyboard shortcut for maximizing/minimizing timer (F11 key)
+    document.addEventListener('keydown', function(event) {{
+        if (event.key === 'F11') {{
+            event.preventDefault(); // Prevent browser fullscreen
+            event.stopPropagation(); // Stop event from bubbling up
+            toggleTimerMaximize();
+            return false; // Prevent default behavior
+        }}
+    }});
+    
+    // Also prevent F11 on keyup to be extra sure
+    document.addEventListener('keyup', function(event) {{
+        if (event.key === 'F11') {{
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }}
+    }});
     </script>
     '''
 
@@ -954,7 +1029,7 @@ def admin_start():
     team_info_js = create_team_info_js()
     
     return f'''
-        <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
+        <link rel="stylesheet" href="/static/style.css">
         <div class="container">
             <!-- Header Section -->
             <div class="page-header">
@@ -1164,9 +1239,37 @@ def admin_panel(spel_id):
     timer_html = create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, "", runda)
     
     # Returnera komplett HTML med förbättrad layout
-    return f'''
-        <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
-        <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    html_content = f'''
+        <!DOCTYPE html>
+        <html lang="sv">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="Expires" content="0">
+            <link rel="stylesheet" href="/static/style.css">
+            <script>
+                // Force cache refresh for JavaScript
+                if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
+                    window.location.reload();
+                }}
+                
+                // Prevent caching of dynamic content
+                window.addEventListener('load', function() {{
+                    // Clear any cached data
+                    if ('caches' in window) {{
+                        caches.keys().then(function(names) {{
+                            for (let name of names) {{
+                                caches.delete(name);
+                            }}
+                        }});
+                    }}
+                }});
+            </script>
+        </head>
+        <body>
+            <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
             <!-- Header Section -->
             <div class="page-header">
                 <h1>Adminpanel för spel {spel_id}</h1>
@@ -1193,7 +1296,13 @@ def admin_panel(spel_id):
             <!-- History Section -->
             {historik_html}
         </div>
+        </body>
+        </html>
     '''
+    
+    # Skapa response med anti-caching headers
+    response = make_response(html_content)
+    return add_no_cache_headers(response)
 
 def create_quarter_bar_html(quarters, current_round):
     """Skapa kvartalsvisualisering"""
@@ -1244,10 +1353,12 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         return '<h2 style="color: #dc3545; font-size: 1.8em; font-weight: 600; text-align: center; margin: 30px 0;">Spelet är avslutat</h2>'
     
     if fas in ["Orderfas", "Diplomatifas"]:
-        # Visa rubrik endast om den inte är tom (för bakåtkompatibilitet)
         timer_html = ''
+        
+        # Visa rubrik endast om den inte är tom (för bakåtkompatibilitet)
         if rubrik:
             timer_html += f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
+        
         timer_html += create_timer_controls(spel_id, remaining, timer_status)
         
         if fas == "Orderfas":
@@ -1558,7 +1669,7 @@ def admin_aktivitetskort(spel_id):
     
     laglista = data["lag"]
     html = f'''
-    <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
+    <link rel="stylesheet" href="/static/style.css">
     <div class="container">
     <h1>Aktivitetskort för spel {spel_id}</h1>
     <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]}</p>
@@ -2327,7 +2438,7 @@ def admin_backlog(spel_id):
     
     # Bygg komplett HTML med förbättrad layout
     html = f'''
-    <link rel="stylesheet" href="/static/style.css?v={int(time.time())}">
+    <link rel="stylesheet" href="/static/style.css">
     <div class="container">
         <div class="backlog-header">
             <h1>Team Backlogs – Runda {data.get("runda", 1)}</h1>

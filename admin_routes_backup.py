@@ -132,7 +132,7 @@ def create_action_buttons(spel_id):
 def create_timer_controls(spel_id, remaining, timer_status):
     """Skapa timer-kontroller"""
     return f'''
-    <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+    <div class="timer-container" style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
         <div style="margin-bottom: 25px;">
             <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ TID KVAR</h2>
             <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: 'Courier New', monospace; letter-spacing: 3px; margin: 10px 0;">{remaining//60:02d}:{remaining%60:02d}</div>
@@ -148,6 +148,11 @@ def create_timer_controls(spel_id, remaining, timer_status):
         
         <div style="margin-top: 20px;">
             <span class="status {timer_status}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if timer_status == 'running' else '#f39c12' if timer_status == 'paused' else '#95a5a6'}; color: white;">Status: {timer_status.capitalize()}</span>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button type="button" class="maximize-btn" onclick="toggleTimerMaximize()">⛶ Maximera</button>
+            <button type="button" class="minimize-btn" onclick="toggleTimerMaximize()" style="display: none;">⛶ Minimera</button>
         </div>
     </div>
     '''
@@ -447,6 +452,36 @@ def create_timer_script(remaining, timer_status):
         }}
     }}
     setInterval(updateTimer, 1000);
+    
+    // Timer maximization functionality
+    function toggleTimerMaximize() {{
+        var timerContainer = document.querySelector('.timer-container');
+        var maximizeBtn = document.querySelector('.maximize-btn');
+        var minimizeBtn = document.querySelector('.minimize-btn');
+        var body = document.body;
+        
+        if (timerContainer.classList.contains('maximized')) {{
+            // Minimize timer
+            timerContainer.classList.remove('maximized');
+            body.classList.remove('timer-maximized');
+            maximizeBtn.style.display = 'inline-block';
+            minimizeBtn.style.display = 'none';
+        }} else {{
+            // Maximize timer
+            timerContainer.classList.add('maximized');
+            body.classList.add('timer-maximized');
+            maximizeBtn.style.display = 'none';
+            minimizeBtn.style.display = 'inline-block';
+        }}
+    }}
+    
+    // Keyboard shortcut for maximizing/minimizing timer (F11 key)
+    document.addEventListener('keydown', function(event) {{
+        if (event.key === 'F11') {{
+            event.preventDefault(); // Prevent browser fullscreen
+            toggleTimerMaximize();
+        }}
+    }});
     </script>
     '''
 

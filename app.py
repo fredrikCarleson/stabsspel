@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory, make_response
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
@@ -13,6 +13,174 @@ app.register_blueprint(team_order_bp)
 
 # Configure for production
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+@app.route('/test_timer_maximize.html')
+def test_timer_maximize():
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timer Maximize Test</title>
+    <style>
+        /* Maximized timer styles */
+        .timer-container {
+            transition: all 0.5s ease-in-out;
+            position: relative;
+        }
+
+        .timer-container.maximized {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .timer-container.maximized #timer {
+            font-size: 15vw !important;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .timer-container.maximized h2 {
+            font-size: 3vw !important;
+            margin-bottom: 30px;
+        }
+
+        .timer-container.maximized button {
+            font-size: 1.5vw !important;
+            padding: 15px 30px !important;
+            margin: 0 15px !important;
+        }
+
+        .timer-container.maximized .status {
+            font-size: 1.2vw !important;
+            padding: 12px 24px !important;
+            margin-top: 30px !important;
+        }
+
+        .maximize-btn {
+            background: #6c757d !important;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 8px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .maximize-btn:hover {
+            background: #5a6268 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .minimize-btn {
+            background: #dc3545 !important;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 8px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .minimize-btn:hover {
+            background: #c82333 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Hide other content when timer is maximized */
+        body.timer-maximized {
+            overflow: hidden;
+        }
+
+        body.timer-maximized .container > *:not(.timer-container.maximized) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Timer Maximize Test</h1>
+        <p>Detta är en test för timer-maximering.</p>
+        
+        <div class="timer-container" style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+            <div style="margin-bottom: 25px;">
+                <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ TID KVAR</h2>
+                <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">10:00</div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <button style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
+                <button style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
+                <button style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <span class="status running" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: #27ae60; color: white;">Status: Running</span>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <button type="button" class="maximize-btn" onclick="toggleTimerMaximize()">⛶ Maximera</button>
+                <button type="button" class="minimize-btn" onclick="toggleTimerMaximize()" style="display: none;">⛶ Minimera</button>
+            </div>
+        </div>
+        
+        <p>Mer innehåll här...</p>
+    </div>
+
+    <script>
+        // Timer maximization functionality
+        function toggleTimerMaximize() {
+            var timerContainer = document.querySelector(\'.timer-container\');
+            var maximizeBtn = document.querySelector(\'.maximize-btn\');
+            var minimizeBtn = document.querySelector(\'.minimize-btn\');
+            var body = document.body;
+            
+            if (timerContainer.classList.contains(\'maximized\')) {
+                // Minimize timer
+                timerContainer.classList.remove(\'maximized\');
+                body.classList.remove(\'timer-maximized\');
+                maximizeBtn.style.display = \'inline-block\';
+                minimizeBtn.style.display = \'none\';
+            } else {
+                // Maximize timer
+                timerContainer.classList.add(\'maximized\');
+                body.classList.add(\'timer-maximized\');
+                maximizeBtn.style.display = \'none\';
+                minimizeBtn.style.display = \'inline-block\';
+            }
+        }
+        
+        // Keyboard shortcut for maximizing/minimizing timer (F11 key)
+        document.addEventListener(\'keydown\', function(event) {
+            if (event.key === \'F11\') {
+                event.preventDefault(); // Prevent browser fullscreen
+                toggleTimerMaximize();
+            }
+        });
+    </script>
+</body>
+</html>
+    '''
 
 @app.route("/")
 def startsida():
@@ -331,6 +499,321 @@ def startsida():
 def get_teams(num_players):
     teams = suggest_teams(num_players)
     return f"Antal spelare: {num_players}<br>Föreslagna lag: {', '.join(teams)}"
+
+@app.route("/timer_window/<spel_id>")
+def timer_window(spel_id):
+    # Läs speldata
+    try:
+        with open(os.path.join(DATA_DIR, f"game_{spel_id}.json"), encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return "Spel hittades inte", 404
+    
+    # Hämta URL-parametrar för tid och status
+    from flask import request
+    time_param = request.args.get('time', None)
+    status_param = request.args.get('status', 'paused')
+    
+    # Konvertera tid från sekunder tillbaka till MM:SS format
+    if time_param:
+        try:
+            total_seconds = int(time_param)
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+            initial_time = f"{minutes:02d}:{seconds:02d}"
+            initial_seconds = total_seconds
+        except ValueError:
+            initial_time = "10:00"
+            initial_seconds = 600
+    else:
+        initial_time = "10:00"
+        initial_seconds = 600
+    
+    # Skapa timer HTML baserat på aktuell fas
+    current_phase = data.get("current_phase", "order")
+    if current_phase == "order":
+        timer_html = f'''
+            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+                <div style="margin-bottom: 25px;">
+                    <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ ORDERFAS</h2>
+                    <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">{initial_time}</div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <button onclick="startTimer()" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
+                    <button onclick="pauseTimer()" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
+                    <button onclick="resetTimer()" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <span id="status" class="status" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if status_param == 'running' else '#6c757d'}; color: white;">Status: {status_param.capitalize()}</span>
+                </div>
+            </div>
+        '''
+    elif current_phase == "diplomati":
+        timer_html = f'''
+            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+                <div style="margin-bottom: 25px;">
+                    <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ DIPLOMATIFAS</h2>
+                    <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">{data.get("diplomatifas_min", 10)}:00</div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <button onclick="startTimer()" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
+                    <button onclick="pauseTimer()" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
+                    <button onclick="resetTimer()" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <span id="status" class="status" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if status_param == 'running' else '#6c757d'}; color: white;">Status: {status_param.capitalize()}</span>
+                </div>
+            </div>
+        '''
+    else:
+        timer_html = f'''
+            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+                <div style="margin-bottom: 25px;">
+                    <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ RESULTATFAS</h2>
+                    <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">05:00</div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <button onclick="startTimer()" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
+                    <button onclick="pauseTimer()" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
+                    <button onclick="resetTimer()" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <span id="status" class="status" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if status_param == 'running' else '#6c757d'}; color: white;">Status: {status_param.capitalize()}</span>
+                </div>
+            </div>
+        '''
+    
+    html_content = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Timer - Spel {spel_id}</title>
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+        <style>
+            body {{
+                margin: 0;
+                padding: 20px;
+                font-family: Arial, sans-serif;
+                background: #f8f9fa;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }}
+            
+            .timer-container {{
+                transition: all 0.5s ease-in-out;
+                position: relative;
+            }}
+
+            .timer-container.maximized {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 9999;
+                background: linear-gradient(135deg, #2c3e50, #34495e);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                margin: 0;
+                padding: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }}
+
+            .timer-container.maximized #timer {{
+                font-size: 15vw !important;
+                margin: 20px 0;
+                text-align: center;
+            }}
+
+            .timer-container.maximized h2 {{
+                font-size: 3vw !important;
+                margin-bottom: 30px;
+            }}
+
+            .timer-container.maximized button {{
+                font-size: 1.5vw !important;
+                padding: 15px 30px !important;
+                margin: 0 15px !important;
+            }}
+
+            .timer-container.maximized .status {{
+                font-size: 1.2vw !important;
+                padding: 12px 24px !important;
+                margin-top: 30px !important;
+            }}
+
+            .maximize-btn {{
+                background: #6c757d !important;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0 8px;
+                transition: all 0.3s;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }}
+
+            .maximize-btn:hover {{
+                background: #5a6268 !important;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }}
+
+            .minimize-btn {{
+                background: #dc3545 !important;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0 8px;
+                transition: all 0.3s;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }}
+
+            .minimize-btn:hover {{
+                background: #c82333 !important;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="timer-container">
+            {timer_html}
+            
+            <div style="margin-top: 15px;">
+                <button type="button" class="maximize-btn" onclick="toggleTimerMaximize()">⛶ Maximera</button>
+                <button type="button" class="minimize-btn" onclick="toggleTimerMaximize()" style="display: none;">⛶ Minimera</button>
+            </div>
+        </div>
+
+        <script>
+            // Timer maximization functionality
+            function toggleTimerMaximize() {{
+                var timerContainer = document.querySelector('.timer-container');
+                var maximizeBtn = document.querySelector('.maximize-btn');
+                var minimizeBtn = document.querySelector('.minimize-btn');
+                
+                if (timerContainer.classList.contains('maximized')) {{
+                    // Minimize timer
+                    timerContainer.classList.remove('maximized');
+                    maximizeBtn.style.display = 'inline-block';
+                    minimizeBtn.style.display = 'none';
+                }} else {{
+                    // Maximize timer
+                    timerContainer.classList.add('maximized');
+                    maximizeBtn.style.display = 'none';
+                    minimizeBtn.style.display = 'inline-block';
+                }}
+            }}
+            
+            // Keyboard shortcut for maximizing/minimizing timer (F11 key)
+            document.addEventListener('keydown', function(event) {{
+                if (event.key === 'F11') {{
+                    event.preventDefault(); // Prevent browser fullscreen
+                    event.stopPropagation();
+                    toggleTimerMaximize();
+                    return false;
+                }}
+            }});
+            
+            // Simple timer functionality
+            let timeLeft = {initial_seconds};
+            let timerId = null;
+            let isRunning = {str(status_param == 'running').lower()};
+            
+            function startTimer() {{
+                if (!isRunning) {{
+                    isRunning = true;
+                    timerId = setInterval(updateTimer, 1000);
+                    document.getElementById('status').textContent = 'Status: Kör';
+                    document.getElementById('status').style.background = '#27ae60';
+                }}
+            }}
+            
+            function pauseTimer() {{
+                if (isRunning) {{
+                    isRunning = false;
+                    clearInterval(timerId);
+                    document.getElementById('status').textContent = 'Status: Pausad';
+                    document.getElementById('status').style.background = '#6c757d';
+                }}
+            }}
+            
+            function resetTimer() {{
+                pauseTimer();
+                timeLeft = {data.get("orderfas_min", 15) if current_phase == "order" else data.get("diplomatifas_min", 10) if current_phase == "diplomati" else 5} * 60;
+                updateDisplay();
+                document.getElementById('status').textContent = 'Status: Pausad';
+                document.getElementById('status').style.background = '#6c757d';
+            }}
+            
+            function updateTimer() {{
+                if (timeLeft > 0) {{
+                    timeLeft--;
+                    updateDisplay();
+                }} else {{
+                    pauseTimer();
+                    document.getElementById('status').textContent = 'Status: Slut';
+                    document.getElementById('status').style.background = '#e74c3c';
+                    // Spela ljud om det finns
+                    var audio = new Audio('/static/alarm.mp3');
+                    audio.play().catch(e => console.log('Kunde inte spela ljud:', e));
+                }}
+            }}
+            
+            function updateDisplay() {{
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                document.getElementById('timer').textContent = `${{minutes.toString().padStart(2, '0')}}:${{seconds.toString().padStart(2, '0')}}`;
+            }}
+            
+            // Initiera display
+            updateDisplay();
+            
+            // Starta timer automatiskt om den var igång
+            if (isRunning) {{
+                // Sätt status till "Kör" och grön färg
+                document.getElementById('status').textContent = 'Status: Kör';
+                document.getElementById('status').style.background = '#27ae60';
+                // Starta timern direkt (utan att kolla isRunning)
+                timerId = setInterval(updateTimer, 1000);
+            }}
+            
+            // Automatiskt maximera timern när fönstret öppnas
+            window.addEventListener('load', function() {{
+                setTimeout(function() {{
+                    toggleTimerMaximize();
+                }}, 100);
+            }});
+        </script>
+    </body>
+    </html>
+    '''
+    
+    # Skapa response med anti-caching headers
+    response = make_response(html_content)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 if __name__ == "__main__":
     # Use environment variable for port, default to 5000 for local development

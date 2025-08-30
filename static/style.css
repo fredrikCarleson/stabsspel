@@ -108,6 +108,122 @@ a:hover {
     animation: pulse-danger 0.5s infinite;
 }
 
+/* Maximized timer styles */
+.timer-container {
+    transition: all 0.5s ease-in-out;
+    position: relative;
+}
+
+.timer-container.maximized {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.timer-container.maximized #timer {
+    font-size: 15vw !important;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.timer-container.maximized h2 {
+    font-size: 3vw !important;
+    margin-bottom: 30px;
+}
+
+.timer-container.maximized button {
+    font-size: 1.5vw !important;
+    padding: 15px 30px !important;
+    margin: 0 15px !important;
+}
+
+.timer-container.maximized .status {
+    font-size: 1.2vw !important;
+    padding: 12px 24px !important;
+    margin-top: 30px !important;
+}
+
+.maximize-btn {
+    background: #6c757d !important;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 8px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.maximize-btn:hover {
+    background: #5a6268 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.minimize-btn {
+    background: #dc3545 !important;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 8px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.minimize-btn:hover {
+    background: #c82333 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Hide other content when timer is maximized */
+body.timer-maximized {
+    overflow: hidden;
+}
+
+body.timer-maximized .container > *:not(.timer-container.maximized) {
+    display: none;
+}
+
+/* Responsive design for maximized timer */
+@media (max-width: 768px) {
+    .timer-container.maximized #timer {
+        font-size: 20vw !important;
+    }
+    
+    .timer-container.maximized h2 {
+        font-size: 5vw !important;
+    }
+    
+    .timer-container.maximized button {
+        font-size: 3vw !important;
+        padding: 10px 20px !important;
+        margin: 0 8px !important;
+    }
+    
+    .timer-container.maximized .status {
+        font-size: 3vw !important;
+        padding: 8px 16px !important;
+    }
+}
+
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.02); }
