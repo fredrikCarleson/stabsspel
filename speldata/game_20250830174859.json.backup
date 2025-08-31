@@ -260,7 +260,7 @@
     "USA": "2y1H0w0HoCKM6oN6wtMTGw_2d9549c49686"
   },
   "timer_status": "running",
-  "timer_start": 1756587404,
+  "timer_start": 1756591987,
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
@@ -605,7 +605,7 @@
       }
     }
   },
-  "timer_elapsed": 0,
+  "timer_elapsed": 471,
   "avslutat": false,
   "fashistorik": [
     {
@@ -624,5 +624,5 @@
     "diplo_check2": true,
     "diplo_check3": false
   },
-  "fas_start_time": 1756587404
+  "fas_start_time": 1756591987
 }

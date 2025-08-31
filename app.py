@@ -193,6 +193,227 @@ def health_check():
         "timestamp": time.time()
     })
 
+@app.route("/test_css")
+def test_css():
+    return '''
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Refaktorering Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css">
+    <link rel="stylesheet" href="/static/print.css" media="print">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>CSS Refaktorering Test</h1>
+            <p class="page-subtitle">Testar den nya konsoliderade CSS-strukturen</p>
+        </div>
+
+        <div class="section-header">
+            <h3>Knappar</h3>
+        </div>
+        
+        <div class="card">
+            <h4>Knappvarianter</h4>
+            <div class="flex-wrap">
+                <button class="btn btn--primary">Primär</button>
+                <button class="btn btn--success">Framgång</button>
+                <button class="btn btn--warning">Varning</button>
+                <button class="btn btn--danger">Farlig</button>
+                <button class="btn btn--secondary">Sekundär</button>
+                <button class="btn btn--info">Info</button>
+                <button class="btn btn--ghost">Transparent</button>
+            </div>
+            
+            <h4 class="mt-4">Knappstorlekar</h4>
+            <div class="flex-wrap">
+                <button class="btn btn--primary btn--sm">Liten</button>
+                <button class="btn btn--primary">Normal</button>
+                <button class="btn btn--primary btn--lg">Stor</button>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h3>Badges</h3>
+        </div>
+        
+        <div class="card">
+            <div class="flex-wrap">
+                <span class="badge badge--success">Framgång</span>
+                <span class="badge badge--warning">Varning</span>
+                <span class="badge badge--danger">Farlig</span>
+                <span class="badge badge--muted">Dämpad</span>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h3>Team-komponenter</h3>
+        </div>
+        
+        <div class="card">
+            <div class="flex-wrap">
+                <div class="team team--alfa">
+                    <span class="team__indicator team__indicator--alfa"></span>
+                    Alfa
+                </div>
+                <div class="team team--bravo">
+                    <span class="team__indicator team__indicator--bravo"></span>
+                    Bravo
+                </div>
+                <div class="team team--stt">
+                    <span class="team__indicator team__indicator--stt"></span>
+                    STT
+                </div>
+                <div class="team team--fm">
+                    <span class="team__indicator team__indicator--fm"></span>
+                    FM
+                </div>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h3>Timer</h3>
+        </div>
+        
+        <div class="timer">
+            <h2>Tid kvar</h2>
+            <div class="timer__display">12:34:56</div>
+        </div>
+
+        <div class="section-header">
+            <h3>Formulär</h3>
+        </div>
+        
+        <div class="card">
+            <div class="form-group">
+                <label class="form-group__label">Namn</label>
+                <input class="form-group__input" type="text" placeholder="Ange namn">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-group__label">E-post</label>
+                <input class="form-group__input" type="email" placeholder="ange@email.se">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-group__label">Meddelande</label>
+                <textarea class="form-group__input" rows="4" placeholder="Skriv ditt meddelande"></textarea>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h3>Notifikationer</h3>
+        </div>
+        
+        <div class="notification notification--success">
+            Detta är en framgångsnotifikation
+        </div>
+        
+        <div class="notification notification--warning">
+            Detta är en varningsnotifikation
+        </div>
+        
+        <div class="notification notification--error">
+            Detta är en felnotifikation
+        </div>
+        
+        <div class="notification notification--info">
+            Detta är en informationsnotifikation
+        </div>
+
+        <div class="section-header">
+            <h3>Tabeller</h3>
+        </div>
+        
+        <div class="card">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Poäng</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="team team--alfa">
+                                <span class="team__indicator team__indicator--alfa"></span>
+                                Alfa
+                            </div>
+                        </td>
+                        <td>150</td>
+                        <td><span class="badge badge--success">Aktiv</span></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="team team--bravo">
+                                <span class="team__indicator team__indicator--bravo"></span>
+                                Bravo
+                            </div>
+                        </td>
+                        <td>120</td>
+                        <td><span class="badge badge--warning">Väntar</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-header">
+            <h3>Utility klasser</h3>
+        </div>
+        
+        <div class="card">
+            <h4>Text alignment</h4>
+            <p class="text-left">Vänsterjusterad text</p>
+            <p class="text-center">Centrerad text</p>
+            <p class="text-right">Högerjusterad text</p>
+            
+            <h4 class="mt-4">Text colors</h4>
+            <p class="text-success">Grön text</p>
+            <p class="text-danger">Röd text</p>
+            <p class="text-warning">Gul text</p>
+            <p class="text-info">Blå text</p>
+            <p class="text-muted">Dämpad text</p>
+            
+            <h4 class="mt-4">Spacing</h4>
+            <div class="mb-1">Margin bottom 1</div>
+            <div class="mb-2">Margin bottom 2</div>
+            <div class="mb-3">Margin bottom 3</div>
+            <div class="mt-4">Margin top 4</div>
+        </div>
+
+        <div class="section-header">
+            <h3>Kortvarianter</h3>
+        </div>
+        
+        <div class="card card--elevated">
+            <h4>Upphöjt kort</h4>
+            <p>Detta kort har en större skugga.</p>
+        </div>
+        
+        <div class="card card--interactive">
+            <h4>Interaktivt kort</h4>
+            <p>Detta kort har hover-effekter.</p>
+        </div>
+
+        <div class="section-header">
+            <h3>Print test</h3>
+        </div>
+        
+        <div class="card">
+            <p>Tryck Ctrl+P för att testa utskriftsstilarna.</p>
+            <p>Alla knappar och interaktiva element ska döljas vid utskrift.</p>
+        </div>
+    </div>
+</body>
+</html>
+    '''
+
 @app.route("/")
 def startsida():
     # Lista befintliga spel
@@ -260,9 +481,9 @@ def startsida():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Stabsspelet - Krisledningssimulation</title>
-        <link rel="stylesheet" href="/static/style.css">
-        <link rel="stylesheet" href="/static/admin.css">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/app.css">
+        <link rel="stylesheet" href="/static/print.css" media="print">
         <style>
             /* Hero section with enhanced background */
             .hero-section {{

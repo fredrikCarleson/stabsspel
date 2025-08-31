@@ -37,12 +37,15 @@ def team_beskrivning(spel_id, lag_namn):
         '''
     # Förbättrad utskriftsvänlig och lättläst CSS
     return f'''
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/design-system.css">
         <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/admin.css">
         <div class="container">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="window.print()">Skriv ut</button>
-            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank">
-                <button>Skriv ut orderkort</button>
+            <button onclick="window.print()" class="btn is-secondary">Skriv ut</button>
+            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="btn is-info">
+                Skriv ut orderkort
             </a>
         </div>
         <h1>{lag_namn}</h1>

@@ -212,7 +212,7 @@ def create_orderfas_checklist(spel_id, data):
             <div id="auto_fill_section" class="test-mode-section">
                 <h4 class="test-mode-title">🚀 Auto-fyll Test Data</h4>
                 <p class="test-mode-description">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
-                <button onclick="autoFillOrders()" class="test-mode-button">
+                <button onclick="autoFillOrders()" class="btn is-warning is-sm">
                     🚀 Auto-fyll Alla Orders
                 </button>
             </div>
@@ -274,7 +274,7 @@ def create_orderfas_checklist(spel_id, data):
         <div class="chatgpt-container" style="display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
             <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
             <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="chatgpt-button">
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn is-info">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
@@ -315,14 +315,10 @@ def create_orderfas_checklist(spel_id, data):
         
         if (checkedCount === totalTeams) {{
             nextFasButton.disabled = false;
-            nextFasButton.style.opacity = '1';
-            nextFasButton.style.cursor = 'pointer';
-            nextFasButton.style.background = '#28a745';
+            nextFasButton.className = 'btn is-success';
         }} else {{
             nextFasButton.disabled = true;
-            nextFasButton.style.opacity = '0.5';
-            nextFasButton.style.cursor = 'not-allowed';
-            nextFasButton.style.background = '#6c757d';
+            nextFasButton.className = 'btn is-secondary';
         }}
     }}
     
@@ -453,7 +449,7 @@ def create_diplomatifas_checklist(spel_id):
         <div class="chatgpt-container">
             <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
             <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="chatgpt-button">
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn is-info">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
@@ -487,14 +483,10 @@ def create_diplomatifas_checklist(spel_id):
         
         if (check1 && check2 && check3) {{
             nextFasButton.disabled = false;
-            nextFasButton.style.opacity = '1';
-            nextFasButton.style.cursor = 'pointer';
-            nextFasButton.style.background = '#17a2b8';
+            nextFasButton.className = 'btn is-info';
         }} else {{
             nextFasButton.disabled = true;
-            nextFasButton.style.opacity = '0.5';
-            nextFasButton.style.cursor = 'not-allowed';
-            nextFasButton.style.background = '#6c757d';
+            nextFasButton.className = 'btn is-secondary';
         }}
     }}
     
@@ -539,16 +531,16 @@ def create_resultatfas_checklist(spel_id):
         if i == 1:
             checklist_html += f'''
             <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/backlog" style="text-decoration: none;">
-                    <button type="button" style="background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Uppdatera teamens arbete</button>
+                <a href="/admin/{spel_id}/backlog" class="btn is-success is-sm">
+                    Uppdatera teamens arbete
                 </a>
             </div>
             '''
         elif i == 3:
             checklist_html += f'''
             <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/poang" style="text-decoration: none;">
-                    <button type="button" style="background: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Visa/ändra handlingspoäng</button>
+                <a href="/admin/{spel_id}/poang" class="btn is-primary is-sm">
+                    Visa/ändra handlingspoäng
                 </a>
             </div>
             '''
@@ -579,14 +571,10 @@ def create_resultatfas_checklist(spel_id):
         
         if (check1 && check2 && check3) {{
             startButton.disabled = false;
-            startButton.style.opacity = '1';
-            startButton.style.cursor = 'pointer';
-            startButton.style.background = '#007bff';
+            startButton.className = 'btn is-primary is-lg';
         }} else {{
             startButton.disabled = true;
-            startButton.style.opacity = '0.5';
-            startButton.style.cursor = 'not-allowed';
-            startButton.style.background = '#6c757d';
+            startButton.className = 'btn is-secondary is-lg';
         }}
     }}
     
@@ -887,7 +875,11 @@ def admin_start():
     team_info_js = create_team_info_js()
     
     return f'''
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/design-system.css">
         <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/admin.css">
+        <link rel="stylesheet" href="/static/print.css" media="print">
         <div class="container">
             <!-- Header Section -->
             <div class="page-header">
@@ -935,7 +927,7 @@ def admin_start():
                             </div>
                         </div>
                         
-                        <button type="submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; margin-top: 10px;">
+                        <button type="submit" class="btn is-primary is-lg" style="margin-top: 10px;">
                             🚀 Starta nytt spel
                         </button>
                     </form>
@@ -961,13 +953,11 @@ def admin_start():
                                     <p style="margin: 5px 0 0 0; color: #adb5bd; font-size: 0.8em;">ID: {s["id"]}</p>
                                 </div>
                                 <div style="display: flex; gap: 10px;">
-                                    <a href="/admin/{s["id"]}" style="text-decoration: none;">
-                                        <button style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: background 0.3s;">
-                                            ▶️ Öppna
-                                        </button>
+                                    <a href="/admin/{s["id"]}" class="btn is-primary is-sm">
+                                        ▶️ Öppna
                                     </a>
                                     <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
-                                        <button type="submit" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: background 0.3s;">
+                                        <button type="submit" class="btn is-danger is-sm">
                                             🗑️ Ta bort
                                         </button>
                                     </form>
@@ -1106,8 +1096,11 @@ def admin_panel(spel_id):
             <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
+            <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="/static/design-system.css">
             <link rel="stylesheet" href="/static/style.css">
             <link rel="stylesheet" href="/static/admin.css">
+            <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 // Force cache refresh for JavaScript
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -1243,7 +1236,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" disabled style="opacity: 0.5; cursor: not-allowed; background: #6c757d; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Starta ny runda</button>
+                    <button type="submit" id="start-ny-runda-btn" disabled class="btn is-secondary is-lg">Starta ny runda</button>
                 </form>
             </div>
             '''
@@ -1251,7 +1244,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" style="background: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Starta ny runda</button>
+                    <button type="submit" id="start-ny-runda-btn" class="btn is-primary is-lg">Starta ny runda</button>
                 </form>
             </div>
             '''
@@ -1261,7 +1254,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
-                    <button type="submit" style="background: #dc3545; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; transition: all 0.3s;">Avsluta spelet</button>
+                    <button type="submit" class="btn is-danger is-lg">Avsluta spelet</button>
                 </form>
             </div>
             '''
@@ -1432,7 +1425,7 @@ def admin_poang(spel_id):
             <p class='page-subtitle'>Hantera teamens handlingspoäng och regeringsstöd</p>
         </div>
         {tabell}
-        <br><a href='/admin/{spel_id}' class='back-button'>← Tillbaka till adminpanelen</a>
+        <br><a href='/admin/{spel_id}' class='btn is-secondary is-ghost'>← Tillbaka till adminpanelen</a>
     </div>
     """
     return Markup(html)
@@ -1531,7 +1524,11 @@ def admin_aktivitetskort(spel_id):
     
     laglista = data["lag"]
     html = f'''
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/design-system.css">
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/admin.css">
+    <link rel="stylesheet" href="/static/print.css" media="print">
     <div class="container">
     <h1>Aktivitetskort för spel {spel_id}</h1>
     <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]}</p>
@@ -1684,10 +1681,8 @@ def admin_orderkort(spel_id):
     
     for runda in available_rounds:
         round_selector += f'''
-            <a href="/admin/{spel_id}/orderkort/{runda}" style="text-decoration: none;">
-                <button style="padding: 10px 20px; background: {'#007bff' if runda == current_round else '#6c757d'}; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    Runda {runda}
-                </button>
+            <a href="/admin/{spel_id}/orderkort/{runda}" class="btn {'is-primary' if runda == current_round else 'is-secondary'}">
+                Runda {runda}
             </a>
         '''
     
@@ -1700,7 +1695,10 @@ def admin_orderkort(spel_id):
     '''
     
     html = f'''
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/design-system.css">
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/admin.css">
     <div class="container">
         <h1>Orderkort för spel {spel_id}</h1>
         <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]}</p>
@@ -1710,7 +1708,7 @@ def admin_orderkort(spel_id):
         {round_selector}
         
         <div style="margin-top: 30px; text-align: center;">
-            <a href="/admin/{spel_id}"><button type="button">Tillbaka till adminpanel</button></a>
+            <a href="/admin/{spel_id}" class="btn is-secondary is-ghost">Tillbaka till adminpanel</a>
         </div>
     </div>
     '''
@@ -2300,7 +2298,11 @@ def admin_backlog(spel_id):
     
     # Bygg komplett HTML med förbättrad layout
     html = f'''
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/design-system.css">
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/admin.css">
+    <link rel="stylesheet" href="/static/print.css" media="print">
     <div class="container">
         <div class="backlog-header">
             <h1>Team Backlogs – Runda {data.get("runda", 1)}</h1>
@@ -2313,8 +2315,8 @@ def admin_backlog(spel_id):
             </div>
             
             <div class="backlog-actions">
-                <button type="submit" class="save-button">💾 Spara ändringar</button>
-                <a href="/admin/{spel_id}" class="back-button">← Tillbaka till adminpanelen</a>
+                <button type="submit" class="btn is-success">💾 Spara ändringar</button>
+                <a href="/admin/{spel_id}" class="btn is-secondary is-ghost">← Tillbaka till adminpanelen</a>
             </div>
         </form>
     </div>
@@ -2632,7 +2634,7 @@ Inga order har skickats in ännu.
                 </div>
             {% endif %}
             
-            <a href="/admin/{{ spel_id }}" class="back-button">← Tillbaka till Admin Panel</a>
+            <a href="/admin/{{ spel_id }}" class="btn is-secondary is-ghost">← Tillbaka till Admin Panel</a>
         </div>
     </div>
     
@@ -2687,10 +2689,10 @@ Inga order har skickats in ännu.
             const button = document.querySelector('.copy-button');
             const originalText = button.textContent;
             button.textContent = '✅ Kopierat!';
-            button.style.background = '#28a745';
+            button.className = 'btn is-success';
             setTimeout(() => {
                 button.textContent = originalText;
-                button.style.background = '#2196f3';
+                button.className = 'btn is-info';
             }, 2000);
         }
     </script>

@@ -83,11 +83,11 @@ def create_compact_header(data, lag_html):
     '''
 
 def create_action_buttons(spel_id):
-    """Skapa knappar för åtgärder"""
-    poang_lank = f'<a href="/admin/{spel_id}/poang" class="action-button"><button>Visa/ändra handlingspoäng</button></a>'
-    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" class="action-button"><button>Skriv ut aktivitetskort</button></a>'
-    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" class="action-button"><button type="submit">Återställ spel</button></form>'
-    back_lank = f'<a href="/admin" class="action-button"><button>Tillbaka till adminstart</button></a>'
+    """Skapa knappar för åtgärder med design-systemets klasser"""
+    poang_lank = f'<a href="/admin/{spel_id}/poang" class="btn is-primary">Visa/ändra handlingspoäng</a>'
+    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" class="btn is-info">Skriv ut aktivitetskort</a>'
+    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: inline;"><button type="submit" class="btn is-warning">Återställ spel</button></form>'
+    back_lank = f'<a href="/admin" class="btn is-secondary is-ghost">Tillbaka till adminstart</a>'
     
     return f'''
     <div class="action-buttons">
@@ -105,29 +105,29 @@ def create_script_references():
     '''
 
 def create_timer_controls(spel_id, remaining, timer_status):
-    """Skapa timer-kontroller med externa referenser"""
+    """Skapa timer-kontroller med design-systemets klasser"""
     return f'''
-    <div class="timer-container">
+    <div class="timer-wrap">
         <div class="margin-bottom-25">
             <h2>⏰ TID KVAR</h2>
-            <div id="timer">{remaining//60:02d}:{remaining%60:02d}</div>
+            <div id="timer" class="timer">{remaining//60:02d}:{remaining%60:02d}</div>
         </div>
         
         <div class="margin-20-0">
             <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
-                <button name="action" value="start" class="btn btn-primary">▶️ Starta</button>
-                <button name="action" value="pause" class="btn btn-warning">⏸️ Pausa</button>
-                <button name="action" value="reset" class="btn btn-danger">🔄 Återställ</button>
+                <button name="action" value="start" class="btn is-success">▶️ Starta</button>
+                <button name="action" value="pause" class="btn is-warning">⏸️ Pausa</button>
+                <button name="action" value="reset" class="btn is-danger">🔄 Återställ</button>
             </form>
         </div>
         
-        <div class="margin-top-20">
-            <span class="status {timer_status}">Status: {timer_status.capitalize()}</span>
+        <div class="timer-status">
+            <span class="badge {timer_status}">Status: {timer_status.capitalize()}</span>
         </div>
         
         <!-- Öppna timer i nytt fönster -->
         <div class="margin-top-15">
-            <button type="button" onclick="openTimerWindow('{spel_id}')" class="btn btn-secondary">🖥️ Öppna i nytt fönster</button>
+            <button type="button" onclick="openTimerWindow('{spel_id}')" class="btn is-secondary">🖥️ Öppna i nytt fönster</button>
         </div>
     </div>
     '''

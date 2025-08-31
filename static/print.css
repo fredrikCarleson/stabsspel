@@ -1,0 +1,243 @@
+/* ============================================================================
+   PRINT.CSS - OPTIMERADE UTKRIFTSSTILAR
+   Minimal fil endast för utskrift
+   ============================================================================ */
+
+/* ============================================================================
+   GRUNDLÄGGANDE UTKRIFTSSTILAR
+   ============================================================================ */
+
+/* Dölj onödiga element */
+button, .btn, .no-print, .modal, .tooltip, .action-buttons {
+  display: none !important;
+}
+
+/* Ta bort skuggor och bakgrundsfärger */
+* {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  background-image: none !important;
+}
+
+/* Förbättra läsbarhet */
+body {
+  font-size: 12pt;
+  line-height: 1.4;
+  color: black !important;
+  background: white !important;
+  font-family: "Times New Roman", Times, serif;
+}
+
+/* ============================================================================
+   KOMPONENTER FÖR UTKRIFT
+   ============================================================================ */
+
+/* KORT */
+.card, .activity-card, .order-card {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-bottom: 20px;
+  box-shadow: none;
+  border: 1px solid #ccc;
+  background: white !important;
+}
+
+.cards-container {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+/* TABELLER */
+.table, .backlog-table {
+  border: 1px solid #ccc;
+  box-shadow: none;
+  background: white;
+}
+
+.table th, .backlog-table th {
+  background: #f8f9fa !important;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+  border-bottom: 2px solid #ccc;
+  color: #333 !important;
+}
+
+.table td, .backlog-table td {
+  border-bottom: 1px solid #ccc;
+  color: #333 !important;
+}
+
+.table tbody tr:nth-child(even), .backlog-table tbody tr:nth-child(even) {
+  background: #f8f9fa !important;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+}
+
+.table tbody tr:hover, .backlog-table tbody tr:hover {
+  background: none !important;
+}
+
+/* HEADERS */
+.page-header, .backlog-header, .hero-section {
+  background: none !important;
+  color: black !important;
+  box-shadow: none;
+  border: 2px solid black;
+  margin-bottom: 20px;
+}
+
+.page-header h1, .backlog-header h1, .hero-section h1 {
+  color: black !important;
+  text-shadow: none;
+}
+
+.page-subtitle, .backlog-subtitle, .hero-section p {
+  color: #333 !important;
+}
+
+.section-header {
+  background: #f8f9fa !important;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+  border: 1px solid #ccc;
+}
+
+.section-header h3 {
+  color: #333 !important;
+}
+
+/* TIMER */
+.timer {
+  background: #f8f9fa !important;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+  color: #333 !important;
+  box-shadow: none;
+  border: 2px solid #ccc;
+}
+
+.timer h2 {
+  color: #333 !important;
+}
+
+.timer__display {
+  color: #333 !important;
+  text-shadow: none;
+  animation: none;
+}
+
+/* BADGES */
+.badge, .status-badge {
+  background: #f8f9fa !important;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+  color: #333 !important;
+  border: 1px solid #ccc;
+}
+
+/* NOTIFIKATIONER */
+.notification {
+  border: 1px solid black !important;
+  background: white !important;
+  color: black !important;
+}
+
+/* TEAM FÄRGER */
+.team--alfa, .team--bravo, .team--stt, .team--fm, .team--bs,
+.team--media, .team--sapo, .team--regeringen, .team--usa {
+  color: #333 !important;
+}
+
+.team__indicator {
+  border: 1px solid #ccc;
+}
+
+.team__indicator--alfa { background: #3498db !important; }
+.team__indicator--bravo { background: #2ecc71 !important; }
+.team__indicator--stt { background: #f1c40f !important; }
+.team__indicator--fm { background: #e74c3c !important; }
+.team__indicator--bs { background: #2c3e50 !important; }
+.team__indicator--media { background: #9b59b6 !important; }
+.team__indicator--sapo { background: #1e3a8a !important; }
+.team__indicator--regeringen { background: #6c757d !important; }
+.team__indicator--usa { background: #06b6d4 !important; }
+
+/* FORMULÄR */
+.form-group__input {
+  border: 1px solid #ccc;
+  background: #f8f9fa;
+  color: #333;
+}
+
+/* ============================================================================
+   SIDNUMMER OCH LAYOUT
+   ============================================================================ */
+
+@page {
+  margin: 1in;
+  size: A4;
+}
+
+@page :first {
+  margin-top: 1.5in;
+}
+
+/* Undvik sidbryt i viktiga element */
+.card, .activity-card, .order-card {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Undvik sidbryt före headers */
+h1, h2, h3 {
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+/* ============================================================================
+   TYPOGRAFI FÖR UTKRIFT
+   ============================================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Times New Roman", Times, serif;
+  color: #333 !important;
+}
+
+small, .text-muted {
+  font-size: 10pt;
+  color: #666 !important;
+}
+
+/* ============================================================================
+   SPECIFIKA OVERRIDES
+   ============================================================================ */
+
+/* Säkerställ att alla länkar visas som text */
+a {
+  color: black !important;
+  text-decoration: underline;
+}
+
+/* Dölj alla hover-effekter */
+*:hover {
+  background: inherit !important;
+  color: inherit !important;
+}
+
+/* Ta bort alla animationer */
+* {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Visa alla tab-innehåll */
+.tab-content {
+  display: block !important;
+}
+
+/* Visa alla accordion-innehåll */
+.accordion-content {
+  max-height: none !important;
+  padding: 20px !important;
+  display: block !important;
+}
