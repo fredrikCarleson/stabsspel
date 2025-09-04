@@ -53,7 +53,7 @@ function saveCheckboxState(checkboxId, checked) {
 function updateNextFasButton() {
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    const nextFasButton = document.getElementById('next_fas_button');
+    const nextFasButton = document.getElementById('next-fas-btn');
     
     if (nextFasButton) {
         nextFasButton.disabled = !allChecked;

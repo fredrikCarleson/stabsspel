@@ -260,10 +260,10 @@ def create_orderfas_checklist(spel_id, data):
         
         checklist_html += f'''
             <div class="team-order-row">
-                <label class="checklist-item">
+                <div class="checklist-item">
                     <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
                     <span class="team-status">{submitted_status} Ordrar från {lag}{submitted_text}</span>
-                </label>
+                </div>
                 <div class="team-actions">
                     {view_order_link}
                     {admin_cheat_link}
@@ -440,10 +440,10 @@ def create_diplomatifas_checklist(spel_id):
         checked_attr = "checked" if is_checked else ""
         
         checklist_html += f'''
-            <label class="checklist-item">
+            <div class="checklist-item">
                 <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateDiploNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
                 <span class="font-size-14 text-muted">{label}</span>
-            </label>
+            </div>
         '''
     
     checklist_html += f'''
