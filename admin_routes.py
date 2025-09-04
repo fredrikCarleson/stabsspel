@@ -212,7 +212,7 @@ def create_orderfas_checklist(spel_id, data):
             <div id="auto_fill_section" class="test-mode-section">
                 <h4 class="test-mode-title">🚀 Auto-fyll Test Data</h4>
                 <p class="test-mode-description">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
-                <button onclick="autoFillOrders()" class="btn is-warning is-sm">
+                <button onclick="autoFillOrders()" class="btn btn--warning is-sm">
                     🚀 Auto-fyll Alla Orders
                 </button>
             </div>
@@ -259,12 +259,16 @@ def create_orderfas_checklist(spel_id, data):
             '''
         
         checklist_html += f'''
-            <label class="checklist-item">
-                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
-                <span class="font-size-14 text-muted">{submitted_status} Ordrar från {lag}{submitted_text}</span>
-                {view_order_link}
-                {admin_cheat_link}
-            </label>
+            <div class="team-order-row">
+                <label class="checklist-item">
+                    <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                    <span class="team-status">{submitted_status} Ordrar från {lag}{submitted_text}</span>
+                </label>
+                <div class="team-actions">
+                    {view_order_link}
+                    {admin_cheat_link}
+                </div>
+            </div>
         '''
     
     checklist_html += f'''
@@ -274,7 +278,7 @@ def create_orderfas_checklist(spel_id, data):
         <div class="chatgpt-container" style="display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
             <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
             <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn is-info">
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn btn--info">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
@@ -315,10 +319,10 @@ def create_orderfas_checklist(spel_id, data):
         
         if (checkedCount === totalTeams) {{
             nextFasButton.disabled = false;
-            nextFasButton.className = 'btn is-success';
+            nextFasButton.className = 'btn btn--success';
         }} else {{
             nextFasButton.disabled = true;
-            nextFasButton.className = 'btn is-secondary';
+            nextFasButton.className = 'btn btn--secondary';
         }}
     }}
     
@@ -449,7 +453,7 @@ def create_diplomatifas_checklist(spel_id):
         <div class="chatgpt-container">
             <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
             <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn is-info">
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn btn--info">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
@@ -483,10 +487,10 @@ def create_diplomatifas_checklist(spel_id):
         
         if (check1 && check2 && check3) {{
             nextFasButton.disabled = false;
-            nextFasButton.className = 'btn is-info';
+            nextFasButton.className = 'btn btn--info';
         }} else {{
             nextFasButton.disabled = true;
-            nextFasButton.className = 'btn is-secondary';
+            nextFasButton.className = 'btn btn--secondary';
         }}
     }}
     
@@ -531,7 +535,7 @@ def create_resultatfas_checklist(spel_id):
         if i == 1:
             checklist_html += f'''
             <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/backlog" class="btn is-success is-sm">
+                <a href="/admin/{spel_id}/backlog" class="btn btn--success is-sm">
                     Uppdatera teamens arbete
                 </a>
             </div>
@@ -539,7 +543,7 @@ def create_resultatfas_checklist(spel_id):
         elif i == 3:
             checklist_html += f'''
             <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/poang" class="btn is-primary is-sm">
+                <a href="/admin/{spel_id}/poang" class="btn btn--primary is-sm">
                     Visa/ändra handlingspoäng
                 </a>
             </div>
@@ -571,10 +575,10 @@ def create_resultatfas_checklist(spel_id):
         
         if (check1 && check2 && check3) {{
             startButton.disabled = false;
-            startButton.className = 'btn is-primary is-lg';
+            startButton.className = 'btn btn--primary is-lg';
         }} else {{
             startButton.disabled = true;
-            startButton.className = 'btn is-secondary is-lg';
+            startButton.className = 'btn btn--secondary is-lg';
         }}
     }}
     
@@ -804,31 +808,31 @@ def create_team_overview(data):
     return overview_html
 
 def create_phase_progress_html(runda, fas):
-    """Skapa visuell fas-progress för aktuell runda"""
+    """Skapa visuell fas-progress för aktuell runda med design-system färger"""
     phases = ["Orderfas", "Diplomatifas", "Resultatfas"]
     
     progress_html = f'''
-    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;">🎯 Runda {runda} av 4</h3>
+    <div class="card">
+        <h3 style="margin: 0 0 15px 0; color: var(--c-text); font-size: 1.2em; font-weight: 600;">🎯 RUNDA {runda} AV 4</h3>
         <div style="display: flex; flex-wrap: wrap; gap: 10px;">
     '''
     
     for phase in phases:
         if phase == fas:
-            # Aktuell fas
+            # Current phase - use vibrant orange
             status_icon = "🔄"
-            status_class = "background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
+            status_class = f"background: #ea580c; color: white; border: 1px solid #c2410c;"
         elif phases.index(phase) < phases.index(fas):
-            # Slutförd fas
+            # Completed phase - use vibrant green
             status_icon = "✅"
-            status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
+            status_class = f"background: #16a34a; color: white; border: 1px solid #15803d;"
         else:
-            # Framtida fas (grydd ut)
+            # Future phase - use light gray
             status_icon = "⏳"
-            status_class = "background: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; opacity: 0.6;"
+            status_class = f"background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; opacity: 0.8;"
         
         progress_html += f'''
-        <div style="{status_class} padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500;">
+        <div style="{status_class} padding: 8px 12px; border-radius: var(--radius-8); font-size: 0.9em; font-weight: 500; transition: all 0.3s ease;">
             {status_icon} {phase}
         </div>
         '''
@@ -876,7 +880,7 @@ def admin_start():
     
     return f'''
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/design-system.css">
+        <link rel="stylesheet" href="/static/app.css">
         <link rel="stylesheet" href="/static/style.css">
         <link rel="stylesheet" href="/static/admin.css">
         <link rel="stylesheet" href="/static/print.css" media="print">
@@ -927,7 +931,7 @@ def admin_start():
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn is-primary is-lg" style="margin-top: 10px;">
+                        <button type="submit" class="btn btn--primary is-lg" style="margin-top: 10px;">
                             🚀 Starta nytt spel
                         </button>
                     </form>
@@ -953,11 +957,11 @@ def admin_start():
                                     <p style="margin: 5px 0 0 0; color: #adb5bd; font-size: 0.8em;">ID: {s["id"]}</p>
                                 </div>
                                 <div style="display: flex; gap: 10px;">
-                                    <a href="/admin/{s["id"]}" class="btn is-primary is-sm">
+                                    <a href="/admin/{s["id"]}" class="btn btn--primary is-sm">
                                         ▶️ Öppna
                                     </a>
                                     <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
-                                        <button type="submit" class="btn is-danger is-sm">
+                                        <button type="submit" class="btn btn--danger is-sm">
                                             🗑️ Ta bort
                                         </button>
                                     </form>
@@ -1097,7 +1101,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/design-system.css">
+            <link rel="stylesheet" href="/static/app.css">
             <link rel="stylesheet" href="/static/style.css">
             <link rel="stylesheet" href="/static/admin.css">
             <link rel="stylesheet" href="/static/print.css" media="print">
@@ -1160,9 +1164,9 @@ def admin_panel(spel_id):
     return add_no_cache_headers(response)
 
 def create_quarter_bar_html(quarters, current_round):
-    """Skapa kvartalsvisualisering"""
-    quarter_html = '<div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">'
-    quarter_html += '<h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.2em;">Kvartalsförlopp</h3>'
+    """Skapa kvartalsvisualisering med design-system färger"""
+    quarter_html = '<div class="card">'
+    quarter_html += '<h3 style="margin: 0 0 15px 0; color: var(--c-text); font-size: 1.2em; font-weight: 600;">KVARTALSFÖRLOPP</h3>'
     quarter_html += '<div style="display: flex; gap: 10px; align-items: center;">'
     
     for i, quarter in enumerate(quarters):
@@ -1170,17 +1174,20 @@ def create_quarter_bar_html(quarters, current_round):
         is_current = current_round == i + 1
         
         if is_current:
-            bg_color = "#3498db"
+            # Current quarter - use vibrant blue
+            bg_color = "#2563eb"
             text_color = "white"
-            border = "2px solid #2980b9"
+            border = "2px solid #1d4ed8"
         elif is_active:
-            bg_color = "#27ae60"
+            # Completed quarter - use vibrant green
+            bg_color = "#16a34a"
             text_color = "white"
-            border = "1px solid #229954"
+            border = "1px solid #15803d"
         else:
-            bg_color = "#ecf0f1"
-            text_color = "#7f8c8d"
-            border = "1px solid #bdc3c7"
+            # Future quarter - use light gray
+            bg_color = "#f1f5f9"
+            text_color = "#64748b"
+            border = "1px solid #e2e8f0"
         
         quarter_html += f'''
         <div style="
@@ -1188,12 +1195,13 @@ def create_quarter_bar_html(quarters, current_round):
             background: {bg_color};
             color: {text_color};
             padding: 12px 8px;
-            border-radius: 6px;
+            border-radius: var(--radius-8);
             text-align: center;
             font-weight: 600;
             font-size: 0.9em;
             border: {border};
             transition: all 0.3s ease;
+            cursor: default;
         ">
             {quarter["name"]}
         </div>
@@ -1236,7 +1244,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" disabled class="btn is-secondary is-lg">Starta ny runda</button>
+                    <button type="submit" id="start-ny-runda-btn" disabled class="btn btn--secondary is-lg">Starta ny runda</button>
                 </form>
             </div>
             '''
@@ -1244,7 +1252,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" class="btn is-primary is-lg">Starta ny runda</button>
+                    <button type="submit" id="start-ny-runda-btn" class="btn btn--primary is-lg">Starta ny runda</button>
                 </form>
             </div>
             '''
@@ -1254,7 +1262,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
-                    <button type="submit" class="btn is-danger is-lg">Avsluta spelet</button>
+                    <button type="submit" class="btn btn--danger is-lg">Avsluta spelet</button>
                 </form>
             </div>
             '''
@@ -1425,7 +1433,7 @@ def admin_poang(spel_id):
             <p class='page-subtitle'>Hantera teamens handlingspoäng och regeringsstöd</p>
         </div>
         {tabell}
-        <br><a href='/admin/{spel_id}' class='btn is-secondary is-ghost'>← Tillbaka till adminpanelen</a>
+        <br><a href='/admin/{spel_id}' class='btn btn--secondary is-ghost'>← Tillbaka till adminpanelen</a>
     </div>
     """
     return Markup(html)
@@ -1525,7 +1533,7 @@ def admin_aktivitetskort(spel_id):
     laglista = data["lag"]
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="stylesheet" href="/static/app.css">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/admin.css">
     <link rel="stylesheet" href="/static/print.css" media="print">
@@ -1696,7 +1704,7 @@ def admin_orderkort(spel_id):
     
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="stylesheet" href="/static/app.css">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/admin.css">
     <div class="container">
@@ -1708,7 +1716,7 @@ def admin_orderkort(spel_id):
         {round_selector}
         
         <div style="margin-top: 30px; text-align: center;">
-            <a href="/admin/{spel_id}" class="btn is-secondary is-ghost">Tillbaka till adminpanel</a>
+            <a href="/admin/{spel_id}" class="btn btn--secondary is-ghost">Tillbaka till adminpanel</a>
         </div>
     </div>
     '''
@@ -2299,7 +2307,7 @@ def admin_backlog(spel_id):
     # Bygg komplett HTML med förbättrad layout
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="stylesheet" href="/static/app.css">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/admin.css">
     <link rel="stylesheet" href="/static/print.css" media="print">
@@ -2315,8 +2323,8 @@ def admin_backlog(spel_id):
             </div>
             
             <div class="backlog-actions">
-                <button type="submit" class="btn is-success">💾 Spara ändringar</button>
-                <a href="/admin/{spel_id}" class="btn is-secondary is-ghost">← Tillbaka till adminpanelen</a>
+                <button type="submit" class="btn btn--success">💾 Spara ändringar</button>
+                <a href="/admin/{spel_id}" class="btn btn--secondary is-ghost">← Tillbaka till adminpanelen</a>
             </div>
         </form>
     </div>
@@ -2634,7 +2642,7 @@ Inga order har skickats in ännu.
                 </div>
             {% endif %}
             
-            <a href="/admin/{{ spel_id }}" class="btn is-secondary is-ghost">← Tillbaka till Admin Panel</a>
+            <a href="/admin/{{ spel_id }}" class="btn btn--secondary is-ghost">← Tillbaka till Admin Panel</a>
         </div>
     </div>
     
@@ -2689,10 +2697,10 @@ Inga order har skickats in ännu.
             const button = document.querySelector('.copy-button');
             const originalText = button.textContent;
             button.textContent = '✅ Kopierat!';
-            button.className = 'btn is-success';
+            button.className = 'btn btn--success';
             setTimeout(() => {
                 button.textContent = originalText;
-                button.className = 'btn is-info';
+                button.className = 'btn btn--info';
             }, 2000);
         }
     </script>
