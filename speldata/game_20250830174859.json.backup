@@ -259,8 +259,8 @@
     "Regeringen": "0mpWsmij382lYjiSRB-lLg_540dcb70e51c",
     "USA": "2y1H0w0HoCKM6oN6wtMTGw_2d9549c49686"
   },
-  "timer_status": "stopped",
-  "timer_start": null,
+  "timer_status": "running",
+  "timer_start": 1757019463,
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
@@ -619,5 +619,6 @@
       "status": "pågående"
     }
   ],
-  "checkbox_states": {}
+  "checkbox_states": {},
+  "fas_start_time": 1757019463
 }

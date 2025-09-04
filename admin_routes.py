@@ -1102,8 +1102,6 @@ def admin_panel(spel_id):
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="/static/app.css?v=5">
-            <link rel="stylesheet" href="/static/style.css">
-            <link rel="stylesheet" href="/static/admin.css">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 // Force cache refresh for JavaScript
@@ -2222,24 +2220,24 @@ def admin_backlog(spel_id):
                     <tr class="{status_class}">
                         <td class="{task_class}" style="width: 35%;"><strong>{uppgift["namn"]}</strong></td>
                         <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="estimaterade_{uppgift['id']}_Krav" value="{krav['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
-                            <span>/</span>
                             <input type="number" name="spenderade_{uppgift['id']}_Krav" value="{krav['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Krav" value="{krav['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
                         </td>
                         <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="estimaterade_{uppgift['id']}_Design" value="{design['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
-                            <span>/</span>
                             <input type="number" name="spenderade_{uppgift['id']}_Design" value="{design['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Design" value="{design['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
                         </td>
                         <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="estimaterade_{uppgift['id']}_Utveckling" value="{utveckling['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
-                            <span>/</span>
                             <input type="number" name="spenderade_{uppgift['id']}_Utveckling" value="{utveckling['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Utveckling" value="{utveckling['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
                         </td>
                         <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="estimaterade_{uppgift['id']}_Test" value="{test['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;">
-                            <span>/</span>
                             <input type="number" name="spenderade_{uppgift['id']}_Test" value="{test['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                            <span>/</span>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Test" value="{test['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
                         </td>
                         <td class="status-cell" style="width: 5%; text-align: center;">
                             <span class="status-badge">{status_icon} {total_spenderade}/{total_estimaterade}</span>
@@ -2283,9 +2281,9 @@ def admin_backlog(spel_id):
                     <tr class="{status_class}">
                         <td class="{task_class}"><strong>{uppgift["namn"]}{typ_text}</strong></td>
                         <td class="hp-inputs">
-                            <input type="number" name="estimaterade_{uppgift['id']}" value="{uppgift['estimaterade_hp']}" min="0" class="compact-input">
-                            <span>/</span>
                             <input type="number" name="spenderade_{uppgift['id']}" value="{uppgift['spenderade_hp']}" min="0" class="compact-input">
+                            <span>/</span>
+                            <input type="number" name="estimaterade_{uppgift['id']}" value="{uppgift['estimaterade_hp']}" min="0" class="compact-input" readonly>
                         </td>
                         <td class="status-cell">
                             <span class="status-badge">{status_icon} {uppgift['spenderade_hp']}/{uppgift['estimaterade_hp']}</span>
@@ -2308,8 +2306,6 @@ def admin_backlog(spel_id):
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/app.css?v=5">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="/static/admin.css">
     <link rel="stylesheet" href="/static/print.css" media="print">
     <div class="container">
         <div class="backlog-header">

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Diplomacy Checkbox Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .checklist-item { margin: 10px 0; }
+        .checkbox-large { margin-right: 10px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn--secondary { background: #6c757d; color: white; }
+        .btn--info { background: #17a2b8; color: white; }
+        .btn-disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>Test Diplomacy Checkbox Fix</h1>
+    
+    <div class="checklist-container">
+        <h3>📋 Checklista: Diplomatifas</h3>
+        <div class="checklist-content">
+            <div class="checklist-item">
+                <input type="checkbox" id="diplo_check1" name="diplo_check1" class="checkbox-large" onchange="updateDiploNextFasButton();">
+                <span>Läs igenom alla orders</span>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="diplo_check2" name="diplo_check2" class="checkbox-large" onchange="updateDiploNextFasButton();">
+                <span>Besluta om konsekvenser gällande handlingspoäng</span>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="diplo_check3" name="diplo_check3" class="checkbox-large" onchange="updateDiploNextFasButton();">
+                <span>Skapa nyheter</span>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled class="btn btn--secondary btn-disabled">Nästa fas</button>
+    </div>
+    
+    <div id="debug-info" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+        <h4>Debug Info:</h4>
+        <p>Button ID: <span id="button-id"></span></p>
+        <p>Button disabled: <span id="button-disabled"></span></p>
+        <p>Button class: <span id="button-class"></span></p>
+        <p>Checkboxes checked: <span id="checkboxes-checked"></span></p>
+    </div>
+
+    <script>
+    function updateDiploNextFasButton() {
+        const check1 = document.getElementById('diplo_check1').checked;
+        const check2 = document.getElementById('diplo_check2').checked;
+        const check3 = document.getElementById('diplo_check3').checked;
+        const nextFasButton = document.getElementById('diplo-next-fas-btn');
+        
+        console.log('Checkbox states:', { check1, check2, check3 });
+        console.log('Button element:', nextFasButton);
+        
+        if (check1 && check2 && check3) {
+            nextFasButton.disabled = false;
+            nextFasButton.className = 'btn btn--info';
+            console.log('Button enabled');
+        } else {
+            nextFasButton.disabled = true;
+            nextFasButton.className = 'btn btn--secondary btn-disabled';
+            console.log('Button disabled');
+        }
+        
+        // Update debug info
+        updateDebugInfo();
+    }
+    
+    function updateDebugInfo() {
+        const button = document.getElementById('diplo-next-fas-btn');
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        
+        document.getElementById('button-id').textContent = button.id;
+        document.getElementById('button-disabled').textContent = button.disabled;
+        document.getElementById('button-class').textContent = button.className;
+        document.getElementById('checkboxes-checked').textContent = `${checkedCount}/3`;
+    }
+    
+    // Initialize
+    window.onload = function() {
+        updateDiploNextFasButton();
+    };
+    </script>
+</body>
+</html>
