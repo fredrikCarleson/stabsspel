@@ -72,8 +72,8 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 8,
-        "slutford": false
+        "spenderade_hp": 15,
+        "slutford": true
       },
       {
         "id": "alfa_2",
@@ -105,7 +105,7 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 10,
-            "spenderade_hp": 7,
+            "spenderade_hp": 9,
             "slutford": false
           },
           {
@@ -208,7 +208,7 @@
         "id": "stt_2",
         "namn": "Infrastruktur för deklaration",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 2,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -216,7 +216,7 @@
         "id": "stt_3",
         "namn": "Ny säker arkitektur (poddar, WAF, brandväggar)",
         "estimaterade_hp": 20,
-        "spenderade_hp": 0,
+        "spenderade_hp": 4,
         "slutford": false,
         "typ": "en_gang"
       },

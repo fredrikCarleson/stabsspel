@@ -199,6 +199,16 @@ input[readonly], input:disabled, select:disabled, textarea:disabled {
   color: var(--c-muted);
 }
 
+/* Compact input for backlog tables */
+.compact-input {
+  width: 40px !important;
+  padding: 4px 6px !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  border: 1px solid var(--c-border) !important;
+  border-radius: 4px !important;
+}
+
 label { 
   display:block; 
   margin: 0 0 8px; 
@@ -942,6 +952,116 @@ button.lg {
   margin-bottom: 20px;
   border-bottom: 2px solid var(--c-border);
   padding-bottom: 10px;
+}
+
+/* ============================================================================
+   BACKLOG TABLE STYLES
+   ============================================================================ */
+.backlog-table-container {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.backlog-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-8);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+}
+
+.backlog-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  padding: 12px 8px;
+  border-bottom: 2px solid var(--c-border);
+  text-align: left;
+}
+
+.backlog-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: middle;
+}
+
+.backlog-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.team-backlog-card {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-12);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.team-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.team-info h3 {
+  margin: 0 0 8px 0;
+  color: var(--c-text);
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.team-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-muted);
+  min-width: 80px;
+  text-align: right;
+}
+
+.team-content {
+  padding: 20px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hp-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
 }
 
 /* ============================================================================
