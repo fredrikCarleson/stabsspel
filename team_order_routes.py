@@ -85,7 +85,10 @@ def team_enter_order(spel_id, token):
     team_max_hp = 25  # Default
     for team, hp in data.get("poang", {}).items():
         if team == team_name:
-            team_max_hp = hp.get("max_hp", 25)
+            team_max_hp = hp.get("aktuell", 25)
+            # Add regeringsstöd bonus if applicable
+            if hp.get("regeringsstod", False):
+                team_max_hp += 10
             break
     
     # Create response with anti-caching headers

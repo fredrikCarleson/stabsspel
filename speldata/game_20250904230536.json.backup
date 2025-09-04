@@ -4,8 +4,8 @@
   "plats": "b2",
   "antal_spelare": 27,
   "skapad": "2025-09-04T23:05:36.491159",
-  "fas": "Resultatfas",
-  "runda": 2,
+  "fas": "Orderfas",
+  "runda": 3,
   "lag": [
     "Alfa",
     "Bravo",
@@ -18,7 +18,53 @@
     "USA"
   ],
   "order": {},
-  "poang": {},
+  "poang": {
+    "Alfa": {
+      "bas": 25,
+      "aktuell": 22,
+      "regeringsstod": false
+    },
+    "Bravo": {
+      "bas": 25,
+      "aktuell": 29,
+      "regeringsstod": false
+    },
+    "STT": {
+      "bas": 25,
+      "aktuell": 25,
+      "regeringsstod": false
+    },
+    "FM": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "BS": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "Media": {
+      "bas": 15,
+      "aktuell": 15,
+      "regeringsstod": false
+    },
+    "SÄPO": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    },
+    "Regeringen": {
+      "bas": 10,
+      "aktuell": 10,
+      "regeringsstod": false
+    },
+    "USA": {
+      "bas": 12,
+      "aktuell": 12,
+      "regeringsstod": false
+    }
+  },
   "resultat": [],
   "backlog": {
     "Alfa": [
@@ -213,15 +259,7 @@
     "Regeringen": "NWDMrc-CCFTagTvteuRClg_2469989f789c",
     "USA": "Uk4atDxU6yYR1XIK--E_4Q_f7da9b377b23"
   },
-  "checkbox_states": {
-    "test_mode_toggle": true,
-    "diplo_check1": true,
-    "diplo_check2": true,
-    "diplo_check3": true,
-    "result_check1": true,
-    "result_check2": true,
-    "result_check3": true
-  },
+  "checkbox_states": {},
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
@@ -940,6 +978,11 @@
     {
       "runda": 2,
       "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 3,
+      "fas": "Orderfas",
       "status": "pågående"
     }
   ]

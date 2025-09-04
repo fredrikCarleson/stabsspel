@@ -881,8 +881,6 @@ def admin_start():
     return f'''
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/static/app.css?v=5">
-        <link rel="stylesheet" href="/static/style.css">
-        <link rel="stylesheet" href="/static/admin.css">
         <link rel="stylesheet" href="/static/print.css" media="print">
         <div class="container">
             <!-- Header Section -->
@@ -1424,7 +1422,7 @@ def admin_poang(spel_id):
     tabell += "</table><br><button type='submit'>Spara ändringar</button></form>"
     # Visa aktuell runda med konsistent header
     html = f"""
-    <link rel='stylesheet' href='/static/style.css'>
+    <link rel='stylesheet' href='/static/app.css?v=5'>
     <div class='container'>
         <div class='page-header'>
             <h1>Handlingspoäng – Runda {runda}</h1>
@@ -1532,8 +1530,6 @@ def admin_aktivitetskort(spel_id):
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/app.css?v=5">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="/static/admin.css">
     <link rel="stylesheet" href="/static/print.css" media="print">
     <div class="container">
     <h1>Aktivitetskort för spel {spel_id}</h1>
@@ -1703,8 +1699,6 @@ def admin_orderkort(spel_id):
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/app.css?v=5">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="/static/admin.css">
     <div class="container">
         <h1>Orderkort för spel {spel_id}</h1>
         <p><b>Datum:</b> {data["datum"]} <b>Plats:</b> {data["plats"]}</p>
