@@ -478,9 +478,9 @@ def startsida():
                 </div>
             </div>
             <div class="game-actions">
-                <a href="/admin/{s["id"]}" class="btn btn-primary">Öppna</a>
+                <a href="/admin/{s["id"]}" class="primary">Öppna</a>
                 <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
-                    <button type="submit" class="btn btn-danger">Ta bort</button>
+                    <button type="submit" class="danger">Ta bort</button>
                 </form>
             </div>
         </div>

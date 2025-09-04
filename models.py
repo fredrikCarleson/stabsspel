@@ -206,7 +206,7 @@ DATA_DIR = "speldata"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 FASER = ["Orderfas", "Diplomatifas", "Resultatfas"]
-MAX_RUNDA = 3
+MAX_RUNDA = 4
 
 def suggest_teams(num_players):
     # Grundteam som alltid är med

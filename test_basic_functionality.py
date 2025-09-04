@@ -38,7 +38,7 @@ class TestBasicFunctionality(unittest.TestCase):
         
         # Test MAX_RUNDA
         self.assertIsInstance(MAX_RUNDA, int)
-        self.assertEqual(MAX_RUNDA, 3)
+        self.assertEqual(MAX_RUNDA, 4)
     
     def test_create_new_game(self):
         """Test creating a new game with skapa_nytt_spel"""

@@ -84,10 +84,10 @@ def create_compact_header(data, lag_html):
 
 def create_action_buttons(spel_id):
     """Skapa knappar för åtgärder med modern gaming-inspired design system"""
-    poang_lank = f'<a href="/admin/{spel_id}/poang" class="btn btn--primary">📊 Visa/ändra handlingspoäng</a>'
-    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" class="btn btn--info">🖨️ Skriv ut aktivitetskort</a>'
-    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: inline;"><button type="submit" class="btn btn--warning" onclick="return confirm(\'Är du säker på att du vill återställa spelet? Detta går inte att ångra.\')">🔄 Återställ spel</button></form>'
-    back_lank = f'<a href="/admin" class="btn btn--secondary">← Tillbaka till adminstart</a>'
+    poang_lank = f'<a href="/admin/{spel_id}/poang" class="primary">📊 Visa/ändra handlingspoäng</a>'
+    aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" class="info">🖨️ Skriv ut aktivitetskort</a>'
+    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: inline;"><button type="submit" class="warning" onclick="return confirm(\'Är du säker på att du vill återställa spelet? Detta går inte att ångra.\')">🔄 Återställ spel</button></form>'
+    back_lank = f'<a href="/admin" class="secondary">← Tillbaka till adminstart</a>'
     
     return f'''
     <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 20px;">
@@ -115,9 +115,9 @@ def create_timer_controls(spel_id, remaining, timer_status):
         
         <div class="margin-20-0">
             <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
-                <button name="action" value="start" class="btn btn--success">▶️ Starta</button>
-                <button name="action" value="pause" class="btn btn--warning">⏸️ Pausa</button>
-                <button name="action" value="reset" class="btn btn--danger">🔄 Återställ</button>
+                <button name="action" value="start" class="success">▶️ Starta</button>
+                <button name="action" value="pause" class="warning">⏸️ Pausa</button>
+                <button name="action" value="reset" class="danger">🔄 Återställ</button>
             </form>
         </div>
         
@@ -127,7 +127,7 @@ def create_timer_controls(spel_id, remaining, timer_status):
         
         <!-- Öppna timer i nytt fönster -->
         <div class="margin-top-15">
-            <button type="button" onclick="openTimerWindow('{spel_id}')" class="btn btn--secondary">🖥️ Öppna i nytt fönster</button>
+            <button type="button" onclick="openTimerWindow('{spel_id}')" class="secondary">🖥️ Öppna i nytt fönster</button>
         </div>
     </div>
     '''

@@ -107,8 +107,8 @@ def team_beskrivning(spel_id, lag_namn):
         <body>
         <div class="container">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="window.print()" class="btn btn--secondary">Skriv ut</button>
-            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="btn btn--info">
+            <button onclick="window.print()" class="secondary">Skriv ut</button>
+            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="info">
                 Skriv ut orderkort
             </a>
         </div>

@@ -212,7 +212,7 @@ def create_orderfas_checklist(spel_id, data):
             <div id="auto_fill_section" class="test-mode-section">
                 <h4 class="test-mode-title">🚀 Auto-fyll Test Data</h4>
                 <p class="test-mode-description">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
-                <button onclick="autoFillOrders()" class="btn btn--warning is-sm">
+                <button onclick="autoFillOrders()" class="warning sm">
                     🚀 Auto-fyll Alla Orders
                 </button>
             </div>
@@ -278,7 +278,7 @@ def create_orderfas_checklist(spel_id, data):
         <div class="chatgpt-container" style="display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
             <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
             <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn btn--info">
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
@@ -286,7 +286,7 @@ def create_orderfas_checklist(spel_id, data):
     
     <div class="margin-20-0">
         <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
-            <button name="action" value="next_fas" id="next-fas-btn" disabled class="btn btn-secondary btn-disabled">Nästa fas</button>
+            <button name="action" value="next_fas" id="next-fas-btn" disabled class="secondary">Nästa fas</button>
         </form>
     </div>
     
@@ -453,7 +453,7 @@ def create_diplomatifas_checklist(spel_id):
         <div class="chatgpt-container">
             <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
             <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="btn btn--info">
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
                 📋 Visa Order Sammanfattning
             </a>
         </div>
@@ -461,7 +461,7 @@ def create_diplomatifas_checklist(spel_id):
     
     <div class="margin-20-0">
         <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
-            <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled class="btn btn-secondary btn-disabled">Nästa fas</button>
+            <button name="action" value="next_fas" id="diplo-next-fas-btn" disabled class="secondary">Nästa fas</button>
         </form>
     </div>
     
@@ -525,17 +525,17 @@ def create_resultatfas_checklist(spel_id):
         checked_attr = "checked" if is_checked else ""
         
         checklist_html += f'''
-            <label style="display: flex; align-items: center; margin: 12px 0; padding: 8px; border-radius: 6px; background: white; transition: background 0.2s;">
-                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} style="margin-right: 12px; transform: scale(1.2);" onchange="updateStartButton(); saveCheckboxState('{checkbox_id}', this.checked);">
-                <span style="font-size: 14px; color: #495057;">{label}</span>
-            </label>
+            <div class="checklist-item">
+                <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateStartButton(); saveCheckboxState('{checkbox_id}', this.checked);">
+                <span class="team-status">{label}</span>
+            </div>
         '''
         
         # Lägg till knappar efter specifika checkboxar
         if i == 1:
             checklist_html += f'''
             <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/backlog" class="btn btn--success is-sm">
+                <a href="/admin/{spel_id}/backlog" class="success sm">
                     Uppdatera teamens arbete
                 </a>
             </div>
@@ -543,7 +543,7 @@ def create_resultatfas_checklist(spel_id):
         elif i == 3:
             checklist_html += f'''
             <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/poang" class="btn btn--primary is-sm">
+                <a href="/admin/{spel_id}/poang" class="primary sm">
                     Visa/ändra handlingspoäng
                 </a>
             </div>
@@ -575,10 +575,10 @@ def create_resultatfas_checklist(spel_id):
         
         if (check1 && check2 && check3) {{
             startButton.disabled = false;
-            startButton.className = 'btn btn--primary is-lg';
+            startButton.className = 'primary lg';
         }} else {{
             startButton.disabled = true;
-            startButton.className = 'btn btn--secondary is-lg';
+            startButton.className = 'secondary lg';
         }}
     }}
     
@@ -902,34 +902,34 @@ def admin_start():
                     <form method="post" style="display: grid; gap: 15px;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div>
-                                <label for="datum" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">📅 Datum</label>
-                                <input type="date" name="datum" id="datum" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; transition: border-color 0.3s;">
+                                <label for="datum">📅 Datum</label>
+                                <input type="date" name="datum" id="datum" required>
                             </div>
                             <div>
-                                <label for="plats" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">📍 Plats</label>
-                                <input type="text" name="plats" id="plats" required placeholder="T.ex. Stockholm" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; transition: border-color 0.3s;">
+                                <label for="plats">📍 Plats</label>
+                                <input type="text" name="plats" id="plats" required placeholder="T.ex. Stockholm">
                             </div>
                         </div>
                         
                         <div>
-                            <label for="players_interval" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">👥 Antal spelare</label>
-                            <select name="players_interval" id="players_interval" onchange="updateTeamInfo()" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; background: white;">
+                            <label for="players_interval">👥 Antal spelare</label>
+                            <select name="players_interval" id="players_interval" onchange="updateTeamInfo()">
                                 {''.join([f'<option value="{val}">{label}</option>' for label, val in intervals])}
                             </select>
                         </div>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div>
-                                <label for="orderfas_min" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">⏱️ Orderfas (min)</label>
-                                <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;">
+                                <label for="orderfas_min">⏱️ Orderfas (min)</label>
+                                <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required>
                             </div>
                             <div>
-                                <label for="diplomatifas_min" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">🤝 Diplomatifas (min)</label>
-                                <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px;">
+                                <label for="diplomatifas_min">🤝 Diplomatifas (min)</label>
+                                <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required>
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn--primary is-lg" style="margin-top: 10px;">
+                        <button type="submit" class="primary lg" style="margin-top: 10px;">
                             🚀 Starta nytt spel
                         </button>
                     </form>
@@ -955,11 +955,11 @@ def admin_start():
                                     <p style="margin: 5px 0 0 0; color: #adb5bd; font-size: 0.8em;">ID: {s["id"]}</p>
                                 </div>
                                 <div style="display: flex; gap: 10px;">
-                                    <a href="/admin/{s["id"]}" class="btn btn--primary is-sm">
+                                    <a href="/admin/{s["id"]}" class="primary sm">
                                         ▶️ Öppna
                                     </a>
                                     <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
-                                        <button type="submit" class="btn btn--danger is-sm">
+                                        <button type="submit" class="danger sm">
                                             🗑️ Ta bort
                                         </button>
                                     </form>
@@ -1240,7 +1240,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" disabled class="btn btn--secondary is-lg">Starta ny runda</button>
+                    <button type="submit" id="start-ny-runda-btn" disabled class="secondary lg">Starta ny runda</button>
                 </form>
             </div>
             '''
@@ -1248,7 +1248,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
-                    <button type="submit" id="start-ny-runda-btn" class="btn btn--primary is-lg">Starta ny runda</button>
+                    <button type="submit" id="start-ny-runda-btn" class="primary lg">Starta ny runda</button>
                 </form>
             </div>
             '''
@@ -1258,7 +1258,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             timer_html += f'''
             <div style="margin: 25px 0; text-align: center;">
                 <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
-                    <button type="submit" class="btn btn--danger is-lg">Avsluta spelet</button>
+                    <button type="submit" class="danger lg">Avsluta spelet</button>
                 </form>
             </div>
             '''
@@ -1708,7 +1708,7 @@ def admin_orderkort(spel_id):
         {round_selector}
         
         <div style="margin-top: 30px; text-align: center;">
-            <a href="/admin/{spel_id}" class="btn btn--secondary is-ghost">Tillbaka till adminpanel</a>
+            <a href="/admin/{spel_id}" class="secondary ghost">Tillbaka till adminpanel</a>
         </div>
     </div>
     '''
@@ -2313,8 +2313,8 @@ def admin_backlog(spel_id):
             </div>
             
             <div class="backlog-actions">
-                <button type="submit" class="btn btn--success">💾 Spara ändringar</button>
-                <a href="/admin/{spel_id}" class="btn btn--secondary is-ghost">← Tillbaka till adminpanelen</a>
+                <button type="submit" class="success">💾 Spara ändringar</button>
+                <a href="/admin/{spel_id}" class="secondary ghost">← Tillbaka till adminpanelen</a>
             </div>
         </form>
     </div>
@@ -2632,7 +2632,7 @@ Inga order har skickats in ännu.
                 </div>
             {% endif %}
             
-            <a href="/admin/{{ spel_id }}" class="btn btn--secondary is-ghost">← Tillbaka till Admin Panel</a>
+            <a href="/admin/{{ spel_id }}" class="secondary ghost">← Tillbaka till Admin Panel</a>
         </div>
     </div>
     

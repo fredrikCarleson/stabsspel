@@ -531,7 +531,7 @@ class TestModels(unittest.TestCase):
         self.assertGreater(len(FASER), 0)
         
         self.assertIsInstance(MAX_RUNDA, int)
-        self.assertEqual(MAX_RUNDA, 3)
+        self.assertEqual(MAX_RUNDA, 4)
 
 if __name__ == '__main__':
     unittest.main() 
