@@ -1131,16 +1131,16 @@ def admin_panel(spel_id):
                 {create_action_buttons(spel_id)}
             </div>
             
-            <!-- Quarter Progress Bar -->
-            {quarter_bar_html}
-            
-            <!-- Phase Progress Bar -->
-            {phase_progress_html}
-            
-            <!-- Main Content Section -->
+            <!-- Timer Section (moved right after header) -->
             <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 {timer_html}
             </div>
+            
+            <!-- Quarter Progress Bar (moved above team overview) -->
+            {quarter_bar_html}
+            
+            <!-- Phase Progress Bar (moved above team overview) -->
+            {phase_progress_html}
             
             <!-- Team Overview Section -->
             {create_team_overview(data)}
