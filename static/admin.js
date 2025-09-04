@@ -32,7 +32,12 @@ function openTimerWindow(spelId) {
 
 // Checkbox state management
 function saveCheckboxState(checkboxId, checked) {
-    fetch('/admin/save_checkbox', {
+    // Extract spel_id from current URL
+    const currentPath = window.location.pathname;
+    const pathParts = currentPath.split('/');
+    const spelId = pathParts[2]; // Assuming URL structure is /admin/{spel_id}/...
+    
+    fetch(`/admin/${spelId}/save_checkbox`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -70,7 +75,7 @@ function updateNextFasButton() {
 function updateDiploNextFasButton() {
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    const nextFasButton = document.getElementById('diplo_next_fas_button');
+    const nextFasButton = document.getElementById('diplo-next-fas-btn');
     
     if (nextFasButton) {
         nextFasButton.disabled = !allChecked;

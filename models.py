@@ -294,17 +294,13 @@ def save_game_data(spel_id, data):
             if os.name == 'nt':  # Windows
                 # På Windows behöver vi hantera fil-låsning
                 try:
-                    # Försök att flytta direkt först
-                    if os.path.exists(filnamn):
-                        os.remove(filnamn)
-                    os.rename(temp_filnamn, filnamn)
+                    # Försök att flytta direkt först - använd os.replace för atomisk operation
+                    os.replace(temp_filnamn, filnamn)
                 except PermissionError:
                     # Om det misslyckas, vänta lite och försök igen
                     import time
                     time.sleep(retry_delay)
-                    if os.path.exists(filnamn):
-                        os.remove(filnamn)
-                    os.rename(temp_filnamn, filnamn)
+                    os.replace(temp_filnamn, filnamn)
             else:  # Unix/Linux
                 os.replace(temp_filnamn, filnamn)
             
@@ -327,6 +323,7 @@ def save_game_data(spel_id, data):
                     os.remove(temp_filnamn)
                 except:
                     pass
+            print(f"Error saving game data for {spel_id}: {e}")
             raise e
 
 def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min):
