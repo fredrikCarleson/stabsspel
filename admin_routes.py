@@ -890,17 +890,17 @@ def admin_start():
             </div>
             
             <!-- Main Content Grid -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+            <div class="admin-form-grid">
                 
                 <!-- New Game Form -->
-                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #667eea;">
-                    <h2 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center;">
-                        <span style="background: #667eea; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em;">➕</span>
+                <div class="admin-form-section">
+                    <h2>
+                        <span class="admin-form-section-icon">➕</span>
                         Starta nytt spel
                     </h2>
                     
-                    <form method="post" style="display: grid; gap: 15px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <form method="post">
+                        <div class="admin-form-grid">
                             <div>
                                 <label for="datum">📅 Datum</label>
                                 <input type="date" name="datum" id="datum" required>
@@ -911,14 +911,16 @@ def admin_start():
                             </div>
                         </div>
                         
-                        <div>
-                            <label for="players_interval">👥 Antal spelare</label>
-                            <select name="players_interval" id="players_interval" onchange="updateTeamInfo()">
-                                {''.join([f'<option value="{val}">{label}</option>' for label, val in intervals])}
-                            </select>
+                        <div class="admin-form-grid-single">
+                            <div>
+                                <label for="players_interval">👥 Antal spelare</label>
+                                <select name="players_interval" id="players_interval" onchange="updateTeamInfo()">
+                                    {''.join([f'<option value="{val}">{label}</option>' for label, val in intervals])}
+                                </select>
+                            </div>
                         </div>
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="admin-form-grid">
                             <div>
                                 <label for="orderfas_min">⏱️ Orderfas (min)</label>
                                 <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required>
@@ -929,18 +931,18 @@ def admin_start():
                             </div>
                         </div>
                         
-                        <button type="submit" class="primary lg" style="margin-top: 10px;">
+                        <button type="submit" class="primary lg">
                             🚀 Starta nytt spel
                         </button>
                     </form>
                     
-                    <div id="team-info" style="margin-top: 20px;"></div>
+                    <div id="team-info" class="mt-4"></div>
                 </div>
                 
                 <!-- Existing Games -->
-                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #28a745;">
-                    <h2 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center;">
-                        <span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em;">📋</span>
+                <div class="admin-form-section success">
+                    <h2>
+                        <span class="admin-form-section-icon">📋</span>
                         Befintliga spel ({len(spel)})
                     </h2>
                     
@@ -1121,18 +1123,18 @@ def admin_panel(spel_id):
             </script>
         </head>
         <body>
-            <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+            <div class="container">
             <!-- Header Section -->
-            <div class="page-header">
+            <div class="admin-panel-header">
                 <h1>Adminpanel för spel {spel_id}</h1>
-                <p class="page-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
-                <p class="page-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
-                <p class="page-subtitle">Lag: {lag_html}</p>
+                <p class="admin-panel-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
+                <p class="admin-panel-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
+                <p class="admin-panel-subtitle">Lag: {lag_html}</p>
                 {create_action_buttons(spel_id)}
             </div>
             
             <!-- Timer Section (moved right after header) -->
-            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div class="admin-content-card">
                 {timer_html}
             </div>
             

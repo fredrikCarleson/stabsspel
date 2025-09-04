@@ -90,7 +90,7 @@ def create_action_buttons(spel_id):
     back_lank = f'<a href="/admin" class="secondary">← Tillbaka till adminstart</a>'
     
     return f'''
-    <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 20px;">
+    <div class="admin-panel-actions">
         {poang_lank}
         {aktivitetskort_lank}
         {reset_lank}

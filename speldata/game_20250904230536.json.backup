@@ -21,13 +21,13 @@
   "poang": {
     "Alfa": {
       "bas": 25,
-      "aktuell": 22,
+      "aktuell": 26,
       "regeringsstod": false
     },
     "Bravo": {
       "bas": 25,
       "aktuell": 29,
-      "regeringsstod": true
+      "regeringsstod": false
     },
     "STT": {
       "bas": 25,
