@@ -101,15 +101,14 @@ def team_beskrivning(spel_id, lag_namn):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/design-system.css">
-            <link rel="stylesheet" href="/static/style.css">
-            <link rel="stylesheet" href="/static/admin.css">
+            <link rel="stylesheet" href="/static/app.css">
+            <link rel="stylesheet" href="/static/print.css">
         </head>
         <body>
         <div class="container">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="window.print()" class="btn is-secondary">Skriv ut</button>
-            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="btn is-info">
+            <button onclick="window.print()" class="btn btn--secondary">Skriv ut</button>
+            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="btn btn--info">
                 Skriv ut orderkort
             </a>
         </div>

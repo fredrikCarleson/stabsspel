@@ -1114,12 +1114,49 @@ a:hover {
   margin: 0;
   cursor: pointer;
   accent-color: var(--c-primary);
+  /* Ensure only one checkbox is visible */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: 2px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  position: relative;
+  /* Hide any potential duplicates */
+  box-shadow: none;
+  outline: none;
+}
+
+/* Hide any duplicate checkboxes that might be created by browser or CSS */
+.checklist-item input[type="checkbox"]:not(.checkbox-large) {
+  display: none !important;
+}
+
+/* Ensure only the first checkbox in each checklist item is visible */
+.checklist-item input[type="checkbox"]:nth-child(n+2) {
+  display: none !important;
+}
+
+/* Hide any emoji checkmarks that might be appearing */
+.checklist-item::before,
+.checklist-item::after,
+.team-status::before,
+.team-status::after {
+  display: none !important;
+}
+
+/* Hide any content that contains checkmark emojis */
+.checklist-item *:contains("✅"),
+.checklist-item *:contains("⏳") {
+  display: none !important;
 }
 
 .checkbox-large:checked {
   background-color: var(--c-primary);
   border-color: var(--c-primary);
 }
+
+/* Removed pseudo-element checkmark to prevent visual duplication */
 
 /* ============================================================================
    SAFELIST FÖR DYNAMISKA KLASSER

@@ -236,7 +236,7 @@ def create_orderfas_checklist(spel_id, data):
         
         # Check if team has submitted orders
         has_submitted = lag in team_orders and team_orders[lag].get("final", False)
-        submitted_status = "✅" if has_submitted else "⏳"
+        submitted_status = ""  # Removed emoji to prevent visual duplication
         submitted_text = " (Inskickad)" if has_submitted else " (Väntar)"
         
         # Create view order link if submitted
@@ -262,7 +262,7 @@ def create_orderfas_checklist(spel_id, data):
             <div class="team-order-row">
                 <div class="checklist-item">
                     <input type="checkbox" id="{checkbox_id}" name="{checkbox_id}" {checked_attr} class="checkbox-large" onchange="updateNextFasButton(); saveCheckboxState('{checkbox_id}', this.checked);">
-                    <span class="team-status">{submitted_status} Ordrar från {lag}{submitted_text}</span>
+                    <span class="team-status">Ordrar från {lag}{submitted_text}</span>
                 </div>
                 <div class="team-actions">
                     {view_order_link}
@@ -880,7 +880,7 @@ def admin_start():
     
     return f'''
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css">
+        <link rel="stylesheet" href="/static/app.css?v=5">
         <link rel="stylesheet" href="/static/style.css">
         <link rel="stylesheet" href="/static/admin.css">
         <link rel="stylesheet" href="/static/print.css" media="print">
@@ -1101,7 +1101,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css">
+            <link rel="stylesheet" href="/static/app.css?v=5">
             <link rel="stylesheet" href="/static/style.css">
             <link rel="stylesheet" href="/static/admin.css">
             <link rel="stylesheet" href="/static/print.css" media="print">
@@ -1299,13 +1299,13 @@ def checklist_status(spel_id):
         team_status = []
         for lag in data["lag"]:
             has_submitted = lag in team_orders and team_orders[lag].get("final", False)
-            submitted_status = "✅" if has_submitted else "⏳"
+            submitted_status = ""  # Removed emoji to prevent visual duplication
             submitted_text = " (Inskickad)" if has_submitted else " (Väntar)"
             
             team_status.append({
                 "team": lag,
                 "submitted": has_submitted,
-                "status_text": f"{submitted_status} Ordrar från {lag}{submitted_text}"
+                "status_text": f"Ordrar från {lag}{submitted_text}"
             })
         
         return {"team_status": team_status}
@@ -1533,7 +1533,7 @@ def admin_aktivitetskort(spel_id):
     laglista = data["lag"]
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/app.css">
+    <link rel="stylesheet" href="/static/app.css?v=5">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/admin.css">
     <link rel="stylesheet" href="/static/print.css" media="print">
@@ -1704,7 +1704,7 @@ def admin_orderkort(spel_id):
     
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/app.css">
+    <link rel="stylesheet" href="/static/app.css?v=5">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/admin.css">
     <div class="container">
@@ -2307,7 +2307,7 @@ def admin_backlog(spel_id):
     # Bygg komplett HTML med förbättrad layout
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/app.css">
+    <link rel="stylesheet" href="/static/app.css?v=5">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/admin.css">
     <link rel="stylesheet" href="/static/print.css" media="print">

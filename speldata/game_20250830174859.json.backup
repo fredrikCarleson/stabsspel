@@ -261,7 +261,31 @@
   },
   "timer_status": "stopped",
   "timer_start": null,
-  "team_orders": {},
+  "team_orders": {
+    "orders_round_1": {
+      "Alfa": {
+        "submitted_at": 1757018435.929174,
+        "phase": "Orderfas",
+        "round": 1,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757018425774,
+              "aktivitet": "safasda",
+              "syfte": "asdasdasd",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 0
+            }
+          ],
+          "timestamp": "2025-09-04T20:40:35.615Z"
+        }
+      }
+    }
+  },
   "timer_elapsed": 0,
   "avslutat": false,
   "fashistorik": [
