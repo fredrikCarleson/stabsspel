@@ -96,14 +96,8 @@ function toggleTestMode() {
     }
 }
 
-// Auto-fill functionality
-function autoFillOrders() {
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = true;
-    });
-    updateNextFasButton();
-}
+// Auto-fill functionality is handled inline in the HTML template
+// to ensure proper backend communication
 
 // Refresh functionality
 function refreshChecklist() {
