@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, make_response, jsonify
+from flask import Flask, send_from_directory, make_response, jsonify, request
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
@@ -14,6 +14,16 @@ app.register_blueprint(team_order_bp)
 
 # Configure for production
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# Add cache-busting headers for static files
+@app.after_request
+def after_request(response):
+    # Add cache-busting headers for static files
+    if request.endpoint and 'static' in request.endpoint:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 @app.route('/test_timer_maximize.html')
 def test_timer_maximize():
