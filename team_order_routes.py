@@ -3,7 +3,7 @@ Team order entry routes for Stabsspel
 Handles team-specific order entry with authorization and mobile-responsive design
 """
 
-from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify
+from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
 from models import validate_team_token, get_team_by_token, load_game_data, save_game_data
 import json
 import time
@@ -76,6 +76,8 @@ def team_enter_order(spel_id, token):
     orders_key = f"orders_round_{data['runda']}"
     team_orders = data.get("team_orders", {}).get(orders_key, {}).get(team_name)
     
+    # Orders loading logic (debug removed)
+    
     # Check if order is already submitted (final)
     is_submitted = team_orders and team_orders.get("final", False)
     
@@ -86,16 +88,23 @@ def team_enter_order(spel_id, token):
             team_max_hp = hp.get("max_hp", 25)
             break
     
-    return render_template_string(TEAM_ORDER_TEMPLATE, 
-                                 spel_id=spel_id, 
-                                 team_name=team_name, 
-                                 token=token,
-                                 data=data,
-                                 remaining_time=remaining_time,
-                                 team_max_hp=team_max_hp,
-                                 existing_orders=team_orders,
-                                 is_submitted=is_submitted,
-                                 format_time=format_time)
+    # Create response with anti-caching headers
+    html_content = render_template_string(TEAM_ORDER_TEMPLATE, 
+                                         spel_id=spel_id, 
+                                         team_name=team_name, 
+                                         token=token,
+                                         data=data,
+                                         remaining_time=remaining_time,
+                                         team_max_hp=team_max_hp,
+                                         existing_orders=team_orders,
+                                         is_submitted=is_submitted,
+                                         format_time=format_time)
+    
+    response = make_response(html_content)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @team_order_bp.route("/team/<spel_id>/<token>/save_order", methods=["POST"])
 def team_save_order(spel_id, token):
@@ -224,6 +233,9 @@ TEAM_ORDER_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Ange Order - {{ team_name }}</title>
     <style>
         * {
@@ -434,6 +446,28 @@ TEAM_ORDER_TEMPLATE = """
             border-top: 1px solid #e9ecef;
         }
         
+        .save-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 15px;
+        }
+        
+        .save-btn:hover {
+            background: #5a6268;
+        }
+        
+        .save-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
         .submit-btn {
             background: #28a745;
             color: white;
@@ -456,28 +490,53 @@ TEAM_ORDER_TEMPLATE = """
         }
         
         .status-message {
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .status-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        
+        .status-text {
+            font-size: 1rem;
         }
         
         .status-success {
-            background: #d4edda;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #28a745;
         }
         
         .status-error {
-            background: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border: 2px solid #dc3545;
         }
         
         .status-info {
-            background: #d1ecf1;
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
             color: #0c5460;
-            border: 1px solid #bee5eb;
+            border: 2px solid #17a2b8;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .hp-summary {
@@ -549,7 +608,7 @@ TEAM_ORDER_TEMPLATE = """
                 </div>
                 
                 <div class="submit-section">
-                    <button type="button" class="save-btn" onclick="saveOrder(false)" style="background: #6c757d; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-right: 15px; transition: all 0.3s; cursor: pointer;" {% if is_submitted %}disabled{% endif %}>
+                    <button type="button" class="save-btn" onclick="saveOrder(false)" {% if is_submitted %}disabled{% endif %}>
                         {% if is_submitted %}✅ Order Skickad{% else %}💾 Spara Order{% endif %}
                     </button>
                     <button type="submit" class="submit-btn" id="submitBtn" {% if is_submitted %}disabled{% endif %}>
@@ -571,7 +630,7 @@ TEAM_ORDER_TEMPLATE = """
         document.addEventListener('DOMContentLoaded', function() {
             initializeForm();
             startTimer();
-            startAutoSave();
+            // Removed auto-save functionality
             
             // Check if order is already submitted
             {% if is_submitted %}
@@ -582,11 +641,25 @@ TEAM_ORDER_TEMPLATE = """
         
         function initializeForm() {
             // Load existing orders if any
-            {% if existing_orders %}
-                activities = {{ existing_orders.orders | tojson }};
-            {% else %}
+            try {
+                {% if existing_orders %}
+                    console.log('Existing orders found:', {{ existing_orders | tojson }});
+                    const existingOrdersData = {{ existing_orders | tojson }};
+                    if (existingOrdersData && existingOrdersData.orders) {
+                        activities = existingOrdersData.orders.activities || [];
+                        console.log('Loaded activities:', activities);
+                    } else {
+                        console.log('No activities in existing orders');
+                        activities = [];
+                    }
+                {% else %}
+                    console.log('No existing orders found');
+                    activities = [];
+                {% endif %}
+            } catch (error) {
+                console.error('Error loading existing orders:', error);
                 activities = [];
-            {% endif %}
+            }
             
             renderActivities();
             updateHPSummary();
@@ -786,13 +859,18 @@ TEAM_ORDER_TEMPLATE = """
             });
         }
         
-        function startAutoSave() {
-            autoSaveInterval = setInterval(() => {
-                saveOrder(false);
-            }, 30000); // Auto-save every 30 seconds
-        }
+        // Auto-save functionality removed
         
         function saveOrder(isFinal = false, retryCount = 0) {
+            // Validate HP before saving
+            const maxHP = {{ team_max_hp }};
+            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp) || 0), 0);
+            
+            if (usedHP > maxHP) {
+                showStatus(`Du har använt ${usedHP} HP men har bara ${maxHP} HP tillgängliga!`, 'error');
+                return;
+            }
+            
             const orderData = {
                 activities: activities,
                 timestamp: new Date().toISOString()
@@ -815,11 +893,10 @@ TEAM_ORDER_TEMPLATE = """
                         showStatus('Order skickad framgångsrikt!', 'success');
                         document.getElementById('submitBtn').disabled = true;
                         document.getElementById('submitBtn').textContent = '✅ Order Skickad';
-                        // Also disable save button when order is submitted
+                        // Hide save button when order is submitted
                         const saveBtn = document.querySelector('.save-btn');
                         if (saveBtn) {
-                            saveBtn.disabled = true;
-                            saveBtn.textContent = '✅ Order Skickad';
+                            saveBtn.style.display = 'none';
                         }
                     } else {
                         showStatus('Order sparad framgångsrikt!', 'success');
@@ -868,12 +945,25 @@ TEAM_ORDER_TEMPLATE = """
         
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status-message');
-            statusDiv.innerHTML = `<div class="status-${type}">${message}</div>`;
             
-            if (type !== 'error') {
+            // Create modern status message
+            const statusClass = type === 'success' ? 'status-success' : 
+                               type === 'error' ? 'status-error' : 'status-info';
+            
+            statusDiv.innerHTML = `
+                <div class="status-message ${statusClass}">
+                    <div class="status-icon">
+                        ${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}
+                    </div>
+                    <div class="status-text">${message}</div>
+                </div>
+            `;
+            
+            // Auto-hide after 2 seconds for success messages
+            if (type === 'success') {
                 setTimeout(() => {
                     statusDiv.innerHTML = '';
-                }, 3000);
+                }, 2000);
             }
         }
         
@@ -890,21 +980,15 @@ TEAM_ORDER_TEMPLATE = """
                 button.disabled = true;
             });
             
-            // Update button texts
+            // Hide save button and update submit button
             const saveBtn = document.querySelector('.save-btn');
             const submitBtn = document.getElementById('submitBtn');
             if (saveBtn) {
-                saveBtn.textContent = '✅ Order Skickad';
-                saveBtn.style.background = '#28a745';
+                saveBtn.style.display = 'none';
             }
             if (submitBtn) {
                 submitBtn.textContent = '✅ Order Skickad';
                 submitBtn.style.background = '#28a745';
-            }
-            
-            // Stop auto-save
-            if (autoSaveInterval) {
-                clearInterval(autoSaveInterval);
             }
         }
         
@@ -916,7 +1000,6 @@ TEAM_ORDER_TEMPLATE = """
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
-            if (autoSaveInterval) clearInterval(autoSaveInterval);
             if (timerInterval) clearInterval(timerInterval);
         });
     </script>
