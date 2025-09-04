@@ -58,10 +58,10 @@ def team_beskrivning(spel_id, lag_namn):
                         <img src="{qr_code_data}" alt="QR Code" style="width: 120px; height: 120px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
                     <div style="text-align: left;">
-                        <p style="margin: 0 0 10px 0; font-weight: 600; color: #2c3e50;">Skanna QR-koden eller klicka på länken:</p>
-                        <a href="{team_order_url}" target="_blank" style="display: inline-block; background: #28a745; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                            📋 Ange Order
-                        </a>
+                        <p style="margin: 0 0 10px 0; font-weight: 600; color: #2c3e50;">Skanna QR-koden eller gå till:</p>
+                        <p style="margin: 0; font-family: monospace; font-size: 14px; color: #2c3e50; word-break: break-all; background: white; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            {full_url}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -91,11 +91,21 @@ def team_beskrivning(spel_id, lag_namn):
         </div>
         '''
     # Förbättrad utskriftsvänlig och lättläst CSS
-    return f'''
-        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/design-system.css">
-        <link rel="stylesheet" href="/static/style.css">
-        <link rel="stylesheet" href="/static/admin.css">
+    html_content = f'''
+        <!DOCTYPE html>
+        <html lang="sv">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="Expires" content="0">
+            <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="/static/design-system.css">
+            <link rel="stylesheet" href="/static/style.css">
+            <link rel="stylesheet" href="/static/admin.css">
+        </head>
+        <body>
         <div class="container">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <button onclick="window.print()" class="btn is-secondary">Skriv ut</button>
@@ -108,7 +118,16 @@ def team_beskrivning(spel_id, lag_namn):
         <div>{Markup(text_html)}</div>
         {img_html}
         </div>
+        </body>
+        </html>
     '''
+    
+    # Skapa response med anti-caching headers
+    response = make_response(html_content)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @team_bp.route("/team/<spel_id>/<lag_namn>/orderkort")
 def team_orderkort(spel_id, lag_namn):
