@@ -230,20 +230,20 @@ def test_css():
         <div class="card">
             <h4>Knappvarianter</h4>
             <div class="flex-wrap">
-                <button class="btn btn--primary">Primär</button>
-                <button class="btn btn--success">Framgång</button>
-                <button class="btn btn--warning">Varning</button>
-                <button class="btn btn--danger">Farlig</button>
-                <button class="btn btn--secondary">Sekundär</button>
-                <button class="btn btn--info">Info</button>
-                <button class="btn btn--ghost">Transparent</button>
+                <button class="primary">Primär</button>
+                <button class="success">Framgång</button>
+                <button class="warning">Varning</button>
+                <button class="danger">Farlig</button>
+                <button class="secondary">Sekundär</button>
+                <button class="info">Info</button>
+                <button class="ghost">Transparent</button>
             </div>
             
             <h4 class="mt-4">Knappstorlekar</h4>
             <div class="flex-wrap">
-                <button class="btn btn--primary btn--sm">Liten</button>
-                <button class="btn btn--primary">Normal</button>
-                <button class="btn btn--primary btn--lg">Stor</button>
+                <button class="primary sm">Liten</button>
+                <button class="primary">Normal</button>
+                <button class="primary lg">Stor</button>
             </div>
         </div>
 
@@ -253,10 +253,10 @@ def test_css():
         
         <div class="card">
             <div class="flex-wrap">
-                <span class="badge badge--success">Framgång</span>
-                <span class="badge badge--warning">Varning</span>
-                <span class="badge badge--danger">Farlig</span>
-                <span class="badge badge--muted">Dämpad</span>
+                <button class="success sm">Framgång</button>
+                <button class="warning sm">Varning</button>
+                <button class="danger sm">Farlig</button>
+                <button class="secondary sm">Dämpad</button>
             </div>
         </div>
 
@@ -266,20 +266,20 @@ def test_css():
         
         <div class="card">
             <div class="flex-wrap">
-                <div class="team team--alfa">
-                    <span class="team__indicator team__indicator--alfa"></span>
+                <div class="team alfa">
+                    <span class="team-indicator alfa"></span>
                     Alfa
                 </div>
-                <div class="team team--bravo">
-                    <span class="team__indicator team__indicator--bravo"></span>
+                <div class="team bravo">
+                    <span class="team-indicator bravo"></span>
                     Bravo
                 </div>
-                <div class="team team--stt">
-                    <span class="team__indicator team__indicator--stt"></span>
+                <div class="team stt">
+                    <span class="team-indicator stt"></span>
                     STT
                 </div>
-                <div class="team team--fm">
-                    <span class="team__indicator team__indicator--fm"></span>
+                <div class="team fm">
+                    <span class="team-indicator fm"></span>
                     FM
                 </div>
             </div>
@@ -291,7 +291,7 @@ def test_css():
         
         <div class="timer">
             <h2>Tid kvar</h2>
-            <div class="timer__display">12:34:56</div>
+            <div class="timer-display">12:34:56</div>
         </div>
 
         <div class="section-header">
@@ -299,39 +299,41 @@ def test_css():
         </div>
         
         <div class="card">
-            <div class="form-group">
-                <label class="form-group__label">Namn</label>
-                <input class="form-group__input" type="text" placeholder="Ange namn">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-group__label">E-post</label>
-                <input class="form-group__input" type="email" placeholder="ange@email.se">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-group__label">Meddelande</label>
-                <textarea class="form-group__input" rows="4" placeholder="Skriv ditt meddelande"></textarea>
-            </div>
+            <form>
+                <div>
+                    <label>Namn</label>
+                    <input type="text" placeholder="Ange namn">
+                </div>
+                
+                <div>
+                    <label>E-post</label>
+                    <input type="email" placeholder="ange@email.se">
+                </div>
+                
+                <div>
+                    <label>Meddelande</label>
+                    <textarea rows="4" placeholder="Skriv ditt meddelande"></textarea>
+                </div>
+            </form>
         </div>
 
         <div class="section-header">
             <h3>Notifikationer</h3>
         </div>
         
-        <div class="notification notification--success">
+        <div class="notification success">
             Detta är en framgångsnotifikation
         </div>
         
-        <div class="notification notification--warning">
+        <div class="notification warning">
             Detta är en varningsnotifikation
         </div>
         
-        <div class="notification notification--error">
+        <div class="notification error">
             Detta är en felnotifikation
         </div>
         
-        <div class="notification notification--info">
+        <div class="notification info">
             Detta är en informationsnotifikation
         </div>
 
@@ -340,7 +342,7 @@ def test_css():
         </div>
         
         <div class="card">
-            <table class="table">
+            <table>
                 <thead>
                     <tr>
                         <th>Team</th>
@@ -351,23 +353,23 @@ def test_css():
                 <tbody>
                     <tr>
                         <td>
-                            <div class="team team--alfa">
-                                <span class="team__indicator team__indicator--alfa"></span>
+                            <div class="team alfa">
+                                <span class="team-indicator alfa"></span>
                                 Alfa
                             </div>
                         </td>
                         <td>150</td>
-                        <td><span class="badge badge--success">Aktiv</span></td>
+                        <td><button class="success sm">Aktiv</button></td>
                     </tr>
                     <tr>
                         <td>
-                            <div class="team team--bravo">
-                                <span class="team__indicator team__indicator--bravo"></span>
+                            <div class="team bravo">
+                                <span class="team-indicator bravo"></span>
                                 Bravo
                             </div>
                         </td>
                         <td>120</td>
-                        <td><span class="badge badge--warning">Väntar</span></td>
+                        <td><button class="warning sm">Väntar</button></td>
                     </tr>
                 </tbody>
             </table>
@@ -401,12 +403,12 @@ def test_css():
             <h3>Kortvarianter</h3>
         </div>
         
-        <div class="card card--elevated">
+        <div class="card elevated">
             <h4>Upphöjt kort</h4>
             <p>Detta kort har en större skugga.</p>
         </div>
         
-        <div class="card card--interactive">
+        <div class="card interactive">
             <h4>Interaktivt kort</h4>
             <p>Detta kort har hover-effekter.</p>
         </div>

@@ -1,6 +1,6 @@
 /* ============================================================================
-   APP.CSS - KONSOLIDERAD DESIGN SYSTEM
-   Ersätter design-system.css, style.css och admin.css
+   APP.CSS - REFAKTORERAD VERSION
+   Bygger på bas-element istället för många custom-klasser
    
    IMPORTERA I HTML:
    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -8,14 +8,10 @@
    <link rel="stylesheet" href="/static/print.css" media="print">
    
    ANVÄNDNING:
-   - Knappar: .btn + .btn--primary/.btn--success/.btn--warning/.btn--danger/.btn--secondary/.btn--info/.btn--ghost
-   - Storlekar: .btn--sm/.btn--lg
-   - Tabeller: .table
-   - Timer: .timer
-   - Badges: .badge + .badge--success/.badge--warning/.badge--danger/.badge--muted
-   - Team-färger: .team + .team--[name]
-   - Kort: .card
-   - Formulär: .form-group
+   - Bas-element: button, input, table, h1-h6, p, form, label, a
+   - Utility-klasser: .primary, .success, .warning, .danger, .info, .secondary
+   - Storlekar: .sm, .lg
+   - Layout: .container, .card, .flex, .grid
    ============================================================================ */
 
 /* ============================================================================
@@ -70,39 +66,43 @@ html, body {
   color: var(--c-text);
   background: var(--c-bg);
   line-height: 1.6;
+  margin: 0;
+  padding: 0;
 }
 
-/* Rubriker */
-.h1, h1 {
+/* Rubriker - bas-element */
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-size: clamp(32px, 5vw, 56px);
-  letter-spacing: 0.5px;
-  margin: 0.2em 0 0.6em;
   font-weight: 600;
   color: var(--c-text);
-}
-
-.h2, h2 {
-  font-family: var(--font-display);
-  font-size: clamp(24px, 3.2vw, 40px);
-  letter-spacing: 0.4px;
   margin: 0.2em 0 0.6em;
-  font-weight: 600;
-  color: var(--c-text);
-}
-
-.h3, h3 {
-  font-family: var(--font-display);
-  font-size: clamp(20px, 2.8vw, 32px);
   letter-spacing: 0.3px;
-  margin: 0.2em 0 0.6em;
-  font-weight: 600;
+}
+
+h1 { font-size: clamp(32px, 5vw, 56px); letter-spacing: 0.5px; }
+h2 { font-size: clamp(24px, 3.2vw, 40px); letter-spacing: 0.4px; }
+h3 { font-size: clamp(20px, 2.8vw, 32px); }
+h4 { font-size: 1.2em; }
+h5 { font-size: 1.1em; }
+h6 { font-size: 1em; }
+
+/* Paragraftext */
+p {
+  margin: 0 0 1em;
   color: var(--c-text);
 }
 
-.h4, h4 { font-size: 1.2em; }
-.h5, h5 { font-size: 1.1em; }
-.h6, h6 { font-size: 1em; }
+/* Länkar */
+a {
+  color: var(--c-primary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--c-primary-strong);
+  text-decoration: underline;
+}
 
 /* Container */
 .container {
@@ -112,11 +112,11 @@ html, body {
 }
 
 /* ============================================================================
-   KOMPONENTER
+   FORMULÄR ELEMENT - BAS ELEMENT
    ============================================================================ */
 
-/* KNAPPAR - MODERN GAMING-INSPIRED DESIGN */
-.btn {
+/* Knappar - bas-element */
+button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -132,120 +132,180 @@ html, body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.2s ease;
-  text-decoration: none !important; /* Remove all underlines */
+  text-decoration: none !important;
   position: relative;
   overflow: hidden;
 }
 
-.btn:hover {
+button:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.btn:active {
+button:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.btn:disabled {
+button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Varianter - Gaming-inspired colors */
-.btn--primary { 
+/* Input, select, textarea - bas-element */
+input, select, textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid var(--c-border);
+  border-radius: var(--radius-8);
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+  font-family: var(--font-ui);
+  background: var(--c-surface);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Labels */
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--c-text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Formulär */
+form {
+  display: grid;
+  gap: 20px;
+}
+
+/* ============================================================================
+   TABELLER - BAS ELEMENT
+   ============================================================================ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--c-surface);
+  border-radius: var(--radius-8);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+  margin: 16px 0;
+}
+
+th, td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--c-border);
+  text-align: left;
+}
+
+th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+tbody tr:hover {
+  background: #f1f3f5;
+}
+
+/* ============================================================================
+   UTILITY KLASSER - MINIMALA
+   ============================================================================ */
+
+/* Färgvarianter för knappar */
+button.primary { 
   background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
 }
-.btn--primary:hover {
+button.primary:hover {
   background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
   box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
 }
 
-.btn--success { 
+button.success { 
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
-.btn--success:hover {
+button.success:hover {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
-.btn--warning { 
+button.warning { 
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
-.btn--warning:hover {
+button.warning:hover {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
-.btn--danger { 
+button.danger { 
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
-.btn--danger:hover {
+button.danger:hover {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-.btn--info { 
+button.info { 
   background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
 }
-.btn--info:hover {
+button.info:hover {
   background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
   box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
 }
 
-.btn--secondary { 
+button.secondary { 
   background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
 }
-.btn--secondary:hover {
+button.secondary:hover {
   background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
   box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
 }
 
-.btn--ghost {
+button.ghost {
   background: transparent;
   color: #374151;
   border: 2px solid #d1d5db;
 }
-.btn--ghost:hover { 
+button.ghost:hover { 
   background: #f9fafb;
   border-color: #9ca3af;
   color: #111827;
 }
 
 /* Storlekar */
-.btn--sm {
+button.sm {
   height: 34px;
   min-width: 72px;
   padding: 0 14px;
   font-size: 13px;
 }
 
-.btn--lg {
+button.lg {
   height: 48px;
   min-width: 104px;
   padding: 0 24px;
   font-size: 16px;
 }
 
-/* BADGES */
-.badge {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font: 700 12px/1 var(--font-ui);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: #fff;
-}
+/* ============================================================================
+   LAYOUT KOMPONENTER
+   ============================================================================ */
 
-.badge--success { background: var(--c-success); }
-.badge--warning { background: var(--c-warning); }
-.badge--danger { background: var(--c-danger); }
-.badge--muted { background: var(--c-secondary); }
-
-/* KORT */
+/* Kort */
 .card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
@@ -255,53 +315,21 @@ html, body {
   margin-bottom: 16px;
 }
 
-.card--elevated {
+.card.elevated {
   box-shadow: var(--shadow-md);
 }
 
-.card--interactive {
+.card.interactive {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
 }
 
-.card--interactive:hover {
+.card.interactive:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
 
-/* TABELLER */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: var(--radius-8);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  font-size: 14px;
-  margin: 16px 0;
-}
-
-.table th, .table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--c-border);
-  text-align: left;
-}
-
-.table th {
-  background: #f8f9fa;
-  font-weight: 600;
-  color: #495057;
-}
-
-.table tbody tr:nth-child(even) {
-  background: #fafbfc;
-}
-
-.table tbody tr:hover {
-  background: #f1f3f5;
-}
-
-/* TIMER */
+/* Timer */
 .timer {
   text-align: center;
   margin: 30px 0;
@@ -317,9 +345,10 @@ html, body {
   font-family: var(--font-display);
   letter-spacing: 0.6px;
   text-transform: uppercase;
+  color: white;
 }
 
-.timer__display {
+.timer-display {
   font-family: var(--font-display);
   font-size: clamp(44px, 8vw, 96px);
   font-variant-numeric: tabular-nums;
@@ -330,18 +359,18 @@ html, body {
   transition: all 0.3s ease;
 }
 
-.timer__display--warning {
+.timer-display.warning {
   color: var(--c-warning) !important;
   animation: pulse-warning 1s infinite;
 }
 
-.timer__display--danger {
+.timer-display.danger {
   color: var(--c-danger) !important;
   animation: pulse-danger 0.5s infinite;
 }
 
 /* Maximized timer */
-.timer--maximized {
+.timer.maximized {
   position: fixed;
   top: 0;
   left: 0;
@@ -353,73 +382,12 @@ html, body {
   padding: 0;
 }
 
-.timer--maximized .timer__display {
+.timer.maximized .timer-display {
   font-size: 15vw;
 }
 
-.timer--maximized h2 {
+.timer.maximized h2 {
   font-size: 3vw;
-}
-
-/* FORMULÄR */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group__label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--c-text);
-  font-weight: 600;
-}
-
-.form-group__input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid var(--c-border);
-  border-radius: var(--radius-8);
-  font-size: 14px;
-  transition: border-color 0.3s ease;
-  box-sizing: border-box;
-  font-family: var(--font-ui);
-}
-
-.form-group__input:focus {
-  outline: none;
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* NOTIFIKATIONER */
-.notification {
-  padding: 15px 20px;
-  border-radius: var(--radius-8);
-  margin: 15px 0;
-  border-left: 4px solid;
-}
-
-.notification--success {
-  background: #d4edda;
-  color: #155724;
-  border-left-color: var(--c-success);
-}
-
-.notification--error {
-  background: #f8d7da;
-  color: #721c24;
-  border-left-color: var(--c-danger);
-}
-
-.notification--warning {
-  background: #fff3cd;
-  color: #856404;
-  border-left-color: var(--c-warning);
-}
-
-.notification--info {
-  background: #d1ecf1;
-  color: #0c5460;
-  border-left-color: var(--c-info);
 }
 
 /* ============================================================================
@@ -431,7 +399,7 @@ html, body {
   gap: 8px;
 }
 
-.team__indicator {
+.team-indicator {
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -440,38 +408,58 @@ html, body {
 }
 
 /* Team-specifika färger */
-.team--alfa { color: var(--t-alfa); }
-.team--bravo { color: var(--t-bravo); }
-.team--stt { color: var(--t-stt); }
-.team--fm { color: var(--t-fm); }
-.team--bs { color: var(--t-bs); }
-.team--media { color: var(--t-media); }
-.team--sapo { color: var(--t-sapo); }
-.team--regeringen { color: var(--t-reger); }
-.team--usa { color: var(--t-usa); }
+.team.alfa { color: var(--t-alfa); }
+.team.bravo { color: var(--t-bravo); }
+.team.stt { color: var(--t-stt); }
+.team.fm { color: var(--t-fm); }
+.team.bs { color: var(--t-bs); }
+.team.media { color: var(--t-media); }
+.team.sapo { color: var(--t-sapo); }
+.team.regeringen { color: var(--t-reger); }
+.team.usa { color: var(--t-usa); }
 
-.team__indicator--alfa { background: var(--t-alfa); }
-.team__indicator--bravo { background: var(--t-bravo); }
-.team__indicator--stt { background: var(--t-stt); }
-.team__indicator--fm { background: var(--t-fm); }
-.team__indicator--bs { background: var(--t-bs); }
-.team__indicator--media { background: var(--t-media); }
-.team__indicator--sapo { background: var(--t-sapo); }
-.team__indicator--regeringen { background: var(--t-reger); }
-.team__indicator--usa { background: var(--t-usa); }
+.team-indicator.alfa { background: var(--t-alfa); }
+.team-indicator.bravo { background: var(--t-bravo); }
+.team-indicator.stt { background: var(--t-stt); }
+.team-indicator.fm { background: var(--t-fm); }
+.team-indicator.bs { background: var(--t-bs); }
+.team-indicator.media { background: var(--t-media); }
+.team-indicator.sapo { background: var(--t-sapo); }
+.team-indicator.regeringen { background: var(--t-reger); }
+.team-indicator.usa { background: var(--t-usa); }
 
 /* ============================================================================
-   LÄNKAR
+   NOTIFIKATIONER
    ============================================================================ */
-a {
-  color: var(--c-primary);
-  text-decoration: none;
-  transition: color 0.3s ease;
+.notification {
+  padding: 15px 20px;
+  border-radius: var(--radius-8);
+  margin: 15px 0;
+  border-left: 4px solid;
 }
 
-a:hover {
-  color: var(--c-primary-strong);
-  text-decoration: underline;
+.notification.success {
+  background: #d4edda;
+  color: #155724;
+  border-left-color: var(--c-success);
+}
+
+.notification.error {
+  background: #f8d7da;
+  color: #721c24;
+  border-left-color: var(--c-danger);
+}
+
+.notification.warning {
+  background: #fff3cd;
+  color: #856404;
+  border-left-color: var(--c-warning);
+}
+
+.notification.info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border-left-color: var(--c-info);
 }
 
 /* ============================================================================
@@ -516,7 +504,7 @@ a:hover {
 }
 
 /* ============================================================================
-   UTILITY KLASSER
+   UTILITY KLASSER - LAYOUT
    ============================================================================ */
 /* Text utilities */
 .text-center { text-align: center; }
@@ -552,9 +540,20 @@ a:hover {
 .d-flex { display: flex; }
 
 /* Flex utilities */
+.flex { display: flex; }
 .flex-center { display: flex; align-items: center; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .flex-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Grid utilities */
+.grid { display: grid; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-auto { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 1rem; }
+.gap-4 { gap: 1.5rem; }
 
 /* ============================================================================
    ANIMATIONER
@@ -598,24 +597,24 @@ a:hover {
   h2 { font-size: 1.5em; }
   h3 { font-size: 1.2em; }
   
-  .btn {
+  button {
     padding: 10px 20px;
     font-size: 13px;
   }
   
-  .table {
+  table {
     font-size: 13px;
   }
   
-  .table th, .table td {
+  th, td {
     padding: 8px 12px;
   }
   
-  .timer--maximized .timer__display {
+  .timer.maximized .timer-display {
     font-size: 20vw;
   }
   
-  .timer--maximized h2 {
+  .timer.maximized h2 {
     font-size: 5vw;
   }
 }
@@ -624,14 +623,14 @@ a:hover {
    TILLGÄNGLIGHET
    ============================================================================ */
 @media (prefers-reduced-motion: reduce) {
-  .btn, .timer__display, .card--interactive, .fade-in {
+  button, .timer-display, .card.interactive, .fade-in {
     transition: none;
     animation: none;
   }
 }
 
 /* ============================================================================
-   SIDSPECIFIKA KOMPONENTER
+   SIDSPECIFIKA KOMPONENTER (behålls för bakåtkompatibilitet)
    ============================================================================ */
 
 /* Hero section */
@@ -649,12 +648,14 @@ a:hover {
   font-size: 3.5em;
   margin-bottom: 20px;
   text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  color: white;
 }
 
 .hero-section p {
   font-size: 1.2em;
   opacity: 0.9;
   margin-bottom: 30px;
+  color: white;
 }
 
 /* Team description */
@@ -764,271 +765,6 @@ a:hover {
   padding-bottom: 10px;
 }
 
-/* Enhanced form groups */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--c-text);
-  font-weight: 600;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid var(--c-border);
-  border-radius: 8px;
-  font-size: 14px;
-  transition: border-color 0.3s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* Enhanced notifications */
-.notification {
-  padding: 15px 20px;
-  border-radius: 8px;
-  margin: 15px 0;
-  border-left: 4px solid;
-}
-
-.notification.success {
-  background: #d4edda;
-  color: #155724;
-  border-left-color: var(--c-success);
-}
-
-.notification.error {
-  background: #f8d7da;
-  color: #721c24;
-  border-left-color: var(--c-danger);
-}
-
-.notification.warning {
-  background: #fff3cd;
-  color: #856404;
-  border-left-color: var(--c-warning);
-}
-
-.notification.info {
-  background: #d1ecf1;
-  color: #0c5460;
-  border-left-color: var(--c-info);
-}
-
-/* Loading spinner */
-.loading {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid var(--c-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Tooltips */
-.tooltip {
-  position: relative;
-  display: inline-block;
-}
-
-.tooltip .tooltiptext {
-  visibility: hidden;
-  width: 200px;
-  background-color: #333;
-  color: white;
-  text-align: center;
-  border-radius: 6px;
-  padding: 8px;
-  position: absolute;
-  z-index: 1;
-  bottom: 125%;
-  left: 50%;
-  margin-left: -100px;
-  opacity: 0;
-  transition: opacity 0.3s;
-  font-size: 12px;
-}
-
-.tooltip:hover .tooltiptext {
-  visibility: visible;
-  opacity: 1;
-}
-
-/* Modals */
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-  background-color: white;
-  margin: 5% auto;
-  padding: 25px;
-  border-radius: 12px;
-  width: 80%;
-  max-width: 600px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--c-border);
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: var(--c-text);
-}
-
-.close {
-  color: var(--c-muted);
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.close:hover {
-  color: var(--c-text);
-}
-
-/* Tabs */
-.tab-container {
-  margin: 20px 0;
-}
-
-.tab-buttons {
-  display: flex;
-  border-bottom: 2px solid var(--c-border);
-  margin-bottom: 20px;
-}
-
-.tab-button {
-  background: none;
-  border: none;
-  padding: 12px 20px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-muted);
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s ease;
-}
-
-.tab-button:hover {
-  color: var(--c-text);
-  background: #f8f9fa;
-}
-
-.tab-button.active {
-  color: var(--c-primary);
-  border-bottom-color: var(--c-primary);
-}
-
-.tab-content {
-  display: none;
-}
-
-.tab-content.active {
-  display: block;
-}
-
-/* Accordion */
-.accordion {
-  margin: 20px 0;
-}
-
-.accordion-item {
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
-  margin-bottom: 10px;
-  overflow: hidden;
-}
-
-.accordion-header {
-  background: #f8f9fa;
-  padding: 15px 20px;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--c-text);
-  transition: background 0.3s ease;
-}
-
-.accordion-header:hover {
-  background: #e9ecef;
-}
-
-.accordion-content {
-  padding: 0 20px;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
-}
-
-.accordion-content.active {
-  padding: 20px;
-  max-height: 500px;
-}
-
-/* Breadcrumbs */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  margin: 20px 0;
-  font-size: 14px;
-}
-
-.breadcrumb-item {
-  color: var(--c-muted);
-}
-
-.breadcrumb-item:not(:last-child)::after {
-  content: ">";
-  margin: 0 10px;
-  color: var(--c-border);
-}
-
-.breadcrumb-item:last-child {
-  color: var(--c-text);
-  font-weight: 600;
-}
-
-.breadcrumb-item a {
-  color: var(--c-primary);
-  text-decoration: none;
-}
-
-.breadcrumb-item a:hover {
-  text-decoration: underline;
-}
-
 /* ============================================================================
    ADMIN CHECKLIST STYLES
    ============================================================================ */
@@ -1114,7 +850,6 @@ a:hover {
   margin: 0;
   cursor: pointer;
   accent-color: var(--c-primary);
-  /* Ensure only one checkbox is visible */
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -1122,22 +857,18 @@ a:hover {
   border-radius: 3px;
   background: white;
   position: relative;
-  /* Hide any potential duplicates */
   box-shadow: none;
   outline: none;
 }
 
-/* Hide any duplicate checkboxes that might be created by browser or CSS */
 .checklist-item input[type="checkbox"]:not(.checkbox-large) {
   display: none !important;
 }
 
-/* Ensure only the first checkbox in each checklist item is visible */
 .checklist-item input[type="checkbox"]:nth-child(n+2) {
   display: none !important;
 }
 
-/* Hide any emoji checkmarks that might be appearing */
 .checklist-item::before,
 .checklist-item::after,
 .team-status::before,
@@ -1145,7 +876,6 @@ a:hover {
   display: none !important;
 }
 
-/* Hide any content that contains checkmark emojis */
 .checklist-item *:contains("✅"),
 .checklist-item *:contains("⏳") {
   display: none !important;
@@ -1154,36 +884,4 @@ a:hover {
 .checkbox-large:checked {
   background-color: var(--c-primary);
   border-color: var(--c-primary);
-}
-
-/* Removed pseudo-element checkmark to prevent visual duplication */
-
-/* ============================================================================
-   SAFELIST FÖR DYNAMISKA KLASSER
-   ============================================================================ */
-/* Dessa klasser används dynamiskt och ska inte purgas */
-/* Team klasser */
-.team--alfa, .team--bravo, .team--stt, .team--fm, .team--bs,
-.team--media, .team--sapo, .team--regeringen, .team--usa,
-.team__indicator--alfa, .team__indicator--bravo, .team__indicator--stt,
-.team__indicator--fm, .team__indicator--bs, .team__indicator--media,
-.team__indicator--sapo, .team__indicator--regeringen, .team__indicator--usa,
-/* Button varianter */
-.btn--primary, .btn--success, .btn--warning, .btn--danger,
-.btn--secondary, .btn--info, .btn--ghost, .btn--sm, .btn--lg,
-/* Badge varianter */
-.badge--success, .badge--warning, .badge--danger, .badge--muted,
-/* Notification varianter */
-.notification--success, .notification--error, .notification--warning, .notification--info,
-/* Timer states */
-.timer__display--warning, .timer__display--danger, .timer--maximized,
-/* Utility klasser */
-.text-center, .text-left, .text-right, .text-success, .text-danger,
-.text-muted, .text-warning, .text-info,
-.mb-0, .mb-1, .mb-2, .mb-3, .mb-4, .mb-5,
-.mt-0, .mt-1, .mt-2, .mt-3, .mt-4, .mt-5,
-.d-none, .d-block, .d-inline, .d-inline-block, .d-flex,
-.flex-center, .flex-between, .flex-wrap,
-.fade-in, .card--elevated, .card--interactive {
-  /* Safelist - dessa klasser ska inte purgas */
 }
