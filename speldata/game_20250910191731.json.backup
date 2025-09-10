@@ -1,0 +1,227 @@
+{
+  "id": "20250910191731",
+  "datum": "2025-09-10",
+  "plats": "tretre",
+  "antal_spelare": 27,
+  "skapad": "2025-09-10T19:17:31.624246",
+  "fas": "Orderfas",
+  "runda": 1,
+  "lag": [
+    "Alfa",
+    "Bravo",
+    "STT",
+    "FM",
+    "BS",
+    "Media",
+    "SÄPO",
+    "Regeringen",
+    "USA"
+  ],
+  "order": {},
+  "poang": {},
+  "resultat": [],
+  "backlog": {
+    "Alfa": [
+      {
+        "id": "alfa_1",
+        "namn": "Inloggning val",
+        "estimaterade_hp": 15,
+        "spenderade_hp": 0,
+        "slutford": false
+      },
+      {
+        "id": "alfa_2",
+        "namn": "Back-end API för inskickade röster",
+        "estimaterade_hp": 25,
+        "spenderade_hp": 0,
+        "slutford": false
+      },
+      {
+        "id": "alfa_3",
+        "namn": "Sökfunktion",
+        "estimaterade_hp": 20,
+        "spenderade_hp": 0,
+        "slutford": false
+      },
+      {
+        "id": "alfa_4",
+        "namn": "Admin-gränssnitt",
+        "estimaterade_hp": 20,
+        "spenderade_hp": 0,
+        "slutford": false
+      }
+    ],
+    "Bravo": [
+      {
+        "id": "bravo_1",
+        "namn": "Grafisk visning valet",
+        "faser": [
+          {
+            "namn": "Krav",
+            "estimaterade_hp": 10,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Design",
+            "estimaterade_hp": 10,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Utveckling",
+            "estimaterade_hp": 20,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Test",
+            "estimaterade_hp": 10,
+            "spenderade_hp": 0,
+            "slutford": false
+          }
+        ],
+        "slutford": false,
+        "spenderade_hp": 0
+      },
+      {
+        "id": "bravo_2",
+        "namn": "Loggning & felhantering",
+        "faser": [
+          {
+            "namn": "Krav",
+            "estimaterade_hp": 4,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Design",
+            "estimaterade_hp": 3,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Utveckling",
+            "estimaterade_hp": 10,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Test",
+            "estimaterade_hp": 3,
+            "spenderade_hp": 0,
+            "slutford": false
+          }
+        ],
+        "slutford": false,
+        "spenderade_hp": 0
+      },
+      {
+        "id": "bravo_3",
+        "namn": "Nyhetsflöde",
+        "faser": [
+          {
+            "namn": "Krav",
+            "estimaterade_hp": 2,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Design",
+            "estimaterade_hp": 2,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Utveckling",
+            "estimaterade_hp": 10,
+            "spenderade_hp": 0,
+            "slutford": false
+          },
+          {
+            "namn": "Test",
+            "estimaterade_hp": 1,
+            "spenderade_hp": 0,
+            "slutford": false
+          }
+        ],
+        "slutford": false,
+        "spenderade_hp": 0
+      }
+    ],
+    "STT": [
+      {
+        "id": "stt_1",
+        "namn": "Infrastruktur för val (setup, hardening, konfig)",
+        "estimaterade_hp": 20,
+        "spenderade_hp": 0,
+        "slutford": false,
+        "typ": "en_gang"
+      },
+      {
+        "id": "stt_2",
+        "namn": "Infrastruktur för deklaration",
+        "estimaterade_hp": 20,
+        "spenderade_hp": 0,
+        "slutford": false,
+        "typ": "en_gang"
+      },
+      {
+        "id": "stt_3",
+        "namn": "Ny säker arkitektur (poddar, WAF, brandväggar)",
+        "estimaterade_hp": 20,
+        "spenderade_hp": 0,
+        "slutford": false,
+        "typ": "en_gang"
+      },
+      {
+        "id": "stt_4",
+        "namn": "Kapacitetstest (per gång)",
+        "estimaterade_hp": 10,
+        "spenderade_hp": 0,
+        "slutford": false,
+        "typ": "aterkommande"
+      },
+      {
+        "id": "stt_5",
+        "namn": "Penetrationstest (per gång)",
+        "estimaterade_hp": 15,
+        "spenderade_hp": 0,
+        "slutford": false,
+        "typ": "aterkommande"
+      },
+      {
+        "id": "stt_6",
+        "namn": "Produktionssättning (per gång)",
+        "estimaterade_hp": 10,
+        "spenderade_hp": 0,
+        "slutford": false,
+        "typ": "aterkommande"
+      }
+    ]
+  },
+  "orderfas_min": 10,
+  "diplomatifas_min": 10,
+  "team_tokens": {
+    "Alfa": "2M_4mvlr41H32aZay6k7tw_78da1e6bddf8",
+    "Bravo": "l0DTMXO2z-bpFYclAU0Vxw_cf0083d59ec3",
+    "STT": "oTqYB2E6YwiR9A__afRB_Q_2496d722ec3b",
+    "FM": "cJNPsolnoqak69t4aIUsDg_58686ac3843d",
+    "BS": "ynZ4CKJYCVLd32803GRKVw_cb612409c0cf",
+    "Media": "diYxGT_3sDBjc9pv3UIIow_542c626d3ab1",
+    "SÄPO": "5dvjVs0gxjeXtknca2C3HQ_5e78c6c029cf",
+    "Regeringen": "sfpyn1UCmihhwEbC_YO4Iw_bee2cb871df4",
+    "USA": "6wXYkJu7Jb_Itytwb4zdLg_d293956bec10"
+  },
+  "timer_status": "stopped",
+  "timer_start": null,
+  "timer_elapsed": 0,
+  "avslutat": false,
+  "fashistorik": [
+    {
+      "runda": 1,
+      "fas": "Orderfas",
+      "status": "pågående"
+    }
+  ]
+}

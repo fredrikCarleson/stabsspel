@@ -17,6 +17,38 @@ TEAMS = [
     ("USA", 12)
 ]
 
+# Bas-HP-tabell som dictionary för enklare uppslag
+DEFAULT_HP = {namn: hp for namn, hp in TEAMS}
+
+# För stora spel (alla aktörer aktiva) justeras några basvärden
+LARGE_GAME_OVERRIDES = {
+    "STT": 30,          # +5
+    "FM": 10,          # -2
+    "BS": 10,          # -2
+    "Media": 12,       # -3
+    "Regeringen": 12,  # +2
+    "SÄPO": 15,        # +3
+}
+
+def is_large_game(data: dict) -> bool:
+    """Returnerar True om spelet kör med samtliga 9 lag (stort spel)."""
+    try:
+        lag = data.get("lag", [])
+        return isinstance(lag, list) and len(lag) >= 9
+    except Exception:
+        return False
+
+def get_team_base_hp(team_name: str, data: dict) -> int:
+    """Hämta bas-HP för ett lag givet spelets storlek.
+
+    - Litet spel (grundteam): använd DEFAULT_HP
+    - Stort spel (alla 9 lag): använd overrides där de finns
+    """
+    base = DEFAULT_HP.get(team_name, 20)
+    if is_large_game(data):
+        return LARGE_GAME_OVERRIDES.get(team_name, base)
+    return base
+
 # Backlog-uppgifter för varje team
 BACKLOG = {
     "Alfa": [
@@ -374,6 +406,11 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
         "diplomatifas_min": diplomatifas_min,
         "team_tokens": team_tokens,
     }
+    # Initiera poäng baserat på spelstorlek
+    data["poang"] = {}
+    for lag_namn in lag:
+        bas_hp = get_team_base_hp(lag_namn, data)
+        data["poang"][lag_namn] = {"bas": bas_hp, "aktuell": bas_hp, "regeringsstod": False}
     with open(filnamn, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return spel_id

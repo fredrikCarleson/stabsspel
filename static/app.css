@@ -341,14 +341,14 @@ button.ghost:hover {
   color:#111827; 
 }
 
-/* Storlek */
-button.sm { 
+/* Storlek - gäller både <button> och länkknappar (a.primary/a.danger/etc) */
+button.sm, a.primary.sm, a.success.sm, a.warning.sm, a.danger.sm, a.info.sm, a.secondary.sm { 
   height: 34px; 
   min-width: 80px; 
   padding-inline: 16px; 
   font-size: 13px; 
 }
-button.lg { 
+button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.secondary.lg { 
   height: 48px; 
   min-width: 104px; 
   padding-inline: 24px; 
@@ -392,6 +392,16 @@ button.lg {
   box-shadow: var(--shadow-lg);
   background: linear-gradient(135deg, #2c3e50, #34495e);
   color: #fff;
+}
+
+/* Wrapper to separate timer area from content around it */
+.timer-wrap {
+  background: #111827;
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  margin-bottom: 20px;
 }
 
 .timer h2 {

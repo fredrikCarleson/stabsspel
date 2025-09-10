@@ -1292,7 +1292,8 @@ def admin_poang(spel_id):
     changed = False
     for lag in laglista:
         if lag not in data["poang"]:
-            bas = next((minp for namn, minp in TEAMS if namn == lag), 20)
+            from models import get_team_base_hp
+            bas = get_team_base_hp(lag, data)
             data["poang"][lag] = {"bas": bas, "aktuell": bas, "regeringsstod": False}
             changed = True
     if changed:
@@ -1384,9 +1385,9 @@ def admin_reset(spel_id):
     data["fashistorik"] = init_fashistorik_v2()
     # Nollställ handlingspoäng och regeringsstöd, sätt rätt basvärde från TEAMS
     if "poang" in data:
-        from models import TEAMS
+        from models import get_team_base_hp
         for lag in data["poang"]:
-            bas = next((minp for namn, minp in TEAMS if namn.lower() == lag.lower()), 20)
+            bas = get_team_base_hp(lag, data)
             data["poang"][lag]["bas"] = bas
             data["poang"][lag]["aktuell"] = bas
             data["poang"][lag]["regeringsstod"] = False
