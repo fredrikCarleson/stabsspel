@@ -139,7 +139,7 @@ def test_timer_maximize():
         <div class="timer-container" style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
             <div style="margin-bottom: 25px;">
                 <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ TID KVAR</h2>
-                <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">10:00</div>
+                <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: 'Courier New', monospace; letter-spacing: 3px; margin: 10px 0;">10:00</div>
             </div>
             
             <div style="margin: 20px 0;">
@@ -164,29 +164,29 @@ def test_timer_maximize():
     <script>
         // Timer maximization functionality
         function toggleTimerMaximize() {
-            var timerContainer = document.querySelector(\'.timer-container\');
-            var maximizeBtn = document.querySelector(\'.maximize-btn\');
-            var minimizeBtn = document.querySelector(\'.minimize-btn\');
+            var timerContainer = document.querySelector('.timer-container');
+            var maximizeBtn = document.querySelector('.maximize-btn');
+            var minimizeBtn = document.querySelector('.minimize-btn');
             var body = document.body;
             
-            if (timerContainer.classList.contains(\'maximized\')) {
+            if (timerContainer.classList.contains('maximized')) {
                 // Minimize timer
-                timerContainer.classList.remove(\'maximized\');
-                body.classList.remove(\'timer-maximized\');
-                maximizeBtn.style.display = \'inline-block\';
-                minimizeBtn.style.display = \'none\';
+                timerContainer.classList.remove('maximized');
+                body.classList.remove('timer-maximized');
+                maximizeBtn.style.display = 'inline-block';
+                minimizeBtn.style.display = 'none';
             } else {
                 // Maximize timer
-                timerContainer.classList.add(\'maximized\');
-                body.classList.add(\'timer-maximized\');
-                maximizeBtn.style.display = \'none\';
-                minimizeBtn.style.display = \'inline-block\';
+                timerContainer.classList.add('maximized');
+                body.classList.add('timer-maximized');
+                maximizeBtn.style.display = 'none';
+                minimizeBtn.style.display = 'inline-block';
             }
         }
         
         // Keyboard shortcut for maximizing/minimizing timer (F11 key)
-        document.addEventListener(\'keydown\', function(event) {
-            if (event.key === \'F11\') {
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'F11') {
                 event.preventDefault(); // Prevent browser fullscreen
                 toggleTimerMaximize();
             }
@@ -965,58 +965,52 @@ def timer_window(spel_id):
     current_phase = data.get("current_phase", "order")
     if current_phase == "order":
         timer_html = f'''
-            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
-                <div style="margin-bottom: 25px;">
-                    <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ ORDERFAS</h2>
-                    <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">{initial_time}</div>
+            <div class="timer">
+                <div class="margin-bottom-25">
+                    <h2>⏰ ORDERFAS</h2>
+                    <div id="timer" class="timer-display">{initial_time}</div>
                 </div>
-                
-                <div style="margin: 20px 0;">
-                    <button onclick="startTimer()" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
-                    <button onclick="pauseTimer()" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
-                    <button onclick="resetTimer()" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+                <div class="margin-20-0">
+                    <button onclick="startTimer()" class="success">▶️ Starta</button>
+                    <button onclick="pauseTimer()" class="warning">⏸️ Pausa</button>
+                    <button onclick="resetTimer()" class="danger">🔄 Återställ</button>
                 </div>
-                
-                <div style="margin-top: 20px;">
-                    <span id="status" class="status" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if status_param == 'running' else '#6c757d'}; color: white;">Status: {status_param.capitalize()}</span>
+                <div class="timer-status">
+                    <span id="status" class="status-badge">Status: {status_param.capitalize()}</span>
                 </div>
             </div>
         '''
     elif current_phase == "diplomati":
         timer_html = f'''
-            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
-                <div style="margin-bottom: 25px;">
-                    <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ DIPLOMATIFAS</h2>
-                    <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">{data.get("diplomatifas_min", 10)}:00</div>
+            <div class="timer">
+                <div class="margin-bottom-25">
+                    <h2>⏰ DIPLOMATIFAS</h2>
+                    <div id="timer" class="timer-display">{data.get("diplomatifas_min", 10)}:00</div>
                 </div>
-                
-                <div style="margin: 20px 0;">
-                    <button onclick="startTimer()" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
-                    <button onclick="pauseTimer()" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
-                    <button onclick="resetTimer()" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+                <div class="margin-20-0">
+                    <button onclick="startTimer()" class="success">▶️ Starta</button>
+                    <button onclick="pauseTimer()" class="warning">⏸️ Pausa</button>
+                    <button onclick="resetTimer()" class="danger">🔄 Återställ</button>
                 </div>
-                
-                <div style="margin-top: 20px;">
-                    <span id="status" class="status" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if status_param == 'running' else '#6c757d'}; color: white;">Status: {status_param.capitalize()}</span>
+                <div class="timer-status">
+                    <span id="status" class="status-badge">Status: {status_param.capitalize()}</span>
                 </div>
             </div>
         '''
     else:
         timer_html = f'''
-            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
-                <div style="margin-bottom: 25px;">
-                    <h2 style="color: white; margin: 0 0 15px 0; font-size: 1.4em; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">⏰ RESULTATFAS</h2>
-                    <div id="timer" style="font-size: 4.5em; font-weight: 900; color: #ecf0f1; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: \'Courier New\', monospace; letter-spacing: 3px; margin: 10px 0;">05:00</div>
+            <div class="timer">
+                <div class="margin-bottom-25">
+                    <h2>⏰ RESULTATFAS</h2>
+                    <div id="timer" class="timer-display">05:00</div>
                 </div>
-                
-                <div style="margin: 20px 0;">
-                    <button onclick="startTimer()" style="background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">▶️ Starta</button>
-                    <button onclick="pauseTimer()" style="background: #f39c12; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⏸️ Pausa</button>
-                    <button onclick="resetTimer()" style="background: #e74c3c; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; margin: 0 8px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔄 Återställ</button>
+                <div class="margin-20-0">
+                    <button onclick="startTimer()" class="success">▶️ Starta</button>
+                    <button onclick="pauseTimer()" class="warning">⏸️ Pausa</button>
+                    <button onclick="resetTimer()" class="danger">🔄 Återställ</button>
                 </div>
-                
-                <div style="margin-top: 20px;">
-                    <span id="status" class="status" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: {'#27ae60' if status_param == 'running' else '#6c757d'}; color: white;">Status: {status_param.capitalize()}</span>
+                <div class="timer-status">
+                    <span id="status" class="status-badge">Status: {status_param.capitalize()}</span>
                 </div>
             </div>
         '''
@@ -1029,6 +1023,7 @@ def timer_window(spel_id):
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="0">
+        <link rel="stylesheet" href="/static/app.css?v=5">
         <style>
             body {{
                 margin: 0;
