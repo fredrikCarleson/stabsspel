@@ -201,14 +201,8 @@ def create_orderfas_checklist(spel_id, data):
     <div class="checklist-container border-left-success">
         <h3 class="checklist-title">📋 Checklista: Ordrar från alla team</h3>
 
-        <!-- Test Mode Toggle -->
+        <!-- Auto-fill Orders utility -->
         <div class="test-mode-container">
-            <label class="test-mode-label">
-                <input type="checkbox" id="test_mode_toggle" class="checkbox-large" onchange="toggleTestMode()" checked>
-                🧪 Test Mode (Admin Cheat Links)
-            </label>
-
-            <!-- Auto-fill Orders Button (only visible in test mode) -->
             <div id="auto_fill_section" class="test-mode-section">
                 <h4 class="test-mode-title">🚀 Auto-fyll Test Data</h4>
                 <p class="test-mode-description">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
@@ -292,20 +286,7 @@ def create_orderfas_checklist(spel_id, data):
         }}
     }}
 
-    function toggleTestMode() {{
-        const testModeToggle = document.getElementById('test_mode_toggle');
-        const adminCheatLinks = document.querySelectorAll('.admin-cheat-link');
-        const autoFillSection = document.getElementById('auto_fill_section');
-        if (testModeToggle && adminCheatLinks) {{
-            if (testModeToggle.checked) {{
-                adminCheatLinks.forEach(link => link.style.display = 'inline');
-                if (autoFillSection) autoFillSection.style.display = 'block';
-            }} else {{
-                adminCheatLinks.forEach(link => link.style.display = 'none');
-                if (autoFillSection) autoFillSection.style.display = 'none';
-            }}
-        }}
-    }}
+    // (Test Mode borttagen) Admin-länkar visas alltid nu
 
     function autoFillOrders() {{
         if (!confirm('Är du säker på att du vill auto-fylla alla teams order med test data? Detta kommer att ersätta eventuella befintliga order.')) return;
@@ -338,7 +319,7 @@ def create_orderfas_checklist(spel_id, data):
     }}
 
     setInterval(refreshChecklist, 5000);
-    window.onload = function() {{ updateNextFasButton(); toggleTestMode(); }};
+    window.onload = function() {{ updateNextFasButton(); }};
     </script>
     '''
 
