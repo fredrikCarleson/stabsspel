@@ -4,8 +4,8 @@
   "plats": "b2",
   "antal_spelare": 27,
   "skapad": "2025-09-04T23:05:36.491159",
-  "fas": "Resultatfas",
-  "runda": 3,
+  "fas": "Orderfas",
+  "runda": 4,
   "lag": [
     "Alfa",
     "Bravo",
@@ -260,9 +260,7 @@
     "USA": "Uk4atDxU6yYR1XIK--E_4Q_f7da9b377b23"
   },
   "checkbox_states": {
-    "result_check1": true,
-    "result_check2": true,
-    "result_check3": true
+    "test_mode_toggle": true
   },
   "team_orders": {
     "orders_round_1": {
@@ -1292,8 +1290,8 @@
       }
     }
   },
-  "timer_status": "stopped",
-  "timer_start": null,
+  "timer_status": "running",
+  "timer_start": 1757024631,
   "timer_elapsed": 0,
   "fashistorik": [
     {
@@ -1334,7 +1332,13 @@
     {
       "runda": 3,
       "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 4,
+      "fas": "Orderfas",
       "status": "pågående"
     }
-  ]
+  ],
+  "fas_start_time": 1757024631
 }

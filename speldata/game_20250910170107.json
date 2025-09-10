@@ -1,10 +1,10 @@
 {
-  "id": "20250904230536",
-  "datum": "2025-09-04",
-  "plats": "b2",
+  "id": "20250910170107",
+  "datum": "2025-09-10",
+  "plats": "Bunkeflo",
   "antal_spelare": 27,
-  "skapad": "2025-09-04T23:05:36.491159",
-  "fas": "Orderfas",
+  "skapad": "2025-09-10T17:01:07.600288",
+  "fas": "Resultatfas",
   "runda": 4,
   "lag": [
     "Alfa",
@@ -21,47 +21,47 @@
   "poang": {
     "Alfa": {
       "bas": 25,
-      "aktuell": 26,
+      "aktuell": 22,
       "regeringsstod": false
     },
     "Bravo": {
       "bas": 25,
-      "aktuell": 29,
+      "aktuell": 31,
       "regeringsstod": false
     },
     "STT": {
       "bas": 25,
-      "aktuell": 25,
+      "aktuell": 21,
       "regeringsstod": false
     },
     "FM": {
       "bas": 12,
-      "aktuell": 12,
+      "aktuell": 22,
       "regeringsstod": false
     },
     "BS": {
       "bas": 12,
-      "aktuell": 12,
+      "aktuell": 18,
       "regeringsstod": false
     },
     "Media": {
       "bas": 15,
-      "aktuell": 15,
+      "aktuell": 20,
       "regeringsstod": false
     },
     "SÄPO": {
       "bas": 12,
-      "aktuell": 12,
+      "aktuell": 17,
       "regeringsstod": false
     },
     "Regeringen": {
       "bas": 10,
-      "aktuell": 10,
+      "aktuell": 9,
       "regeringsstod": false
     },
     "USA": {
       "bas": 12,
-      "aktuell": 12,
+      "aktuell": 17,
       "regeringsstod": false
     }
   },
@@ -72,28 +72,28 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 15,
-        "slutford": true
+        "spenderade_hp": 6,
+        "slutford": false
       },
       {
         "id": "alfa_2",
         "namn": "Back-end API för inskickade röster",
         "estimaterade_hp": 25,
-        "spenderade_hp": 5,
-        "slutford": false
+        "spenderade_hp": 25,
+        "slutford": true
       },
       {
         "id": "alfa_3",
         "namn": "Sökfunktion",
         "estimaterade_hp": 20,
-        "spenderade_hp": 8,
+        "spenderade_hp": 0,
         "slutford": false
       },
       {
         "id": "alfa_4",
         "namn": "Admin-gränssnitt",
         "estimaterade_hp": 20,
-        "spenderade_hp": 4,
+        "spenderade_hp": 0,
         "slutford": false
       }
     ],
@@ -105,26 +105,26 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 10,
-            "spenderade_hp": 9,
-            "slutford": false
+            "spenderade_hp": 12,
+            "slutford": true
           },
           {
             "namn": "Design",
             "estimaterade_hp": 10,
-            "spenderade_hp": 1,
-            "slutford": false
+            "spenderade_hp": 10,
+            "slutford": true
           },
           {
             "namn": "Utveckling",
             "estimaterade_hp": 20,
-            "spenderade_hp": 0,
+            "spenderade_hp": 10,
             "slutford": false
           },
           {
             "namn": "Test",
             "estimaterade_hp": 10,
-            "spenderade_hp": 0,
-            "slutford": false
+            "spenderade_hp": 10,
+            "slutford": true
           }
         ],
         "slutford": false,
@@ -137,7 +137,7 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 4,
-            "spenderade_hp": 3,
+            "spenderade_hp": 2,
             "slutford": false
           },
           {
@@ -169,8 +169,8 @@
           {
             "namn": "Krav",
             "estimaterade_hp": 2,
-            "spenderade_hp": 3,
-            "slutford": true
+            "spenderade_hp": 0,
+            "slutford": false
           },
           {
             "namn": "Design",
@@ -200,7 +200,7 @@
         "id": "stt_1",
         "namn": "Infrastruktur för val (setup, hardening, konfig)",
         "estimaterade_hp": 20,
-        "spenderade_hp": 5,
+        "spenderade_hp": 12,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -208,7 +208,7 @@
         "id": "stt_2",
         "namn": "Infrastruktur för deklaration",
         "estimaterade_hp": 20,
-        "spenderade_hp": 2,
+        "spenderade_hp": 0,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -216,7 +216,7 @@
         "id": "stt_3",
         "namn": "Ny säker arkitektur (poddar, WAF, brandväggar)",
         "estimaterade_hp": 20,
-        "spenderade_hp": 4,
+        "spenderade_hp": 0,
         "slutford": false,
         "typ": "en_gang"
       },
@@ -224,7 +224,7 @@
         "id": "stt_4",
         "namn": "Kapacitetstest (per gång)",
         "estimaterade_hp": 10,
-        "spenderade_hp": 5,
+        "spenderade_hp": 0,
         "slutford": false,
         "typ": "aterkommande"
       },
@@ -249,29 +249,26 @@
   "orderfas_min": 10,
   "diplomatifas_min": 10,
   "team_tokens": {
-    "Alfa": "hJLsoxUgfho2ForuzqPELQ_fc947fbbf190",
-    "Bravo": "t9aMP5tKUX_Ga5jfTe1bCw_fc439184b292",
-    "STT": "1_HNK93YxLuezeQZnEeHkQ_38338bf3f0fb",
-    "FM": "0IOeK6HJLfWTfSogWZmv5w_6994806fb6ae",
-    "BS": "TnBTUX51Q6LtpQmlDRGewQ_89f8e6bd757e",
-    "Media": "2oa4AWTE4XzaOEkk7RIohA_b1df7aa1ec71",
-    "SÄPO": "LcgJc7yx-oqXIOS_sNFJow_417cdc58252d",
-    "Regeringen": "NWDMrc-CCFTagTvteuRClg_2469989f789c",
-    "USA": "Uk4atDxU6yYR1XIK--E_4Q_f7da9b377b23"
-  },
-  "checkbox_states": {
-    "test_mode_toggle": false
+    "Alfa": "db1xvIWw2a8kl9uBqtI65g_233efedb7505",
+    "Bravo": "cM1beWUsYOfbudF1_PUjyQ_27c438c6e3f5",
+    "STT": "Mp9zefN7MMMM4ny3tOnI8w_77bd3eb17f55",
+    "FM": "4OUX58st-JcP0lpToW0gdg_f852dd384ae7",
+    "BS": "eDA69VwThVHQ7cS-se8g4w_d4eebbec9a3e",
+    "Media": "f9QLMmrRhrOtFXF-xEhiUQ_9663b1067324",
+    "SÄPO": "CxfJ2XCkSlX_9co9OsKH6g_e6ff10716359",
+    "Regeringen": "QERHRNNDog2T2jOfzQpBFA_8a1609b1bf8d",
+    "USA": "_w8GpEoZjWPDoygSE6yY6A_4bc2bd1fffdb"
   },
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
-        "submitted_at": 1757019947.0944915,
+        "submitted_at": 1757521383.1144905,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947094,
+              "id": 1757521383114,
               "aktivitet": "Implementera en ny CI/CD-pipeline",
               "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
               "malomrade": "eget",
@@ -283,7 +280,7 @@
               "hp": 10
             },
             {
-              "id": 1757019947095,
+              "id": 1757521383115,
               "aktivitet": "Leverera en första version av röst-API:t",
               "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
               "malomrade": "eget",
@@ -295,7 +292,7 @@
               "hp": 9
             },
             {
-              "id": 1757019947096,
+              "id": 1757521383116,
               "aktivitet": "Kampanja mot Bravo i korridorerna",
               "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
               "malomrade": "eget",
@@ -307,18 +304,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "Bravo": {
-        "submitted_at": 1757019947.0945077,
+        "submitted_at": 1757521383.1145456,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947194,
+              "id": 1757521383214,
               "aktivitet": "Genomföra en tvåveckors kravworkshop",
               "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
               "malomrade": "eget",
@@ -329,7 +326,7 @@
               "hp": 12
             },
             {
-              "id": 1757019947195,
+              "id": 1757521383215,
               "aktivitet": "Kontakta regeringen för extra resurser",
               "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
               "malomrade": "eget",
@@ -341,7 +338,7 @@
               "hp": 7
             },
             {
-              "id": 1757019947196,
+              "id": 1757521383216,
               "aktivitet": "Sprida rykten om Alfa",
               "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
               "malomrade": "eget",
@@ -353,18 +350,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "STT": {
-        "submitted_at": 1757019947.0945172,
+        "submitted_at": 1757521383.1145623,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947294,
+              "id": 1757521383314,
               "aktivitet": "Hardening av valservern",
               "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
               "malomrade": "eget",
@@ -375,7 +372,7 @@
               "hp": 12
             },
             {
-              "id": 1757019947295,
+              "id": 1757521383315,
               "aktivitet": "Säkerställa drift under deklarationstid",
               "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
               "malomrade": "eget",
@@ -387,7 +384,7 @@
               "hp": 7
             },
             {
-              "id": 1757019947296,
+              "id": 1757521383316,
               "aktivitet": "Förhandla om prioritet",
               "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
               "malomrade": "eget",
@@ -399,18 +396,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "FM": {
-        "submitted_at": 1757019947.094521,
+        "submitted_at": 1757521383.1145782,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947394,
+              "id": 1757521383414,
               "aktivitet": "Massiv DDOS-attack mot valservern",
               "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
               "malomrade": "eget",
@@ -421,7 +418,7 @@
               "hp": 8
             },
             {
-              "id": 1757019947395,
+              "id": 1757521383415,
               "aktivitet": "Desinformationskampanj på sociala medier",
               "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
               "malomrade": "eget",
@@ -433,18 +430,18 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "BS": {
-        "submitted_at": 1757019947.094524,
+        "submitted_at": 1757521383.1145997,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947494,
+              "id": 1757521383514,
               "aktivitet": "Utpressa en STT-medlem",
               "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
               "malomrade": "eget",
@@ -455,7 +452,7 @@
               "hp": 7
             },
             {
-              "id": 1757019947495,
+              "id": 1757521383515,
               "aktivitet": "Manipulera databasen",
               "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
               "malomrade": "eget",
@@ -467,18 +464,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "Media": {
-        "submitted_at": 1757019947.0945268,
+        "submitted_at": 1757521383.1146111,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947594,
+              "id": 1757521383614,
               "aktivitet": "Publicera artikel om misstänkt sabotage i Alfa",
               "syfte": "Skapa rubriker om att utvecklingen är saboterad. Oavsett fakta får detta klick och skadar Alfas rykte.",
               "malomrade": "eget",
@@ -489,7 +486,7 @@
               "hp": 7
             },
             {
-              "id": 1757019947595,
+              "id": 1757521383615,
               "aktivitet": "Granskning av regeringens mörkläggning",
               "syfte": "Publicera uppgifter om att regeringen undanhåller allvarliga säkerhetsproblem. Detta ger stort genomslag internationellt.",
               "malomrade": "eget",
@@ -500,18 +497,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "SÄPO": {
-        "submitted_at": 1757019947.0945296,
+        "submitted_at": 1757521383.114626,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947694,
+              "id": 1757521383714,
               "aktivitet": "Spaning på Alfa",
               "syfte": "Misstänker infiltration i Team Alfa. SÄPO skickar underrättelsepersonal för att övervaka deras aktiviteter och identifiera spioner.",
               "malomrade": "eget",
@@ -522,7 +519,7 @@
               "hp": 7
             },
             {
-              "id": 1757019947695,
+              "id": 1757521383715,
               "aktivitet": "Samarbete med Media",
               "syfte": "Läckor planeras där SÄPO framstår som garant för säkerheten. De vill bygga narrativ om att myndigheten är nödvändig.",
               "malomrade": "eget",
@@ -533,18 +530,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "Regeringen": {
-        "submitted_at": 1757019947.0945325,
+        "submitted_at": 1757521383.114641,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947794,
+              "id": 1757521383814,
               "aktivitet": "Fördela extra resurser till Bravo",
               "syfte": "Regeringen vill stödja det mest strukturerade teamet för att minska risken för kaos. De hoppas på ett lugnare narrativ i media.",
               "malomrade": "eget",
@@ -555,7 +552,7 @@
               "hp": 6
             },
             {
-              "id": 1757019947795,
+              "id": 1757521383815,
               "aktivitet": "Mörka säkerhetsbrister",
               "syfte": "I samråd med PR-konsulter beslutar regeringen att tona ned problem med valets IT-system för att inte väcka panik.",
               "malomrade": "eget",
@@ -567,18 +564,18 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       },
       "USA": {
-        "submitted_at": 1757019947.0945354,
+        "submitted_at": 1757521383.1146579,
         "phase": "Orderfas",
         "round": 1,
         "orders": {
           "activities": [
             {
-              "id": 1757019947894,
+              "id": 1757521383914,
               "aktivitet": "Pressa regeringen att gynna ett extremparti",
               "syfte": "USA kopplar bistånd och IT-stöd till politiska krav. Hotar att strypa tillgången till Office 365-licenser om regeringen inte samarbetar.",
               "malomrade": "eget",
@@ -589,7 +586,7 @@
               "hp": 8
             },
             {
-              "id": 1757019947895,
+              "id": 1757521383915,
               "aktivitet": "Erbjuda säkerhetsinformation till STT",
               "syfte": "Lämna \"strategiska tips\" om FM:s metoder, men med syfte att skapa beroende av amerikansk teknologi.",
               "malomrade": "eget",
@@ -600,20 +597,20 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:05:47.000Z"
+          "timestamp": "2025-09-10T18:23:03.000Z"
         },
         "final": true
       }
     },
     "orders_round_2": {
       "Alfa": {
-        "submitted_at": 1757020924.7173738,
+        "submitted_at": 1757522872.0547614,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020924717,
+              "id": 1757522872054,
               "aktivitet": "Implementera en ny CI/CD-pipeline",
               "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
               "malomrade": "eget",
@@ -625,7 +622,7 @@
               "hp": 10
             },
             {
-              "id": 1757020924718,
+              "id": 1757522872055,
               "aktivitet": "Leverera en första version av röst-API:t",
               "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
               "malomrade": "eget",
@@ -637,7 +634,7 @@
               "hp": 9
             },
             {
-              "id": 1757020924719,
+              "id": 1757522872056,
               "aktivitet": "Kampanja mot Bravo i korridorerna",
               "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
               "malomrade": "eget",
@@ -649,18 +646,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "Bravo": {
-        "submitted_at": 1757020924.7173944,
+        "submitted_at": 1757522872.0547893,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020924817,
+              "id": 1757522872154,
               "aktivitet": "Genomföra en tvåveckors kravworkshop",
               "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
               "malomrade": "eget",
@@ -671,7 +668,7 @@
               "hp": 12
             },
             {
-              "id": 1757020924818,
+              "id": 1757522872155,
               "aktivitet": "Kontakta regeringen för extra resurser",
               "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
               "malomrade": "eget",
@@ -683,7 +680,7 @@
               "hp": 7
             },
             {
-              "id": 1757020924819,
+              "id": 1757522872156,
               "aktivitet": "Sprida rykten om Alfa",
               "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
               "malomrade": "eget",
@@ -695,18 +692,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "STT": {
-        "submitted_at": 1757020924.7173994,
+        "submitted_at": 1757522872.054798,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020924917,
+              "id": 1757522872254,
               "aktivitet": "Hardening av valservern",
               "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
               "malomrade": "eget",
@@ -717,7 +714,7 @@
               "hp": 12
             },
             {
-              "id": 1757020924918,
+              "id": 1757522872255,
               "aktivitet": "Säkerställa drift under deklarationstid",
               "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
               "malomrade": "eget",
@@ -729,7 +726,7 @@
               "hp": 7
             },
             {
-              "id": 1757020924919,
+              "id": 1757522872256,
               "aktivitet": "Förhandla om prioritet",
               "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
               "malomrade": "eget",
@@ -741,18 +738,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "FM": {
-        "submitted_at": 1757020924.7174034,
+        "submitted_at": 1757522872.054804,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020925017,
+              "id": 1757522872354,
               "aktivitet": "Massiv DDOS-attack mot valservern",
               "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
               "malomrade": "eget",
@@ -763,7 +760,7 @@
               "hp": 8
             },
             {
-              "id": 1757020925018,
+              "id": 1757522872355,
               "aktivitet": "Desinformationskampanj på sociala medier",
               "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
               "malomrade": "eget",
@@ -775,18 +772,18 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "BS": {
-        "submitted_at": 1757020924.7174065,
+        "submitted_at": 1757522872.05481,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020925117,
+              "id": 1757522872454,
               "aktivitet": "Utpressa en STT-medlem",
               "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
               "malomrade": "eget",
@@ -797,7 +794,7 @@
               "hp": 7
             },
             {
-              "id": 1757020925118,
+              "id": 1757522872455,
               "aktivitet": "Manipulera databasen",
               "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
               "malomrade": "eget",
@@ -809,18 +806,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "Media": {
-        "submitted_at": 1757020924.717412,
+        "submitted_at": 1757522872.0548155,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020925217,
+              "id": 1757522872554,
               "aktivitet": "Publicera artikel om misstänkt sabotage i Alfa",
               "syfte": "Skapa rubriker om att utvecklingen är saboterad. Oavsett fakta får detta klick och skadar Alfas rykte.",
               "malomrade": "eget",
@@ -831,7 +828,7 @@
               "hp": 7
             },
             {
-              "id": 1757020925218,
+              "id": 1757522872555,
               "aktivitet": "Granskning av regeringens mörkläggning",
               "syfte": "Publicera uppgifter om att regeringen undanhåller allvarliga säkerhetsproblem. Detta ger stort genomslag internationellt.",
               "malomrade": "eget",
@@ -842,18 +839,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "SÄPO": {
-        "submitted_at": 1757020924.7174153,
+        "submitted_at": 1757522872.0548208,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020925317,
+              "id": 1757522872654,
               "aktivitet": "Spaning på Alfa",
               "syfte": "Misstänker infiltration i Team Alfa. SÄPO skickar underrättelsepersonal för att övervaka deras aktiviteter och identifiera spioner.",
               "malomrade": "eget",
@@ -864,7 +861,7 @@
               "hp": 7
             },
             {
-              "id": 1757020925318,
+              "id": 1757522872655,
               "aktivitet": "Samarbete med Media",
               "syfte": "Läckor planeras där SÄPO framstår som garant för säkerheten. De vill bygga narrativ om att myndigheten är nödvändig.",
               "malomrade": "eget",
@@ -875,18 +872,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "Regeringen": {
-        "submitted_at": 1757020924.7174182,
+        "submitted_at": 1757522872.0548291,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020925417,
+              "id": 1757522872754,
               "aktivitet": "Fördela extra resurser till Bravo",
               "syfte": "Regeringen vill stödja det mest strukturerade teamet för att minska risken för kaos. De hoppas på ett lugnare narrativ i media.",
               "malomrade": "eget",
@@ -897,7 +894,7 @@
               "hp": 6
             },
             {
-              "id": 1757020925418,
+              "id": 1757522872755,
               "aktivitet": "Mörka säkerhetsbrister",
               "syfte": "I samråd med PR-konsulter beslutar regeringen att tona ned problem med valets IT-system för att inte väcka panik.",
               "malomrade": "eget",
@@ -909,18 +906,18 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       },
       "USA": {
-        "submitted_at": 1757020924.717421,
+        "submitted_at": 1757522872.0548344,
         "phase": "Orderfas",
         "round": 2,
         "orders": {
           "activities": [
             {
-              "id": 1757020925517,
+              "id": 1757522872854,
               "aktivitet": "Pressa regeringen att gynna ett extremparti",
               "syfte": "USA kopplar bistånd och IT-stöd till politiska krav. Hotar att strypa tillgången till Office 365-licenser om regeringen inte samarbetar.",
               "malomrade": "eget",
@@ -931,7 +928,7 @@
               "hp": 8
             },
             {
-              "id": 1757020925518,
+              "id": 1757522872855,
               "aktivitet": "Erbjuda säkerhetsinformation till STT",
               "syfte": "Lämna \"strategiska tips\" om FM:s metoder, men med syfte att skapa beroende av amerikansk teknologi.",
               "malomrade": "eget",
@@ -942,20 +939,20 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:22:04.000Z"
+          "timestamp": "2025-09-10T18:47:52.000Z"
         },
         "final": true
       }
     },
     "orders_round_3": {
       "Alfa": {
-        "submitted_at": 1757022282.5178497,
+        "submitted_at": 1757523140.037084,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022282517,
+              "id": 1757523140037,
               "aktivitet": "Implementera en ny CI/CD-pipeline",
               "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
               "malomrade": "eget",
@@ -967,7 +964,7 @@
               "hp": 10
             },
             {
-              "id": 1757022282518,
+              "id": 1757523140038,
               "aktivitet": "Leverera en första version av röst-API:t",
               "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
               "malomrade": "eget",
@@ -979,7 +976,7 @@
               "hp": 9
             },
             {
-              "id": 1757022282519,
+              "id": 1757523140039,
               "aktivitet": "Kampanja mot Bravo i korridorerna",
               "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
               "malomrade": "eget",
@@ -991,18 +988,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "Bravo": {
-        "submitted_at": 1757022282.5178921,
+        "submitted_at": 1757523140.037111,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022282617,
+              "id": 1757523140137,
               "aktivitet": "Genomföra en tvåveckors kravworkshop",
               "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
               "malomrade": "eget",
@@ -1013,7 +1010,7 @@
               "hp": 12
             },
             {
-              "id": 1757022282618,
+              "id": 1757523140138,
               "aktivitet": "Kontakta regeringen för extra resurser",
               "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
               "malomrade": "eget",
@@ -1025,7 +1022,7 @@
               "hp": 7
             },
             {
-              "id": 1757022282619,
+              "id": 1757523140139,
               "aktivitet": "Sprida rykten om Alfa",
               "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
               "malomrade": "eget",
@@ -1037,18 +1034,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "STT": {
-        "submitted_at": 1757022282.5179145,
+        "submitted_at": 1757523140.0371208,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022282717,
+              "id": 1757523140237,
               "aktivitet": "Hardening av valservern",
               "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
               "malomrade": "eget",
@@ -1059,7 +1056,7 @@
               "hp": 12
             },
             {
-              "id": 1757022282718,
+              "id": 1757523140238,
               "aktivitet": "Säkerställa drift under deklarationstid",
               "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
               "malomrade": "eget",
@@ -1071,7 +1068,7 @@
               "hp": 7
             },
             {
-              "id": 1757022282719,
+              "id": 1757523140239,
               "aktivitet": "Förhandla om prioritet",
               "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
               "malomrade": "eget",
@@ -1083,18 +1080,18 @@
               "hp": 6
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "FM": {
-        "submitted_at": 1757022282.5179374,
+        "submitted_at": 1757523140.0371273,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022282817,
+              "id": 1757523140337,
               "aktivitet": "Massiv DDOS-attack mot valservern",
               "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
               "malomrade": "eget",
@@ -1105,7 +1102,7 @@
               "hp": 8
             },
             {
-              "id": 1757022282818,
+              "id": 1757523140338,
               "aktivitet": "Desinformationskampanj på sociala medier",
               "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
               "malomrade": "eget",
@@ -1117,18 +1114,18 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "BS": {
-        "submitted_at": 1757022282.517955,
+        "submitted_at": 1757523140.0371335,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022282917,
+              "id": 1757523140437,
               "aktivitet": "Utpressa en STT-medlem",
               "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
               "malomrade": "eget",
@@ -1139,7 +1136,7 @@
               "hp": 7
             },
             {
-              "id": 1757022282918,
+              "id": 1757523140438,
               "aktivitet": "Manipulera databasen",
               "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
               "malomrade": "eget",
@@ -1151,18 +1148,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "Media": {
-        "submitted_at": 1757022282.5179665,
+        "submitted_at": 1757523140.037141,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022283017,
+              "id": 1757523140537,
               "aktivitet": "Publicera artikel om misstänkt sabotage i Alfa",
               "syfte": "Skapa rubriker om att utvecklingen är saboterad. Oavsett fakta får detta klick och skadar Alfas rykte.",
               "malomrade": "eget",
@@ -1173,7 +1170,7 @@
               "hp": 7
             },
             {
-              "id": 1757022283018,
+              "id": 1757523140538,
               "aktivitet": "Granskning av regeringens mörkläggning",
               "syfte": "Publicera uppgifter om att regeringen undanhåller allvarliga säkerhetsproblem. Detta ger stort genomslag internationellt.",
               "malomrade": "eget",
@@ -1184,18 +1181,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "SÄPO": {
-        "submitted_at": 1757022282.517979,
+        "submitted_at": 1757523140.037148,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022283117,
+              "id": 1757523140637,
               "aktivitet": "Spaning på Alfa",
               "syfte": "Misstänker infiltration i Team Alfa. SÄPO skickar underrättelsepersonal för att övervaka deras aktiviteter och identifiera spioner.",
               "malomrade": "eget",
@@ -1206,7 +1203,7 @@
               "hp": 7
             },
             {
-              "id": 1757022283118,
+              "id": 1757523140638,
               "aktivitet": "Samarbete med Media",
               "syfte": "Läckor planeras där SÄPO framstår som garant för säkerheten. De vill bygga narrativ om att myndigheten är nödvändig.",
               "malomrade": "eget",
@@ -1217,18 +1214,18 @@
               "hp": 5
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "Regeringen": {
-        "submitted_at": 1757022282.5179896,
+        "submitted_at": 1757523140.037155,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022283217,
+              "id": 1757523140737,
               "aktivitet": "Fördela extra resurser till Bravo",
               "syfte": "Regeringen vill stödja det mest strukturerade teamet för att minska risken för kaos. De hoppas på ett lugnare narrativ i media.",
               "malomrade": "eget",
@@ -1239,7 +1236,7 @@
               "hp": 6
             },
             {
-              "id": 1757022283218,
+              "id": 1757523140738,
               "aktivitet": "Mörka säkerhetsbrister",
               "syfte": "I samråd med PR-konsulter beslutar regeringen att tona ned problem med valets IT-system för att inte väcka panik.",
               "malomrade": "eget",
@@ -1251,18 +1248,18 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
         },
         "final": true
       },
       "USA": {
-        "submitted_at": 1757022282.518,
+        "submitted_at": 1757523140.037161,
         "phase": "Orderfas",
         "round": 3,
         "orders": {
           "activities": [
             {
-              "id": 1757022283317,
+              "id": 1757523140837,
               "aktivitet": "Pressa regeringen att gynna ett extremparti",
               "syfte": "USA kopplar bistånd och IT-stöd till politiska krav. Hotar att strypa tillgången till Office 365-licenser om regeringen inte samarbetar.",
               "malomrade": "eget",
@@ -1273,7 +1270,7 @@
               "hp": 8
             },
             {
-              "id": 1757022283318,
+              "id": 1757523140838,
               "aktivitet": "Erbjuda säkerhetsinformation till STT",
               "syfte": "Lämna \"strategiska tips\" om FM:s metoder, men med syfte att skapa beroende av amerikansk teknologi.",
               "malomrade": "eget",
@@ -1284,20 +1281,362 @@
               "hp": 4
             }
           ],
-          "timestamp": "2025-09-04T23:44:42.000Z"
+          "timestamp": "2025-09-10T18:52:20.000Z"
+        },
+        "final": true
+      }
+    },
+    "orders_round_4": {
+      "Alfa": {
+        "submitted_at": 1757523181.2635334,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181263,
+              "aktivitet": "Implementera en ny CI/CD-pipeline",
+              "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 10
+            },
+            {
+              "id": 1757523181264,
+              "aktivitet": "Leverera en första version av röst-API:t",
+              "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 9
+            },
+            {
+              "id": 1757523181265,
+              "aktivitet": "Kampanja mot Bravo i korridorerna",
+              "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Media",
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "Bravo": {
+        "submitted_at": 1757523181.2635508,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181363,
+              "aktivitet": "Genomföra en tvåveckors kravworkshop",
+              "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 12
+            },
+            {
+              "id": 1757523181364,
+              "aktivitet": "Kontakta regeringen för extra resurser",
+              "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Regeringen",
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 7
+            },
+            {
+              "id": 1757523181365,
+              "aktivitet": "Sprida rykten om Alfa",
+              "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Media",
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "STT": {
+        "submitted_at": 1757523181.2635555,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181463,
+              "aktivitet": "Hardening av valservern",
+              "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 12
+            },
+            {
+              "id": 1757523181464,
+              "aktivitet": "Säkerställa drift under deklarationstid",
+              "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 7
+            },
+            {
+              "id": 1757523181465,
+              "aktivitet": "Förhandla om prioritet",
+              "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "FM": {
+        "submitted_at": 1757523181.2635593,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181563,
+              "aktivitet": "Massiv DDOS-attack mot valservern",
+              "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "forstora",
+              "hp": 8
+            },
+            {
+              "id": 1757523181564,
+              "aktivitet": "Desinformationskampanj på sociala medier",
+              "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Regeringen",
+                "Media"
+              ],
+              "typ": "forstora",
+              "hp": 4
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "BS": {
+        "submitted_at": 1757523181.2635632,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181663,
+              "aktivitet": "Utpressa en STT-medlem",
+              "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "forstora",
+              "hp": 7
+            },
+            {
+              "id": 1757523181664,
+              "aktivitet": "Manipulera databasen",
+              "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "Bravo"
+              ],
+              "typ": "forstora",
+              "hp": 5
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "Media": {
+        "submitted_at": 1757523181.2635665,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181763,
+              "aktivitet": "Publicera artikel om misstänkt sabotage i Alfa",
+              "syfte": "Skapa rubriker om att utvecklingen är saboterad. Oavsett fakta får detta klick och skadar Alfas rykte.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 7
+            },
+            {
+              "id": 1757523181764,
+              "aktivitet": "Granskning av regeringens mörkläggning",
+              "syfte": "Publicera uppgifter om att regeringen undanhåller allvarliga säkerhetsproblem. Detta ger stort genomslag internationellt.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Regeringen"
+              ],
+              "typ": "bygga",
+              "hp": 5
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "SÄPO": {
+        "submitted_at": 1757523181.2635705,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181863,
+              "aktivitet": "Spaning på Alfa",
+              "syfte": "Misstänker infiltration i Team Alfa. SÄPO skickar underrättelsepersonal för att övervaka deras aktiviteter och identifiera spioner.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 7
+            },
+            {
+              "id": 1757523181864,
+              "aktivitet": "Samarbete med Media",
+              "syfte": "Läckor planeras där SÄPO framstår som garant för säkerheten. De vill bygga narrativ om att myndigheten är nödvändig.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Media"
+              ],
+              "typ": "bygga",
+              "hp": 5
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "Regeringen": {
+        "submitted_at": 1757523181.2635741,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523181963,
+              "aktivitet": "Fördela extra resurser till Bravo",
+              "syfte": "Regeringen vill stödja det mest strukturerade teamet för att minska risken för kaos. De hoppas på ett lugnare narrativ i media.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            },
+            {
+              "id": 1757523181964,
+              "aktivitet": "Mörka säkerhetsbrister",
+              "syfte": "I samråd med PR-konsulter beslutar regeringen att tona ned problem med valets IT-system för att inte väcka panik.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Media",
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 4
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
+        },
+        "final": true
+      },
+      "USA": {
+        "submitted_at": 1757523181.263577,
+        "phase": "Orderfas",
+        "round": 4,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757523182063,
+              "aktivitet": "Pressa regeringen att gynna ett extremparti",
+              "syfte": "USA kopplar bistånd och IT-stöd till politiska krav. Hotar att strypa tillgången till Office 365-licenser om regeringen inte samarbetar.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Regeringen"
+              ],
+              "typ": "bygga",
+              "hp": 8
+            },
+            {
+              "id": 1757523182064,
+              "aktivitet": "Erbjuda säkerhetsinformation till STT",
+              "syfte": "Lämna \"strategiska tips\" om FM:s metoder, men med syfte att skapa beroende av amerikansk teknologi.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 4
+            }
+          ],
+          "timestamp": "2025-09-10T18:53:01.000Z"
         },
         "final": true
       }
     }
   },
-  "timer_status": "running",
-  "timer_start": 1757024631,
+  "timer_status": "stopped",
+  "timer_start": null,
   "timer_elapsed": 0,
   "fashistorik": [
     {
       "runda": 1,
       "fas": "Orderfas",
-      "status": "pågående"
+      "status": "avklarad"
     },
     {
       "runda": 1,
@@ -1327,6 +1666,11 @@
     {
       "runda": 3,
       "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 3,
+      "fas": "Diplomatifas",
       "status": "avklarad"
     },
     {
@@ -1337,8 +1681,18 @@
     {
       "runda": 4,
       "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 4,
+      "fas": "Resultatfas",
       "status": "pågående"
     }
   ],
-  "fas_start_time": 1757024631
+  "checkbox_states": {
+    "result_check1": true,
+    "result_check2": true,
+    "result_check3": true
+  },
+  "avslutat": true
 }

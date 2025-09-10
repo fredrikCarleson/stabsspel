@@ -196,68 +196,53 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
 
 
 def create_orderfas_checklist(spel_id, data):
-    """Skapa checklista för Orderfas"""
+    """Skapa checklista för Orderfas (per-team orders med test-läge)"""
     checklist_html = f'''
     <div class="checklist-container border-left-success">
         <h3 class="checklist-title">📋 Checklista: Ordrar från alla team</h3>
-        
+
         <!-- Test Mode Toggle -->
         <div class="test-mode-container">
             <label class="test-mode-label">
                 <input type="checkbox" id="test_mode_toggle" class="checkbox-large" onchange="toggleTestMode()" checked>
                 🧪 Test Mode (Admin Cheat Links)
             </label>
-            
+
             <!-- Auto-fill Orders Button (only visible in test mode) -->
             <div id="auto_fill_section" class="test-mode-section">
                 <h4 class="test-mode-title">🚀 Auto-fyll Test Data</h4>
                 <p class="test-mode-description">Fyll automatiskt alla teams order med test data för att prova ChatGPT-funktionen</p>
-                <button onclick="autoFillOrders()" class="warning sm">
-                    🚀 Auto-fyll Alla Orders
-                </button>
+                <button onclick="autoFillOrders()" class="warning sm">🚀 Auto-fyll Alla Orders</button>
             </div>
         </div>
-        
+
         <div class="checklist-content">
     '''
-    
+
     # Check for submitted orders
     orders_key = f"orders_round_{data['runda']}"
     team_orders = data.get("team_orders", {}).get(orders_key, {})
-    
+
     # Get team tokens for admin cheat links
     team_tokens = data.get("team_tokens", {})
-    
-    # Skapa checkbox för varje lag
+
+    # Skapa rad för varje lag
     for i, lag in enumerate(data["lag"], 1):
         checkbox_id = f"order_check{i}"
         is_checked = get_checkbox_state(data, checkbox_id)
         checked_attr = "checked" if is_checked else ""
-        
-        # Check if team has submitted orders
+
+        # Finns det inskickade ordrar?
         has_submitted = lag in team_orders and team_orders[lag].get("final", False)
-        submitted_status = ""  # Removed emoji to prevent visual duplication
         submitted_text = " (Inskickad)" if has_submitted else " (Väntar)"
-        
-        # Create view order link if submitted
-        view_order_link = ""
-        if has_submitted:
-            view_order_link = f'''
-                <a href="/admin/{spel_id}/view_order/{lag}" target="_blank" class="status-indicator">
-                    👁️ Visa order
-                </a>
-            '''
-        
-        # Create admin cheat link for test mode
+
+        view_order_link = f'''<a href="/admin/{spel_id}/view_order/{lag}" target="_blank" class="status-indicator">👁️ Visa order</a>''' if has_submitted else ""
+
         admin_cheat_link = ""
         if lag in team_tokens:
             token = team_tokens[lag]
-            admin_cheat_link = f'''
-                <a href="/team/{spel_id}/{token}/enter_order" target="_blank" class="cheat-link">
-                    🔗 Admin: Ange order
-                </a>
-            '''
-        
+            admin_cheat_link = f'''<a href="/team/{spel_id}/{token}/enter_order" target="_blank" class="admin-cheat-link">🔗 Admin: Ange order</a>'''
+
         checklist_html += f'''
             <div class="team-order-row">
                 <div class="checklist-item">
@@ -270,53 +255,34 @@ def create_orderfas_checklist(spel_id, data):
                 </div>
             </div>
         '''
-    
+
     checklist_html += f'''
         </div>
-        
-        <!-- Order Summary Button (only visible in Diplomati phase) -->
-        <div class="chatgpt-container" style="display: {'block' if data['fas'] == 'Diplomatifas' else 'none'};">
-            <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
-            <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
-                📋 Visa Order Sammanfattning
-            </a>
-        </div>
     </div>
-    
+
     <div class="margin-20-0">
         <form method="post" action="/admin/{spel_id}/timer" class="form-inline">
             <button name="action" value="next_fas" id="next-fas-btn" disabled class="secondary">Nästa fas</button>
         </form>
     </div>
-    
+
     <script>
     function saveCheckboxState(checkboxId, checked) {{
         fetch('/admin/{spel_id}/save_checkbox', {{
             method: 'POST',
-            headers: {{
-                'Content-Type': 'application/json',
-            }},
-            body: JSON.stringify({{
-                checkbox_id: checkboxId,
-                checked: checked
-            }})
+            headers: {{ 'Content-Type': 'application/json' }},
+            body: JSON.stringify({{ checkbox_id: checkboxId, checked: checked }})
         }});
     }}
-    
+
     function updateNextFasButton() {{
         const totalTeams = {len(data["lag"])};
         let checkedCount = 0;
-        
         for (let i = 1; i <= totalTeams; i++) {{
             const checkbox = document.getElementById('order_check' + i);
-            if (checkbox && checkbox.checked) {{
-                checkedCount++;
-            }}
+            if (checkbox && checkbox.checked) {{ checkedCount++; }}
         }}
-        
         const nextFasButton = document.getElementById('next-fas-btn');
-        
         if (checkedCount === totalTeams) {{
             nextFasButton.disabled = false;
             nextFasButton.className = 'btn btn--success';
@@ -325,97 +291,57 @@ def create_orderfas_checklist(spel_id, data):
             nextFasButton.className = 'btn btn--secondary';
         }}
     }}
-    
+
     function toggleTestMode() {{
         const testModeToggle = document.getElementById('test_mode_toggle');
         const adminCheatLinks = document.querySelectorAll('.admin-cheat-link');
         const autoFillSection = document.getElementById('auto_fill_section');
-        
-        if (testModeToggle.checked) {{
-            // Show admin cheat links and auto-fill section
-            adminCheatLinks.forEach(link => {{
-                link.style.display = 'inline';
-            }});
-            if (autoFillSection) {{
-                autoFillSection.style.display = 'block';
-            }}
-        }} else {{
-            // Hide admin cheat links and auto-fill section
-            adminCheatLinks.forEach(link => {{
-                link.style.display = 'none';
-            }});
-            if (autoFillSection) {{
-                autoFillSection.style.display = 'none';
-            }}
-        }}
-    }}
-    
-    function autoFillOrders() {{
-        if (!confirm('Är du säker på att du vill auto-fylla alla teams order med test data? Detta kommer att ersätta eventuella befintliga order.')) {{
-            return;
-        }}
-        
-        fetch('/admin/{spel_id}/auto_fill_orders', {{
-            method: 'POST',
-            headers: {{
-                'Content-Type': 'application/json',
-            }}
-        }})
-        .then(response => response.json())
-        .then(data => {{
-            if (data.success) {{
-                alert('✅ ' + data.message);
-                // Ladda om sidan för att visa uppdateringarna
-                location.reload();
+        if (testModeToggle && adminCheatLinks) {{
+            if (testModeToggle.checked) {{
+                adminCheatLinks.forEach(link => link.style.display = 'inline');
+                if (autoFillSection) autoFillSection.style.display = 'block';
             }} else {{
-                alert('❌ Fel: ' + data.error);
+                adminCheatLinks.forEach(link => link.style.display = 'none');
+                if (autoFillSection) autoFillSection.style.display = 'none';
             }}
-        }})
-        .catch(error => {{
-            console.error('Error:', error);
-            alert('❌ Ett fel uppstod vid auto-fyllning av orders');
-        }});
+        }}
     }}
-    
-    // Auto-refresh checklist every 5 seconds
+
+    function autoFillOrders() {{
+        if (!confirm('Är du säker på att du vill auto-fylla alla teams order med test data? Detta kommer att ersätta eventuella befintliga order.')) return;
+        fetch('/admin/{spel_id}/auto_fill_orders', {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }} }})
+            .then(r => r.json())
+            .then(d => {{
+                if (d.success) {{ alert('✅ ' + d.message); location.reload(); }}
+                else {{ alert('❌ Fel: ' + d.error); }}
+            }})
+            .catch(() => alert('❌ Ett fel uppstod vid auto-fyllning av orders'));
+    }}
+
     function refreshChecklist() {{
         fetch('/admin/{spel_id}/checklist_status')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {{
-                // Update checkboxes based on submitted orders
                 data.team_status.forEach((status, index) => {{
                     const checkbox = document.getElementById('order_check' + (index + 1));
                     if (checkbox) {{
                         checkbox.checked = status.submitted;
-                        // Update the status text
                         const statusSpan = checkbox.parentElement.querySelector('span');
-                        if (statusSpan) {{
-                            statusSpan.innerHTML = status.status_text;
-                        }}
-                        // Show/hide view order link
-                        const viewLink = checkbox.parentElement.querySelector('a[href*="/view_order/"]');
-                        if (viewLink) {{
-                            viewLink.style.display = status.submitted ? 'inline' : 'none';
-                        }}
+                        if (statusSpan) {{ statusSpan.innerHTML = status.status_text; }}
+                        const viewLink = checkbox.parentElement.parentElement.querySelector('a[href*="/view_order/"]');
+                        if (viewLink) {{ viewLink.style.display = status.submitted ? 'inline' : 'none'; }}
                     }}
                 }});
                 updateNextFasButton();
             }})
-            .catch(error => console.error('Error refreshing checklist:', error));
+            .catch(() => {{}});
     }}
-    
-    // Start auto-refresh every 5 seconds
+
     setInterval(refreshChecklist, 5000);
-    
-    // Initiera knappen när sidan laddas
-    window.onload = function() {{
-        updateNextFasButton();
-        // Show admin cheat links by default (test mode)
-        toggleTestMode();
-    }};
+    window.onload = function() {{ updateNextFasButton(); toggleTestMode(); }};
     </script>
     '''
-    
+
     return checklist_html
 
 def create_diplomatifas_checklist(spel_id):
@@ -428,11 +354,12 @@ def create_diplomatifas_checklist(spel_id):
         <div class="checklist-content">
     '''
     
-    # Skapa checkboxar med persistent states
+    # Skapa checkboxar med persistent states (4 steg i korrekt ordning)
     checkbox_items = [
-        ("diplo_check1", "Läs igenom alla orders"),
-        ("diplo_check2", "Besluta om konsekvenser gällande handlingspoäng"),
-        ("diplo_check3", "Skapa nyheter")
+        ("diplo_check1", "Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser"),
+        ("diplo_check2", "Klistra in i chatgpt och läs resultatet"),
+        ("diplo_check3", "Redigera handlingspoäng för varje team"),
+        ("diplo_check4", "Uppdatera progress för teamens arbete")
     ]
     
     for checkbox_id, label in checkbox_items:
@@ -445,17 +372,32 @@ def create_diplomatifas_checklist(spel_id):
                 <span class="font-size-14 text-muted">{label}</span>
             </div>
         '''
+
+        # Lägg till relaterat innehåll direkt under respektive steg
+        if checkbox_id == "diplo_check1":
+            checklist_html += f'''
+            <div class="chatgpt-container" style="margin: 8px 0 16px 24px;">
+                <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
+                <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
+                <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
+                    📋 Visa Order Sammanfattning
+                </a>
+            </div>
+            '''
+        elif checkbox_id == "diplo_check3":
+            checklist_html += f'''
+            <div style="margin: 8px 0 16px 24px;">
+                <a href="/admin/{spel_id}/poang" class="primary sm">Visa/ändra handlingspoäng</a>
+            </div>
+            '''
+        elif checkbox_id == "diplo_check4":
+            checklist_html += f'''
+            <div style="margin: 8px 0 16px 24px;">
+                <a href="/admin/{spel_id}/backlog" class="success sm">Uppdatera teamens arbete</a>
+            </div>
+            '''
     
     checklist_html += f'''
-        </div>
-        
-        <!-- Order Summary Button for ChatGPT -->
-        <div class="chatgpt-container">
-            <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
-            <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-            <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
-                📋 Visa Order Sammanfattning
-            </a>
         </div>
     </div>
     
@@ -483,9 +425,10 @@ def create_diplomatifas_checklist(spel_id):
         const check1 = document.getElementById('diplo_check1').checked;
         const check2 = document.getElementById('diplo_check2').checked;
         const check3 = document.getElementById('diplo_check3').checked;
+        const check4 = document.getElementById('diplo_check4').checked;
         const nextFasButton = document.getElementById('diplo-next-fas-btn');
-        
-        if (check1 && check2 && check3) {{
+
+        if (check1 && check2 && check3 && check4) {{
             nextFasButton.disabled = false;
             nextFasButton.className = 'btn btn--info';
         }} else {{
@@ -513,11 +456,11 @@ def create_resultatfas_checklist(spel_id):
         <div style="margin: 15px 0;">
     '''
     
-    # Skapa checkboxar med persistent states
+    # Skapa checkboxar med persistent states (endast textpunkter)
     checkbox_items = [
-        ("result_check1", "Uppdatera progress för teamens arbete"),
-        ("result_check2", "Läsa upp nyheter"),
-        ("result_check3", "Redigera handlingspoäng för varje team")
+        ("result_check1", "Läsa upp nyheter"),
+        ("result_check2", "Visa Team Översikt"),
+        ("result_check3", "Visa teamens nya handlingspoäng")
     ]
     
     for i, (checkbox_id, label) in enumerate(checkbox_items, 1):
@@ -531,23 +474,6 @@ def create_resultatfas_checklist(spel_id):
             </div>
         '''
         
-        # Lägg till knappar efter specifika checkboxar
-        if i == 1:
-            checklist_html += f'''
-            <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/backlog" class="success sm">
-                    Uppdatera teamens arbete
-                </a>
-            </div>
-            '''
-        elif i == 3:
-            checklist_html += f'''
-            <div style="margin: 8px 0 16px 24px;">
-                <a href="/admin/{spel_id}/poang" class="primary sm">
-                    Visa/ändra handlingspoäng
-                </a>
-            </div>
-            '''
     
     checklist_html += f'''
         </div>
@@ -2577,11 +2503,11 @@ ORDER_SUMMARY_TEMPLATE = """
 {{ formatted_text }}
 
 Baserat på dessa order, ge förslag på:
-1. Nyhetsrubriker som kan uppstå
-2. Plus/minus poäng för varje team
-3. Konsekvenser av teamens handlingar
-4. Eventuella konflikter mellan team
-5. Samlad resultatrapport i tidningsformat
+1. Uppdaterad backlogstatus: hur många fler (eller färre) poäng varje team har på sina arbetsuppgifter.
+2. Plus/minus poäng för varje team inför nästa runda.
+3. Konsekvenser av teamens handlingar.
+4. Eventuella konflikter mellan team.
+5. Samlad resultatrapport i tidningsformat.
 {% else %}
 Inga order har skickats in ännu.
 {% endif %}
