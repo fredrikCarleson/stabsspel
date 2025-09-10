@@ -75,13 +75,49 @@
     }
   
     /* --- Kort/sektioner ------------------------------------------------------ */
-    .card, .activity-card, .order-card, .section, .panel {
+    .card, .order-card, .section, .panel {
       background: #fff;
-      border: 1px solid #ccc;
+      border: 1pt solid #000;
       margin: 0 0 12pt;
       page-break-inside: avoid;
       break-inside: avoid;
     }
+
+    /* Aktivitetskort: enhetlig storlek för att inte avslöja uppdrag via höjd */
+    .activity-card {
+      background: #fff;
+      border: 1.25pt solid #000;      /* tydlig svart ram för utskärning */
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 8pt;
+      box-sizing: border-box;      /* inkludera ram i totalhöjd */
+      height: 85mm;                /* fast höjd för alla kort */
+      page-break-inside: avoid;
+      break-inside: avoid;
+      overflow: hidden;           /* skär av överflödigt innehåll om texten är för lång */
+    }
+    .activity-card .card-header {
+      margin: 0 0 6pt;
+      padding: 0;
+      border-bottom: 1pt solid #000;
+    }
+    .activity-card .card-header h3 {
+      font-size: 12pt;
+      line-height: 1.2;
+      margin: 0;
+    }
+    .activity-card .card-content {
+      font-size: 10pt;
+      line-height: 1.3;
+      display: flex;
+      flex-direction: column;
+      gap: 2pt;
+      overflow: hidden;
+    }
+    .activity-card .card-section h4 { margin: 0 0 1pt; font-size: 10pt; }
+    .activity-card .card-section p { margin: 0 0 1pt; }
   
     /* Grid med två kolumner på papper (om innehållet tillåter) */
     .cards-container {

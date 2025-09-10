@@ -14,6 +14,9 @@ app.register_blueprint(team_order_bp)
 
 # Configure for production
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+# Disable static file caching during development and force template reloads
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # Add cache-busting headers for static files
 @app.after_request
@@ -1247,7 +1250,9 @@ def timer_window(spel_id):
 if __name__ == "__main__":
     # Production configuration
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') == 'development'
+    # Force debug True locally to enable auto-reload unless explicitly disabled
+    debug_env = os.environ.get('FLASK_DEBUG') or os.environ.get('FLASK_ENV')
+    debug = True if (debug_env is None or debug_env in ['1', 'true', 'development']) else False
     
     # Ensure secret key is set for production
     if not app.config['SECRET_KEY'] or app.config['SECRET_KEY'] == 'dev-secret-key-change-in-production':
