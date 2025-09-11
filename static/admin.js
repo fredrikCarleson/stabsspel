@@ -574,3 +574,13 @@ document.addEventListener('DOMContentLoaded', function() {
         applyDramaticTypography(element.id, dramaticType);
     });
 });
+
+// Apply data-driven widths/colors for progress bars
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.progress-fill').forEach(function (el) {
+    const w = el.getAttribute('data-width');
+    const c = el.getAttribute('data-color');
+    if (w) el.style.width = (parseFloat(w) || 0) + '%';
+    if (c) el.style.backgroundColor = c;
+  });
+});

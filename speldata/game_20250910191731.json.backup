@@ -4,7 +4,7 @@
   "plats": "tretre",
   "antal_spelare": 27,
   "skapad": "2025-09-10T19:17:31.624246",
-  "fas": "Diplomatifas",
+  "fas": "Resultatfas",
   "runda": 1,
   "lag": [
     "Alfa",
@@ -272,6 +272,11 @@
     {
       "runda": 1,
       "fas": "Diplomatifas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 1,
+      "fas": "Resultatfas",
       "status": "pågående"
     }
   ],
@@ -623,6 +628,9 @@
     "diplo_check1": true,
     "diplo_check2": true,
     "diplo_check3": true,
-    "diplo_check4": true
+    "diplo_check4": true,
+    "result_check1": true,
+    "result_check2": true,
+    "result_check3": true
   }
 }

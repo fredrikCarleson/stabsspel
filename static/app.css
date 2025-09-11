@@ -709,6 +709,34 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 .text-center { text-align: center; }
 .text-left { text-align: left; }
 .text-right { text-align: right; }
+.text-center { text-align: center; }
+.text-danger { color: var(--c-danger); }
+
+/* Generic section title */
+.section-title {
+  color: #2c3e50;
+  font-size: 1.8em;
+  font-weight: 600;
+  margin: 0 0 25px 0;
+  text-align: center;
+}
+
+/* Card elements */
+.card-title {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1.2em;
+}
+
+/* Quarter pills */
+.quarter-pill {
+  padding: 12px 8px;
+  border-radius: var(--radius-8);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9em;
+  transition: all 0.3s ease;
+}
 
 .text-success { color: var(--c-success); }
 .text-danger { color: var(--c-danger); }
@@ -753,6 +781,21 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 .gap-2 { gap: 0.5rem; }
 .gap-3 { gap: 1rem; }
 .gap-4 { gap: 1.5rem; }
+
+/* Custom spacing utilities used by legacy HTML */
+.margin-20-0 { margin: 20px 0; }
+.mr-2 { margin-right: 0.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.fw-semibold { font-weight: 600; }
+.text-right { text-align: right; }
+
+/* Width utilities for tables */
+.w-35 { width: 35%; }
+.w-15 { width: 15%; }
+.w-5 { width: 5%; }
+
+/* Fixed table layout helper */
+.table-fixed { table-layout: fixed; width: 100%; }
 
 /* ============================================================================
    ANIMATIONER

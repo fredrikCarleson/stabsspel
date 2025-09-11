@@ -183,8 +183,8 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
             </div>
             
             <div class="activities">
-                <h3 style="color: #2c3e50; margin-bottom: 20px;">📝 Aktiviteter</h3>
-                {activities_html if activities_html else '<p style="color: #6c757d; text-align: center;">Inga aktiviteter hittades</p>'}
+                <h3 class="card-title mb-3">📝 Aktiviteter</h3>
+                {activities_html if activities_html else '<p class="text-muted text-center">Inga aktiviteter hittades</p>'}
             </div>
         </div>
     </body>
@@ -676,21 +676,19 @@ def create_team_overview(data):
     for task in all_tasks:
         color = get_progress_color(task["progress"])
         overview_html += f'''
-        <div style="margin: 15px 0; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e9ecef;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="flex: 1;">
-                    <strong style="color: #495057;">{task["lag"]}</strong>
-                    <span style="color: #6c757d; margin-left: 10px;">{task["namn"]}</span>
+        <div class="card">
+            <div class="flex-between mb-2">
+                <div class="flex">
+                    <strong class="mr-2">{task["lag"]}</strong>
+                    <span class="text-muted">{task["namn"]}</span>
                 </div>
-                <div style="text-align: right; font-weight: bold; color: #495057;">
-                    {task["progress"]:.0f}%
-                </div>
+                <div class="fw-semibold">{task["progress"]:.0f}%</div>
             </div>
-            <div style="background: #e9ecef; height: 20px; border-radius: 10px; overflow: hidden;">
-                <div style="background: {color}; height: 100%; width: {task["progress"]}%; transition: width 0.3s ease; border-radius: 10px;"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" data-width="{task["progress"]}" data-color="{color}"></div>
             </div>
-            <div style="text-align: right; font-size: 0.9em; color: #6c757d; margin-top: 5px;">
-                {task["spenderade"]}/{task["estimaterade"]} HP
+            <div class="text-right text-muted mt-1">
+                {task["spenderade"]} / {task["estimaterade"]} HP
             </div>
         </div>
         '''
@@ -715,8 +713,8 @@ def create_phase_progress_html(runda, fas):
     
     progress_html = f'''
     <div class="card">
-        <h3 style="margin: 0 0 15px 0; color: var(--c-text); font-size: 1.2em; font-weight: 600;">🎯 RUNDA {runda} AV 4</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <h3 class="card-title">🎯 RUNDA {runda} AV 4</h3>
+        <div class="flex-wrap">
     '''
     
     for phase in phases:
@@ -787,7 +785,7 @@ def admin_start():
         <div class="container">
             <!-- Header Section -->
             <div class="page-header">
-                <h1>🎮 Stabsspel Admin</h1>
+                <h1>🎮 Stabsspel Admin <span class="text-muted" style="font-size: 0.6em;">refactor [4]</span></h1>
                 <p class="page-subtitle">Spelhantering och kontrollpanel</p>
             </div>
             
@@ -1028,7 +1026,7 @@ def admin_panel(spel_id):
             <div class="container">
             <!-- Header Section -->
             <div class="admin-panel-header">
-                <h1>Adminpanel för spel {spel_id}</h1>
+                <h1>Adminpanel för spel {spel_id} <span class="text-muted" style="font-size: 0.6em;">refactor [4]</span></h1>
                 <p class="admin-panel-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
                 <p class="admin-panel-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
                 <p class="admin-panel-subtitle">Lag: {lag_html}</p>
@@ -1066,8 +1064,8 @@ def admin_panel(spel_id):
 def create_quarter_bar_html(quarters, current_round):
     """Skapa kvartalsvisualisering med design-system färger"""
     quarter_html = '<div class="card">'
-    quarter_html += '<h3 style="margin: 0 0 15px 0; color: var(--c-text); font-size: 1.2em; font-weight: 600;">KVARTALSFÖRLOPP</h3>'
-    quarter_html += '<div style="display: flex; gap: 10px; align-items: center;">'
+    quarter_html += '<h3 class="card-title">KVARTALSFÖRLOPP</h3>'
+    quarter_html += '<div class="flex" style="gap: 10px; align-items: center;">'
     
     for i, quarter in enumerate(quarters):
         is_active = quarter["active"]
@@ -1090,19 +1088,7 @@ def create_quarter_bar_html(quarters, current_round):
             border = "1px solid #e2e8f0"
         
         quarter_html += f'''
-        <div style="
-            flex: 1;
-            background: {bg_color};
-            color: {text_color};
-            padding: 12px 8px;
-            border-radius: var(--radius-8);
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.9em;
-            border: {border};
-            transition: all 0.3s ease;
-            cursor: default;
-        ">
+        <div class="quarter-pill" style="flex:1; background:{bg_color}; color:{text_color}; border:{border};">
             {quarter["name"]}
         </div>
         '''
@@ -1113,14 +1099,14 @@ def create_quarter_bar_html(quarters, current_round):
 def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda):
     """Skapa timer HTML baserat på fas"""
     if avslutat:
-        return '<h2 style="color: #dc3545; font-size: 1.8em; font-weight: 600; text-align: center; margin: 30px 0;">Spelet är avslutat</h2>'
+        return '<h2 class="section-title text-danger" style="margin: 30px 0;">Spelet är avslutat</h2>'
     
     if fas in ["Orderfas", "Diplomatifas"]:
         timer_html = ''
         
         # Visa rubrik endast om den inte är tom (för bakåtkompatibilitet)
         if rubrik:
-            timer_html += f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
+            timer_html += f'<h2 class="section-title">{rubrik}</h2>'
         
         timer_html += create_timer_controls(spel_id, remaining, timer_status)
         
@@ -1136,13 +1122,13 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         # Visa rubrik endast om den inte är tom (för bakåtkompatibilitet)
         timer_html = ''
         if rubrik:
-            timer_html += f'<h2 style="color: #2c3e50; font-size: 1.8em; font-weight: 600; margin: 0 0 25px 0; text-align: center;">{rubrik}</h2>'
+            timer_html += f'<h2 class="section-title">{rubrik}</h2>'
         timer_html += create_resultatfas_checklist(spel_id)
         
         # Starta ny runda knapp - inaktivera om runda 4
         if runda >= MAX_RUNDA:
             timer_html += f'''
-            <div style="margin: 25px 0; text-align: center;">
+            <div class="text-center margin-20-0">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
                     <button type="submit" id="start-ny-runda-btn" disabled class="secondary lg">Starta ny runda</button>
                 </form>
@@ -1150,7 +1136,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
             '''
         else:
             timer_html += f'''
-            <div style="margin: 25px 0; text-align: center;">
+            <div class="text-center margin-20-0">
                 <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
                     <button type="submit" id="start-ny-runda-btn" class="primary lg">Starta ny runda</button>
                 </form>
@@ -1160,7 +1146,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         # Avsluta spel om max runder nått
         if runda >= MAX_RUNDA:
             timer_html += f'''
-            <div style="margin: 25px 0; text-align: center;">
+            <div class="text-center margin-20-0">
                 <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
                     <button type="submit" class="danger lg">Avsluta spelet</button>
                 </form>
@@ -1447,7 +1433,7 @@ def admin_aktivitetskort(spel_id):
     for lag in laglista:
         if lag in AKTIVITETSKORT:
             html += f'<h2>🟢 Team {lag} – Aktivitetskort</h2>'
-            html += '<div class="cards-container" style="page-break-after: always;">'
+            html += '<div class="cards-container force-break">'
             
             # Skapa kort för alla spelare i laget (2 med uppdrag, resten blanka)
             kort = AKTIVITETSKORT[lag]
@@ -2075,7 +2061,7 @@ def admin_backlog(spel_id):
                         <h3>✅ Team {lag}</h3>
                         <div class="team-progress">
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: {min(progress_percent, 100)}%; background-color: {progress_color};"></div>
+                                <div class="progress-fill" data-width="{min(progress_percent, 100)}" data-color="{progress_color}"></div>
                             </div>
                             <span class="progress-text">{total_spenderade}/{total_estimaterade} HP ({progress_percent:.0f}%)</span>
                         </div>
@@ -2088,15 +2074,15 @@ def admin_backlog(spel_id):
                 # Bravo - GANTT-stil med faser - Explicit layout utan CSS-beroende
                 html_parts.append('''
                 <div class="backlog-table-container">
-                    <table class="backlog-table" data-team="Bravo" style="table-layout: fixed; width: 100%;">
+                    <table class="backlog-table table-fixed" data-team="Bravo">
                         <thead>
                             <tr>
-                                <th style="width: 35%;">Uppgift</th>
-                                <th style="width: 15%; text-align: center;">Krav</th>
-                                <th style="width: 15%; text-align: center;">Design</th>
-                                <th style="width: 15%; text-align: center;">Utveckling</th>
-                                <th style="width: 15%; text-align: center;">Test</th>
-                                <th style="width: 5%; text-align: center;">Status</th>
+                                <th class="w-35">Uppgift</th>
+                                <th class="w-15 text-center">Krav</th>
+                                <th class="w-15 text-center">Design</th>
+                                <th class="w-15 text-center">Utveckling</th>
+                                <th class="w-15 text-center">Test</th>
+                                <th class="w-5 text-center">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2117,28 +2103,28 @@ def admin_backlog(spel_id):
                     
                     html_parts.append(f'''
                     <tr class="{status_class}">
-                        <td class="{task_class}" style="width: 35%;"><strong>{uppgift["namn"]}</strong></td>
-                        <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="spenderade_{uppgift['id']}_Krav" value="{krav['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                        <td class="{task_class} w-35"><strong>{uppgift["namn"]}</strong></td>
+                        <td class="w-15 text-center">
+                            <input type="number" name="spenderade_{uppgift['id']}_Krav" value="{krav['spenderade_hp']}" min="0" class="compact-input">
                             <span>/</span>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Krav" value="{krav['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Krav" value="{krav['estimaterade_hp']}" min="0" class="compact-input" readonly>
                         </td>
-                        <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="spenderade_{uppgift['id']}_Design" value="{design['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                        <td class="w-15 text-center">
+                            <input type="number" name="spenderade_{uppgift['id']}_Design" value="{design['spenderade_hp']}" min="0" class="compact-input">
                             <span>/</span>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Design" value="{design['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Design" value="{design['estimaterade_hp']}" min="0" class="compact-input" readonly>
                         </td>
-                        <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="spenderade_{uppgift['id']}_Utveckling" value="{utveckling['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                        <td class="w-15 text-center">
+                            <input type="number" name="spenderade_{uppgift['id']}_Utveckling" value="{utveckling['spenderade_hp']}" min="0" class="compact-input">
                             <span>/</span>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Utveckling" value="{utveckling['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Utveckling" value="{utveckling['estimaterade_hp']}" min="0" class="compact-input" readonly>
                         </td>
-                        <td style="width: 15%; text-align: center; vertical-align: middle;">
-                            <input type="number" name="spenderade_{uppgift['id']}_Test" value="{test['spenderade_hp']}" min="0" class="compact-input" style="width: 40px;">
+                        <td class="w-15 text-center">
+                            <input type="number" name="spenderade_{uppgift['id']}_Test" value="{test['spenderade_hp']}" min="0" class="compact-input">
                             <span>/</span>
-                            <input type="number" name="estimaterade_{uppgift['id']}_Test" value="{test['estimaterade_hp']}" min="0" class="compact-input" style="width: 40px;" readonly>
+                            <input type="number" name="estimaterade_{uppgift['id']}_Test" value="{test['estimaterade_hp']}" min="0" class="compact-input" readonly>
                         </td>
-                        <td class="status-cell" style="width: 5%; text-align: center;">
+                        <td class="status-cell w-5 text-center">
                             <span class="status-badge">{status_icon} {total_spenderade}/{total_estimaterade}</span>
                         </td>
                     </tr>
@@ -2262,7 +2248,7 @@ ORDER_SUMMARY_TEMPLATE = """
             color: #333;
             line-height: 1.6;
             padding: 20px;
-        }
+        }7371
         
         .container {
             max-width: 1200px;
