@@ -432,9 +432,9 @@ def create_resultatfas_checklist(spel_id):
     data = load_game_data(spel_id)
     
     checklist_html = f'''
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #007bff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.3em; font-weight: 600;">✅ Checklista innan ny runda</h3>
-        <div style="margin: 15px 0;">
+    <div class="checklist-container border-left-info">
+        <h3 class="checklist-title">✅ Checklista innan ny runda</h3>
+        <div class="checklist-content">
     '''
     
     # Skapa checkboxar med persistent states (endast textpunkter)
@@ -597,9 +597,9 @@ def create_historik_html(rundor):
     
     for rundnr in sorted(rundor.keys()):
         historik_html += f'''
-        <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #e9ecef;">
-            <h4 style="margin: 0 0 10px 0; color: #495057; font-size: 1.2em;">🎯 Runda {rundnr}</h4>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <div class="card">
+            <h4 class="card-title">🎯 Runda {rundnr}</h4>
+            <div class="flex-wrap">
         '''
         
         for entry in rundor[rundnr]:
@@ -611,15 +611,10 @@ def create_historik_html(rundor):
                 status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
             
             historik_html += f'''
-            <div style="{status_class} padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500;">
-                {status_icon} {entry["fas"]}
-            </div>
+            <div class="status-badge" style="{status_class}">{status_icon} {entry["fas"]}</div>
             '''
         
-        historik_html += '''
-            </div>
-        </div>
-        '''
+        historik_html += '</div></div>'
     
     historik_html += '</div>'
     return historik_html
@@ -632,7 +627,7 @@ def create_team_overview(data):
     overview_html = '''
     <div class="section-header">
         <h3>📊 Team Översikt</h3>
-        <div style="margin: 15px 0;">
+        <div class="margin-20-0">
     '''
     
     # Samla alla uppgifter från alla team
