@@ -695,7 +695,7 @@ def create_team_overview(data):
     
     if not all_tasks:
         overview_html += '''
-        <div style="text-align: center; color: #6c757d; padding: 20px;">
+        <div class="text-center text-muted p-20">
             <p>Inga uppgifter att visa ännu.</p>
         </div>
         '''
@@ -732,9 +732,7 @@ def create_phase_progress_html(runda, fas):
             status_class = f"background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; opacity: 0.8;"
         
         progress_html += f'''
-        <div class="phase-pill" data-style="{status_class}">
-            {status_icon} {phase}
-        </div>
+        <div class="phase-pill" data-style="{status_class}">{status_icon} {phase}</div>
         '''
     
     progress_html += '''
@@ -869,7 +867,7 @@ def admin_start():
                     ''' if spel else '''
                     <div class="text-center empty-box text-muted">
                         <div class="emoji-xl">📭</div>
-                        <h3 class="mb-0" style="color: #495057;">Inga spel ännu</h3>
+                        <h3 class="mb-0">Inga spel ännu</h3>
                         <p class="text-sm">Skapa ditt första spel genom att fylla i formuläret till vänster.</p>
                     </div>
                     '''}
@@ -1084,7 +1082,7 @@ def create_quarter_bar_html(quarters, current_round):
             border = "1px solid #e2e8f0"
         
         quarter_html += f'''
-        <div class="quarter-pill" style="flex:1" data-bg="{bg_color}" data-fg="{text_color}" data-border="{border}">
+        <div class="quarter-pill flex-1" data-bg="{bg_color}" data-fg="{text_color}" data-border="{border}">
             {quarter["name"]}
         </div>
         '''
@@ -1563,9 +1561,9 @@ def admin_orderkort(spel_id):
     
     # Skapa HTML för runda-väljare
     round_selector = f'''
-    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <div class="card p-20 mt-3">
         <h3>Välj runda för orderkort</h3>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <div class="flex-wrap">
     '''
     
     for runda in available_rounds:
@@ -1577,7 +1575,7 @@ def admin_orderkort(spel_id):
     
     round_selector += '''
         </div>
-        <p style="margin-top: 15px; font-size: 14px; color: #666;">
+        <p class="mt-3 text-sm text-muted">
             Klicka på en runda för att skriva ut orderkort för alla team.
         </p>
     </div>
@@ -1594,7 +1592,7 @@ def admin_orderkort(spel_id):
         
         {round_selector}
         
-        <div style="margin-top: 30px; text-align: center;">
+        <div class="text-center mt-4">
             <a href="/admin/{spel_id}" class="secondary ghost">Tillbaka till adminpanel</a>
         </div>
     </div>

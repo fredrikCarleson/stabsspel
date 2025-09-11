@@ -597,7 +597,7 @@ TEAM_ORDER_TEMPLATE = """
             <form id="orderForm">
                 <div class="form-section">
                     <h3>📝 Orderformulär</h3>
-                    <p style="color: #6c757d; margin-bottom: 20px;">
+                    <p class="text-muted mb-2">
                         Fyll i dina order för denna runda. Du kan lägga till upp till 6 aktiviteter.
                     </p>
                     

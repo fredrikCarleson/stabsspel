@@ -316,7 +316,7 @@ def startsida():
             </div>
             <div class="game-actions">
                 <a href="/admin/{s["id"]}" class="primary">Öppna</a>
-                <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
+                <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
                     <button type="submit" class="danger">Ta bort</button>
                 </form>
             </div>
