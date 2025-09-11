@@ -1301,7 +1301,7 @@ def admin_poang(spel_id):
         tabell += f"<td class='text-center'><input type='checkbox' name='regeringsstod_{lag}' {'checked' if regeringsstod else ''}></td>"
         tabell += f"<td><code>{formel}</code></td>"
         tabell += f"</tr>"
-    tabell += "</table><br><button type='submit'>Spara ändringar</button></form>"
+    tabell += "</table><br><button type='submit' class='success'>💾 Spara ändringar</button></form>"
     # Visa aktuell runda med konsistent header
     html = f"""
     <link rel='stylesheet' href='/static/app.css?v=5'>
@@ -1311,7 +1311,7 @@ def admin_poang(spel_id):
             <p class='page-subtitle'>Hantera teamens handlingspoäng och regeringsstöd</p>
         </div>
         {tabell}
-        <br><a href='/admin/{spel_id}' class='btn btn--secondary is-ghost'>← Tillbaka till adminpanelen</a>
+        <br><a href='/admin/{spel_id}' class='secondary'>← Tillbaka till adminpanelen</a>
     </div>
     """
     return Markup(html)
@@ -2235,8 +2235,8 @@ ORDER_SUMMARY_TEMPLATE = """
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            background: #f8f9fa;
+            color: #2c3e50;
             line-height: 1.6;
             padding: 20px;
         }7371
@@ -2245,114 +2245,125 @@ ORDER_SUMMARY_TEMPLATE = """
             max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+            border: 1px solid #e8e9ea;
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
             color: white;
-            padding: 30px;
+            padding: 36px;
             text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            pointer-events: none;
         }
         
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: clamp(24px, 4vw, 36px);
+            margin-bottom: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
         }
         
         .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+            font-size: 1.1em;
+            opacity: 0.95;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
         }
         
         .game-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-bottom: 1px solid #dee2e6;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 24px 28px;
+            border-bottom: 1px solid #e8e9ea;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
         }
         
         .game-info span {
             background: white;
-            padding: 8px 16px;
+            padding: 10px 18px;
             border-radius: 20px;
             font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e8e9ea;
+            color: #2c3e50;
+            font-size: 14px;
         }
         
         .content {
-            padding: 30px;
+            padding: 32px;
         }
         
         .copy-section {
-            background: #e3f2fd;
-            border: 2px solid #2196f3;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
+            background: #f8f9fa;
+            border: 1px solid #e8e9ea;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
         
         .copy-section h3 {
-            color: #1976d2;
-            margin-bottom: 15px;
+            color: #2c3e50;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-size: 1.3em;
+            font-weight: 600;
         }
         
         .copy-text {
             background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 20px;
+            border: 1px solid #e8e9ea;
+            border-radius: 8px;
+            padding: 24px;
             font-family: 'Courier New', monospace;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.6;
             white-space: pre-wrap;
             max-height: 400px;
             overflow-y: auto;
             position: relative;
+            color: #2c3e50;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         
-        .copy-button {
-            background: #2196f3;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            margin-top: 15px;
-            display: block;
-            width: fit-content;
-        }
-        
-        .copy-button:hover {
-            background: #1976d2;
-        }
         
         .team-section {
-            margin-bottom: 40px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            margin-bottom: 32px;
+            border: 1px solid #e8e9ea;
+            border-radius: 16px;
             overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            background: white;
         }
         
         .team-header {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
             color: white;
-            padding: 20px;
+            padding: 24px 28px;
             font-size: 1.3em;
             font-weight: 600;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
         .team-header.alfa { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); }
@@ -2366,15 +2377,16 @@ ORDER_SUMMARY_TEMPLATE = """
         .team-header.media { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); }
         
         .team-content {
-            padding: 20px;
+            padding: 28px;
         }
         
         .activity {
             background: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 0 6px 6px 0;
+            border-left: 4px solid #4a5a6c;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+            border: 1px solid #e8e9ea;
         }
         
         .activity:last-child {
@@ -2382,9 +2394,10 @@ ORDER_SUMMARY_TEMPLATE = """
         }
         
         .activity h4 {
-            color: #007bff;
-            margin-bottom: 10px;
-            font-size: 1.1em;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
         }
         
         .activity-details {
@@ -2396,42 +2409,50 @@ ORDER_SUMMARY_TEMPLATE = """
         
         .detail-item {
             background: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #e8e9ea;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         
         .detail-label {
             font-weight: 600;
-            color: #666;
+            color: #5a6a7c;
             font-size: 0.9em;
         }
         
         .detail-value {
-            color: #333;
-            margin-top: 2px;
+            color: #2c3e50;
+            margin-top: 4px;
         }
         
         .no-orders {
             text-align: center;
-            padding: 40px;
-            color: #666;
+            padding: 48px;
+            color: #5a6a7c;
             font-style: italic;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e8e9ea;
         }
         
         .back-button {
             display: inline-block;
-            background: #6c757d;
+            background: #5a6a7c;
             color: white;
-            padding: 12px 24px;
+            padding: 14px 28px;
             text-decoration: none;
-            border-radius: 6px;
-            margin-top: 20px;
-            transition: background 0.3s;
+            border-radius: 8px;
+            margin-top: 24px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            border: 1px solid #4a5a6c;
         }
         
         .back-button:hover {
-            background: #5a6268;
+            background: #4a5a6c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
     </style>
 </head>
@@ -2466,7 +2487,7 @@ Baserat på dessa order, ge förslag på:
 Inga order har skickats in ännu.
 {% endif %}
                 </div>
-                <button class="copy-button" onclick="copyToClipboard()">📋 Kopiera</button>
+                <button class="info sm" onclick="copyToClipboard()" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">📋 Kopiera</button>
             </div>
             
             <h2>📊 Detaljerad Översikt</h2>

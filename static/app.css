@@ -171,16 +171,19 @@ button:disabled {
 
 input, select, textarea {
   width: 100%;
-  padding: 12px;
-  border: 2px solid var(--c-border);
-  border-radius: var(--radius-8);
-  background: var(--c-surface);
-  transition: border-color .2s ease, box-shadow .2s ease;
+  padding: 14px 16px;
+  border: 1px solid #e8e9ea;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #2c3e50;
 }
 
 input:focus-visible, select:focus-visible, textarea:focus-visible {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px rgba(102,126,234,.15);
+  border-color: #4a5a6c;
+  box-shadow: 0 0 0 3px rgba(74,90,108,0.15);
+  outline: none;
 }
 
 input[readonly], input:disabled, select:disabled, textarea:disabled {
@@ -190,12 +193,14 @@ input[readonly], input:disabled, select:disabled, textarea:disabled {
 
 /* Compact input for backlog tables */
 .compact-input {
-    width: 56px !important;
-  padding: 4px 6px !important;
-    font-size: 13px !important;
+    width: 60px !important;
+  padding: 8px 10px !important;
+    font-size: 14px !important;
   text-align: center !important;
-  border: 1px solid var(--c-border) !important;
-  border-radius: 4px !important;
+  border: 1px solid #e8e9ea !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: #2c3e50 !important;
 }
 
   label { display:block; margin: 0 0 8px; font-weight: 600; font-size: 14px; }
@@ -209,39 +214,59 @@ input[readonly], input:disabled, select:disabled, textarea:disabled {
   :is(table, .backlog-table) {
   width: 100%;
   border-collapse: collapse;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-8);
+  background: #ffffff;
+  border: 1px solid #e8e9ea;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
   font-size: 14px;
-  margin: 16px 0;
+  margin: 24px 0;
 }
 
 th, td { 
-  padding: 12px 16px; 
-  border-bottom: 1px solid var(--c-border); 
+  padding: 16px 20px; 
+  border-bottom: 1px solid #e8e9ea; 
   text-align: left; 
-  vertical-align: top; 
+  vertical-align: middle; 
 }
 
 thead th { 
-  background: #fbfcfd; 
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
   font-weight: 600; 
-  color: #5a6a7c; 
+  color: #2c3e50; 
+  border-bottom: 2px solid #e8e9ea;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 18px 20px;
 }
 
-  tbody tr:nth-child(even) { background: #fafbfc; }
-  tbody tr:hover { background: #f1f3f5; }
+  tbody tr:nth-child(even) { background: #f8f9fa; }
+  tbody tr:hover { background: #e9ecef; }
+  tbody tr { transition: background-color 0.2s ease; }
   
   /* Sticky header utility */
   .table-sticky thead th { position: sticky; top: 0; z-index: 1; }
   
   /* backlog-table specific tweaks preserved */
-  .backlog-table-container { overflow-x: auto; margin: 16px 0; }
-  .backlog-table th { padding: 12px 8px; border-bottom: 2px solid var(--c-border); }
-  .backlog-table td { padding: 8px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
-  .backlog-table tbody tr:hover { background: #f8f9fa; }
+  .backlog-table-container { overflow-x: auto; margin: 24px 0; }
+  .backlog-table th { 
+    padding: 16px 12px; 
+    border-bottom: 2px solid #e8e9ea; 
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .backlog-table td { 
+    padding: 12px; 
+    border-bottom: 1px solid #e8e9ea; 
+    vertical-align: middle; 
+  }
+  .backlog-table tbody tr:hover { background: #e9ecef; }
+  .backlog-table tbody tr:nth-child(even) { background: #f8f9fa; }
 
 /* ============================================================================
    UTILITY KLASSER - MINIMALA
@@ -528,16 +553,41 @@ thead th {
    HEADERS & SECTIONS
    ============================================================================ */
 .page-header {
-    background: var(--grad-primary);
+    background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
   color: white;
-  padding: 25px;
-  border-radius: var(--radius-12);
-  margin-bottom: 25px;
+  padding: 36px;
+  border-radius: 20px;
+  margin-bottom: 32px;
   text-align: center;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  overflow: hidden;
 }
-  .page-header h1 { margin: 0 0 10px 0; color: white; font-size: 2.2em; font-weight: 600; }
-  .page-subtitle { margin: 0; font-size: 1.1em; opacity: 0.9; }
+.page-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  pointer-events: none;
+}
+  .page-header h1 { 
+    margin: 0 0 16px 0; 
+    color: white; 
+    font-size: clamp(24px, 4vw, 36px);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    position: relative; 
+    z-index: 1;
+  }
+  .page-subtitle { 
+    margin: 0; 
+    font-size: 1.1em; 
+    opacity: 0.95; 
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+  }
 
 .section-header {
   background: #fbfcfd;
@@ -849,11 +899,20 @@ thead th {
   }
   
   .team-header {
-    padding: 16px 20px;
+    padding: 20px 24px;
   }
   
   .team-content {
-    padding: 20px;
+    padding: 24px;
+  }
+  
+  .backlog-table th {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+  
+  .backlog-table td {
+    padding: 10px 8px;
   }
   
   /* Förbättrade knappar för mobile */
@@ -925,8 +984,9 @@ thead th {
   }
 .team-header {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 20px 24px; 
+    padding: 24px 28px; 
     border-bottom: 1px solid #e8e9ea;
+    border-radius: 16px 16px 0 0;
   }
   .team-info h3 { 
     margin: 0 0 12px 0; 
@@ -954,17 +1014,32 @@ thead th {
     letter-spacing: 0.2px;
   }
   .team-content { 
-    padding: 24px; 
+    padding: 28px; 
     background: #ffffff;
+    border-radius: 0 0 16px 16px;
   }
   
   .status-badge {
-    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
-    background: #fbfcfd; border: 1px solid var(--c-border); border-radius: 4px;
-    font-size: 12px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+    background: #f8f9fa; border: 1px solid #e8e9ea; border-radius: 12px;
+    font-size: 13px; font-weight: 600;
+    color: #5a6a7c;
+    transition: all 0.2s ease;
   }
-  .status-badge.ongoing { background: #fff8e1; color: #9a6a1a; border-color: #ffeaa7; }
-  .status-badge.done { background: #e8f5e8; color: #2d5a2d; border-color: #d4edda; }
+  .status-badge.ongoing { 
+    background: #fff8e1; 
+    color: #8b6914; 
+    border-color: #f0d04a; 
+  }
+  .status-badge.done { 
+    background: #e8f5e8; 
+    color: #2d5a2d; 
+    border-color: #c3e6c3; 
+  }
+  .status-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
   
   .phase-pill {
     padding: 8px 12px; border-radius: var(--radius-8);
@@ -1028,10 +1103,11 @@ thead th {
    CHECKBOX STYLES
    ============================================================================ */
 .checkbox-large {
-    width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--c-primary);
+    width: 20px; height: 20px; margin: 0; cursor: pointer; accent-color: #4a5a6c;
     appearance: none; -webkit-appearance: none; -moz-appearance: none;
-    border: 2px solid #ccc; border-radius: 3px; background: white; position: relative;
+    border: 2px solid #e8e9ea; border-radius: 4px; background: white; position: relative;
     box-shadow: none; outline: none;
+    transition: all 0.2s ease;
   }
   /* Show only .checkbox-large — keep, but remove brittle nth-child rule */
   .checklist-item input[type="checkbox"]:not(.checkbox-large) { display: none !important; }
@@ -1042,7 +1118,13 @@ thead th {
   .checklist-item *:contains("⏳") { display: none !important; }
   */
   
-  .checkbox-large:checked { background-color: var(--c-primary); border-color: var(--c-primary); }
+  .checkbox-large:checked { 
+    background-color: #4a5a6c; 
+    border-color: #4a5a6c; 
+  }
+  .checkbox-large:hover {
+    border-color: #5a6a7c;
+  }
   
   /* Team description QR panel */
   .qr-panel { text-align: center; margin: 20px 0; padding: 20px; background: #fafbfc; border-radius: 8px; }

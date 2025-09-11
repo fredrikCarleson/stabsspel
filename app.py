@@ -400,45 +400,6 @@ def startsida():
                 line-height: 1.6;
             }}
             
-            /* Enhanced CTA button */
-            .cta-button {{
-                display: inline-block;
-                background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-                color: white;
-                padding: 20px 40px;
-                border-radius: 50px;
-                text-decoration: none;
-                font-weight: 700;
-                font-size: 1.2rem;
-                transition: all 0.3s ease;
-                box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
-                border: none;
-                cursor: pointer;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .cta-button::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-                transition: left 0.5s;
-            }}
-            
-            .cta-button:hover::before {{
-                left: 100%;
-            }}
-            
-            .cta-button:hover {{
-                transform: translateY(-3px);
-                box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
-            }}
             
             .description-section {{
                 padding: 80px 20px;
@@ -686,10 +647,6 @@ def startsida():
                     font-size: 1.1rem;
                 }}
                 
-                .cta-button {{
-                    padding: 15px 30px;
-                    font-size: 1rem;
-                }}
                 
                 .features-grid {{
                     grid-template-columns: 1fr;
@@ -710,7 +667,7 @@ def startsida():
             <div class="hero-content">
                 <h1 class="hero-title">Stabsspelet v1</h1>
                 <p class="hero-subtitle">En avancerad krisledningssimulation för att träna beslutsfattande under press</p>
-                <a href="/admin" class="cta-button">🎮 Starta nytt spel</a>
+                <a href="/admin" class="primary lg">🎮 Starta nytt spel</a>
             </div>
         </div>
         
