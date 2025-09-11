@@ -1290,9 +1290,9 @@
       }
     }
   },
-  "timer_status": "running",
-  "timer_start": 1757024631,
-  "timer_elapsed": 0,
+  "timer_status": "paused",
+  "timer_start": 1757590001,
+  "timer_elapsed": 3,
   "fashistorik": [
     {
       "runda": 1,
@@ -1340,5 +1340,5 @@
       "status": "pågående"
     }
   ],
-  "fas_start_time": 1757024631
+  "fas_start_time": 1757590001
 }

@@ -4,8 +4,8 @@
   "plats": "litet",
   "antal_spelare": 20,
   "skapad": "2025-09-10T19:35:16.428222",
-  "fas": "Resultatfas",
-  "runda": 1,
+  "fas": "Diplomatifas",
+  "runda": 2,
   "lag": [
     "Alfa",
     "Bravo",
@@ -440,6 +440,215 @@
         },
         "final": true
       }
+    },
+    "orders_round_2": {
+      "Alfa": {
+        "submitted_at": 1757589695.9051294,
+        "phase": "Orderfas",
+        "round": 2,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757589695905,
+              "aktivitet": "Implementera en ny CI/CD-pipeline",
+              "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 10
+            },
+            {
+              "id": 1757589695906,
+              "aktivitet": "Leverera en första version av röst-API:t",
+              "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 9
+            },
+            {
+              "id": 1757589695907,
+              "aktivitet": "Kampanja mot Bravo i korridorerna",
+              "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Media",
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            }
+          ],
+          "timestamp": "2025-09-11T13:21:35.000Z"
+        },
+        "final": true
+      },
+      "Bravo": {
+        "submitted_at": 1757589695.9051597,
+        "phase": "Orderfas",
+        "round": 2,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757589696005,
+              "aktivitet": "Genomföra en tvåveckors kravworkshop",
+              "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 12
+            },
+            {
+              "id": 1757589696006,
+              "aktivitet": "Kontakta regeringen för extra resurser",
+              "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Regeringen",
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 7
+            },
+            {
+              "id": 1757589696007,
+              "aktivitet": "Sprida rykten om Alfa",
+              "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Media",
+                "Alfa"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            }
+          ],
+          "timestamp": "2025-09-11T13:21:35.000Z"
+        },
+        "final": true
+      },
+      "STT": {
+        "submitted_at": 1757589695.9051678,
+        "phase": "Orderfas",
+        "round": 2,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757589696105,
+              "aktivitet": "Hardening av valservern",
+              "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "bygga",
+              "hp": 12
+            },
+            {
+              "id": 1757589696106,
+              "aktivitet": "Säkerställa drift under deklarationstid",
+              "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 7
+            },
+            {
+              "id": 1757589696107,
+              "aktivitet": "Förhandla om prioritet",
+              "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "Bravo"
+              ],
+              "typ": "bygga",
+              "hp": 6
+            }
+          ],
+          "timestamp": "2025-09-11T13:21:35.000Z"
+        },
+        "final": true
+      },
+      "FM": {
+        "submitted_at": 1757589695.9051745,
+        "phase": "Orderfas",
+        "round": 2,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757589696205,
+              "aktivitet": "Massiv DDOS-attack mot valservern",
+              "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "forstora",
+              "hp": 8
+            },
+            {
+              "id": 1757589696206,
+              "aktivitet": "Desinformationskampanj på sociala medier",
+              "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Regeringen",
+                "Media"
+              ],
+              "typ": "forstora",
+              "hp": 4
+            }
+          ],
+          "timestamp": "2025-09-11T13:21:35.000Z"
+        },
+        "final": true
+      },
+      "BS": {
+        "submitted_at": 1757589695.9051805,
+        "phase": "Orderfas",
+        "round": 2,
+        "orders": {
+          "activities": [
+            {
+              "id": 1757589696305,
+              "aktivitet": "Utpressa en STT-medlem",
+              "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
+              "malomrade": "eget",
+              "paverkar": [
+                "STT"
+              ],
+              "typ": "forstora",
+              "hp": 7
+            },
+            {
+              "id": 1757589696306,
+              "aktivitet": "Manipulera databasen",
+              "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
+              "malomrade": "eget",
+              "paverkar": [
+                "Alfa",
+                "Bravo"
+              ],
+              "typ": "forstora",
+              "hp": 5
+            }
+          ],
+          "timestamp": "2025-09-11T13:21:35.000Z"
+        },
+        "final": true
+      }
     }
   },
   "timer_status": "stopped",
@@ -459,16 +668,18 @@
     {
       "runda": 1,
       "fas": "Resultatfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Diplomatifas",
       "status": "pågående"
     }
   ],
-  "checkbox_states": {
-    "diplo_check1": true,
-    "diplo_check2": true,
-    "diplo_check3": true,
-    "diplo_check4": true,
-    "result_check1": true,
-    "result_check2": true,
-    "result_check3": true
-  }
+  "checkbox_states": {}
 }

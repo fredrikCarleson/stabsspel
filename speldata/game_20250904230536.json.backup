@@ -260,7 +260,7 @@
     "USA": "Uk4atDxU6yYR1XIK--E_4Q_f7da9b377b23"
   },
   "checkbox_states": {
-    "test_mode_toggle": false
+    "test_mode_toggle": true
   },
   "team_orders": {
     "orders_round_1": {
@@ -1291,7 +1291,7 @@
     }
   },
   "timer_status": "running",
-  "timer_start": 1757024631,
+  "timer_start": 1757590001,
   "timer_elapsed": 0,
   "fashistorik": [
     {
@@ -1340,5 +1340,5 @@
       "status": "pågående"
     }
   ],
-  "fas_start_time": 1757024631
+  "fas_start_time": 1757590001
 }
