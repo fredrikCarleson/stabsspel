@@ -97,9 +97,10 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   font-weight: 600;
-  color: var(--c-text);
-  margin: .2em 0 .6em;
-  letter-spacing: .3px;
+  color: #2c3e50;
+  margin: 0 0 1.2em;
+  letter-spacing: 0.4px;
+  line-height: 1.3;
 }
 
 h1 { font-size: clamp(32px, 5vw, 56px); letter-spacing: .5px; }
@@ -403,12 +404,13 @@ thead th {
    LAYOUT KOMPONENTER
    ============================================================================ */
 .card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-12);
-  box-shadow: var(--shadow-sm);
-  padding: 16px;
-  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e8e9ea;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  padding: 28px;
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
 }
   .card.elevated { box-shadow: var(--shadow-md); }
   .card.interactive { transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
@@ -550,15 +552,16 @@ thead th {
    ADMIN PANEL STYLES
    ============================================================================ */
 .admin-panel-header {
-    background: var(--grad-primary);
+    background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
   color: white;
-  padding: 32px;
-  border-radius: var(--radius-12);
-  margin-bottom: 24px;
+  padding: 36px;
+  border-radius: 20px;
+  margin-bottom: 32px;
   text-align: center;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   position: relative;
   overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 .admin-panel-header::before {
   content: '';
@@ -621,8 +624,15 @@ thead th {
   
   /* Generic section title */
   .section-title {
-    color: #2c3e50; font-size: 1.8em; font-weight: 600;
-    margin: 0 0 25px 0; text-align: center;
+    color: #2c3e50; 
+    font-size: 1.6em; 
+    font-weight: 600;
+    margin: 0 0 28px 0; 
+    text-align: left;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   
   /* Card elements */
@@ -820,15 +830,41 @@ thead th {
    RESPONSIVE DESIGN
    ============================================================================ */
 @media (max-width: 768px) {
-    .container { padding: 10px; }
+    .container { padding: 16px; }
   
+  /* Förbättrad mobile typografi */
   h1 { font-size: 1.8em; }
   h2 { font-size: 1.5em; }
   h3 { font-size: 1.2em; }
   
-    button { padding: 10px 20px; font-size: 13px; }
-    table { font-size: 13px; }
-    th, td { padding: 8px 12px; }
+  /* Förbättrade kort för mobile */
+  .card { 
+    padding: 20px; 
+    margin-bottom: 16px; 
+    border-radius: 12px;
+  }
+  
+  .team-backlog-card {
+    margin-bottom: 16px;
+  }
+  
+  .team-header {
+    padding: 16px 20px;
+  }
+  
+  .team-content {
+    padding: 20px;
+  }
+  
+  /* Förbättrade knappar för mobile */
+  button { 
+    padding: 12px 20px; 
+    font-size: 14px; 
+    min-height: 44px; /* Touch-friendly */
+  }
+  
+  table { font-size: 13px; }
+  th, td { padding: 8px 12px; }
   
     .timer.maximized .timer-display { 
       font-size: 25vw; 
@@ -879,19 +915,48 @@ thead th {
      BACKLOG TABLE STYLES (specifics already merged above where safe)
    ============================================================================ */
 .team-backlog-card {
-    background: white; border: 1px solid var(--c-border); border-radius: var(--radius-12);
-    margin-bottom: 24px; box-shadow: var(--shadow-sm); overflow: hidden;
+    background: #ffffff; 
+    border: 1px solid #e8e9ea; 
+    border-radius: 16px;
+    margin-bottom: 24px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+    overflow: hidden;
+    transition: all 0.3s ease;
   }
 .team-header {
-  background: linear-gradient(135deg, #fafbfc 0%, #ebecef 100%);
-    padding: 16px 20px; border-bottom: 1px solid var(--c-border);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px 24px; 
+    border-bottom: 1px solid #e8e9ea;
   }
-  .team-info h3 { margin: 0 0 8px 0; color: var(--c-text); font-size: 1.2em; font-weight: 600; }
+  .team-info h3 { 
+    margin: 0 0 12px 0; 
+    color: #2c3e50; 
+    font-size: 1.3em; 
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
   .team-progress { display: flex; align-items: center; gap: 12px; }
-  .progress-bar { flex: 1; height: 8px; background: #ebecef; border-radius: 4px; overflow: hidden; }
+  .progress-bar { 
+    flex: 1; 
+    height: 10px; 
+    background: #f1f3f4; 
+    border-radius: 6px; 
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  }
   .progress-fill { height: 100%; transition: width 0.3s ease; }
-  .progress-text { font-size: 12px; font-weight: 600; color: var(--c-muted); min-width: 80px; text-align: right; }
-  .team-content { padding: 20px; }
+  .progress-text { 
+    font-size: 13px; 
+    font-weight: 600; 
+    color: #5a6a7c; 
+    min-width: 90px; 
+    text-align: right;
+    letter-spacing: 0.2px;
+  }
+  .team-content { 
+    padding: 24px; 
+    background: #ffffff;
+  }
   
   .status-badge {
     display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
