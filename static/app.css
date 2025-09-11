@@ -1166,6 +1166,18 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
   font-weight: 500;
 }
 
+.status-badge.ongoing {
+  background: #fff3cd;
+  color: #856404;
+  border-color: #ffeaa7;
+}
+
+.status-badge.done {
+  background: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
 .phase-pill {
   padding: 8px 12px;
   border-radius: var(--radius-8);
@@ -1173,6 +1185,10 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
   font-weight: 500;
   transition: all 0.3s ease;
 }
+
+.phase-pill.phase-current { background: #ea580c; color: #fff; border: 1px solid #c2410c; }
+.phase-pill.phase-done { background: #16a34a; color: #fff; border: 1px solid #15803d; }
+.phase-pill.phase-future { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; opacity: 0.8; }
 
 /* Timer popup: adapt status pill for dark background */
 .timer .status-badge {

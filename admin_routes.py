@@ -605,13 +605,13 @@ def create_historik_html(rundor):
         for entry in rundor[rundnr]:
             if entry["status"] == "pågående":
                 status_icon = "🔄"
-                status_class = "background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
+                status_class = "ongoing"
             else:
                 status_icon = "✅"
-                status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
+                status_class = "done"
             
             historik_html += f'''
-            <div class="status-badge" data-style="{status_class}">{status_icon} {entry["fas"]}</div>
+            <div class="status-badge {status_class}">{status_icon} {entry["fas"]}</div>
             '''
         
         historik_html += '</div></div>'
@@ -719,20 +719,17 @@ def create_phase_progress_html(runda, fas):
     
     for phase in phases:
         if phase == fas:
-            # Current phase - use vibrant orange
             status_icon = "🔄"
-            status_class = f"background: #ea580c; color: white; border: 1px solid #c2410c;"
+            status_class = "phase-current"
         elif phases.index(phase) < phases.index(fas):
-            # Completed phase - use vibrant green
             status_icon = "✅"
-            status_class = f"background: #16a34a; color: white; border: 1px solid #15803d;"
+            status_class = "phase-done"
         else:
-            # Future phase - use light gray
             status_icon = "⏳"
-            status_class = f"background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; opacity: 0.8;"
+            status_class = "phase-future"
         
         progress_html += f'''
-        <div class="phase-pill" data-style="{status_class}">{status_icon} {phase}</div>
+        <div class="phase-pill {status_class}">{status_icon} {phase}</div>
         '''
     
     progress_html += '''
@@ -883,22 +880,22 @@ def admin_start():
                 <div class="grid-auto-200">
                     <div class="stat-box">
                         <div class="emoji-lg">🎮</div>
-                        <h3 class="mb-0" style="color: var(--c-text);">{len(spel)}</h3>
+                        <h3 class="mb-0">{len(spel)}</h3>
                         <p class="mt-5px text-sm text-muted">Totalt antal spel</p>
                     </div>
                     <div class="stat-box">
                         <div class="emoji-lg">👥</div>
-                        <h3 class="mb-0" style="color: var(--c-text);">5-9</h3>
+                        <h3 class="mb-0">5-9</h3>
                         <p class="mt-5px text-sm text-muted">Team per spel</p>
                     </div>
                     <div class="stat-box">
                         <div class="emoji-lg">⏱️</div>
-                        <h3 class="mb-0" style="color: var(--c-text);">10-15</h3>
+                        <h3 class="mb-0">10-15</h3>
                         <p class="mt-5px text-sm text-muted">Minuter per fas</p>
                     </div>
                     <div class="stat-box">
                         <div class="emoji-lg">🔄</div>
-                        <h3 class="mb-0" style="color: var(--c-text);">3</h3>
+                        <h3 class="mb-0">3</h3>
                         <p class="mt-5px text-sm text-muted">Faser per runda</p>
                     </div>
                 </div>
