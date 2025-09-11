@@ -975,5 +975,7 @@
       "status": "pågående"
     }
   ],
-  "checkbox_states": {}
+  "checkbox_states": {
+    "diplo_check1": true
+  }
 }
