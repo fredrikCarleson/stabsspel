@@ -72,7 +72,7 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 0,
+        "spenderade_hp": 5,
         "slutford": false
       },
       {

@@ -583,4 +583,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (w) el.style.width = (parseFloat(w) || 0) + '%';
     if (c) el.style.backgroundColor = c;
   });
+
+  // Apply inline-like status badge styles via data-style
+  document.querySelectorAll('.status-badge[data-style]').forEach(function (el) {
+    const s = el.getAttribute('data-style');
+    if (!s) return;
+    s.split(';').forEach(function (rule) {
+      const [prop, val] = rule.split(':');
+      if (prop && val) el.style[prop.trim()] = val.trim();
+    });
+  });
 });

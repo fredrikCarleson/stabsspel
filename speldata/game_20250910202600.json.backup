@@ -4,7 +4,7 @@
   "plats": "test33",
   "antal_spelare": 27,
   "skapad": "2025-09-10T20:26:00.657488",
-  "fas": "Orderfas",
+  "fas": "Diplomatifas",
   "runda": 2,
   "lag": [
     "Alfa",
@@ -259,8 +259,8 @@
     "Regeringen": "lRvM8mhKl5hrKlNv4qGypA_d803a9972744",
     "USA": "MbBhHgdWi4yn_F4Kw7xUeg_5908bcdff384"
   },
-  "timer_status": "running",
-  "timer_start": 1757529337,
+  "timer_status": "stopped",
+  "timer_start": null,
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
@@ -967,9 +967,13 @@
     {
       "runda": 2,
       "fas": "Orderfas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Diplomatifas",
       "status": "pågående"
     }
   ],
-  "checkbox_states": {},
-  "fas_start_time": 1757529337
+  "checkbox_states": {}
 }

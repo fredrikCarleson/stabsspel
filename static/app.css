@@ -201,9 +201,9 @@ input[readonly], input:disabled, select:disabled, textarea:disabled {
 
 /* Compact input for backlog tables */
 .compact-input {
-  width: 40px !important;
+  width: 56px !important; /* allow 3 digits comfortably */
   padding: 4px 6px !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   text-align: center !important;
   border: 1px solid var(--c-border) !important;
   border-radius: 4px !important;
@@ -758,6 +758,7 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 .mt-3 { margin-top: 1rem; }
 .mt-4 { margin-top: 1.5rem; }
 .mt-5 { margin-top: 3rem; }
+.margin-top-15 { margin-top: 15px; }
 
 /* Display utilities */
 .d-none { display: none; }
@@ -765,6 +766,7 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 .d-inline { display: inline; }
 .d-inline-block { display: inline-block; }
 .d-flex { display: flex; }
+.gap-2 { gap: 10px; }
 
 /* Flex utilities */
 .flex { display: flex; }
@@ -796,6 +798,11 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 
 /* Fixed table layout helper */
 .table-fixed { table-layout: fixed; width: 100%; }
+
+/* Substep indentation block used under checklist items */
+.substep {
+  margin: 8px 0 16px 24px;
+}
 
 /* ============================================================================
    ANIMATIONER
@@ -1110,6 +1117,14 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
   font-weight: 500;
 }
 
+.phase-pill {
+  padding: 8px 12px;
+  border-radius: var(--radius-8);
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
 /* Timer popup: adapt status pill for dark background */
 .timer .status-badge {
   background: rgba(255, 255, 255, 0.15);
@@ -1247,3 +1262,14 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
   background-color: var(--c-primary);
   border-color: var(--c-primary);
 }
+
+/* Team description QR panel */
+.qr-panel { text-align: center; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+.qr-content { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.qr-image { width: 120px; height: 120px; border: 1px solid #ddd; border-radius: 8px; }
+.qr-info { text-align: left; }
+.qr-title { margin: 0 0 10px 0; font-weight: 600; color: #2c3e50; }
+.qr-link { margin: 0; font-family: monospace; font-size: 14px; color: #2c3e50; word-break: break-all; background: white; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+
+/* Team description image on print page */
+.team-image-print { width: 100%; max-width: 100vw; max-height: 29.7cm; object-fit: contain; }

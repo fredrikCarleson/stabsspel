@@ -357,7 +357,7 @@ def create_diplomatifas_checklist(spel_id):
         # Lägg till relaterat innehåll direkt under respektive steg
         if checkbox_id == "diplo_check1":
             checklist_html += f'''
-            <div class="chatgpt-container" style="margin: 8px 0 16px 24px;">
+            <div class="chatgpt-container substep">
                 <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
                 <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
                 <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
@@ -367,13 +367,13 @@ def create_diplomatifas_checklist(spel_id):
             '''
         elif checkbox_id == "diplo_check3":
             checklist_html += f'''
-            <div style="margin: 8px 0 16px 24px;">
+            <div class="substep">
                 <a href="/admin/{spel_id}/poang" class="primary sm">Visa/ändra handlingspoäng</a>
             </div>
             '''
         elif checkbox_id == "diplo_check4":
             checklist_html += f'''
-            <div style="margin: 8px 0 16px 24px;">
+            <div class="substep">
                 <a href="/admin/{spel_id}/backlog" class="success sm">Uppdatera teamens arbete</a>
             </div>
             '''
@@ -611,7 +611,7 @@ def create_historik_html(rundor):
                 status_class = "background: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
             
             historik_html += f'''
-            <div class="status-badge" style="{status_class}">{status_icon} {entry["fas"]}</div>
+            <div class="status-badge" data-style="{status_class}">{status_icon} {entry["fas"]}</div>
             '''
         
         historik_html += '</div></div>'
@@ -732,7 +732,7 @@ def create_phase_progress_html(runda, fas):
             status_class = f"background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; opacity: 0.8;"
         
         progress_html += f'''
-        <div style="{status_class} padding: 8px 12px; border-radius: var(--radius-8); font-size: 0.9em; font-weight: 500; transition: all 0.3s ease;">
+        <div class="phase-pill" data-style="{status_class}">
             {status_icon} {phase}
         </div>
         '''
@@ -1516,7 +1516,7 @@ def admin_aktivitetskort(spel_id):
         else:
             # Om laget inte har aktivitetskort, skapa blanka kort för alla spelare
             html += f'<h2>🟢 Team {lag} – Aktivitetskort</h2>'
-            html += '<div class="cards-container" style="page-break-after: always;">'
+            html += '<div class="cards-container force-break">'
             
             # Skapa blanka kort för alla spelare i laget
             for i in range(1, 11):  # Upp till 10 spelare per lag
@@ -1545,7 +1545,7 @@ def admin_aktivitetskort(spel_id):
             html += '</div>'
     
     html += '''
-    <div style="margin-top: 30px; text-align: center;">
+    <div class="text-center margin-top-15">
         <button onclick="window.print()">Skriv ut aktivitetskort</button>
         <a href="/admin/''' + spel_id + '''"><button type="button">Tillbaka till adminpanel</button></a>
     </div>

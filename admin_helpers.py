@@ -86,7 +86,7 @@ def create_action_buttons(spel_id):
     """Skapa knappar för åtgärder med modern gaming-inspired design system"""
     poang_lank = f'<a href="/admin/{spel_id}/poang" class="primary">📊 Visa/ändra handlingspoäng</a>'
     aktivitetskort_lank = f'<a href="/admin/{spel_id}/aktivitetskort" target="_blank" class="info">🖨️ Skriv ut aktivitetskort</a>'
-    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" style="display: inline;"><button type="submit" class="warning" onclick="return confirm(\'Är du säker på att du vill återställa spelet? Detta går inte att ångra.\')">🔄 Återställ spel</button></form>'
+    reset_lank = f'<form method="post" action="/admin/{spel_id}/reset" class="d-inline"><button type="submit" class="warning" onclick="return confirm(\'Är du säker på att du vill återställa spelet? Detta går inte att ångra.\')">🔄 Återställ spel</button></form>'
     back_lank = f'<a href="/admin" class="secondary">← Tillbaka till adminstart</a>'
     
     return f'''

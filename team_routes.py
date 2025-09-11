@@ -51,17 +51,15 @@ def team_beskrivning(spel_id, lag_namn):
             full_url = request.url_root.rstrip('/') + team_order_url
             qr_code_data = generate_qr_code(full_url)
             qr_code_html = f'''
-            <div style="text-align: center; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                <h3 style="margin-bottom: 15px; color: #2c3e50;">📱 Ange Order</h3>
-                <div style="display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap;">
+            <div class="qr-panel">
+                <h3 class="mb-2">📱 Ange Order</h3>
+                <div class="qr-content">
                     <div>
-                        <img src="{qr_code_data}" alt="QR Code" style="width: 120px; height: 120px; border: 1px solid #ddd; border-radius: 8px;">
+                        <img src="{qr_code_data}" alt="QR Code" class="qr-image">
                     </div>
-                    <div style="text-align: left;">
-                        <p style="margin: 0 0 10px 0; font-weight: 600; color: #2c3e50;">Skanna QR-koden eller gå till:</p>
-                        <p style="margin: 0; font-family: monospace; font-size: 14px; color: #2c3e50; word-break: break-all; background: white; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                            {full_url}
-                        </p>
+                    <div class="qr-info">
+                        <p class="qr-title">Skanna QR-koden eller gå till:</p>
+                        <p class="qr-link">{full_url}</p>
                     </div>
                 </div>
             </div>
@@ -87,7 +85,7 @@ def team_beskrivning(spel_id, lag_namn):
     if os.path.exists(img_path):
         img_html = f'''
         <div class="bildsida">
-            <img src="/teambeskrivning/{lag_namn.lower()}.jpg" alt="{lag_namn}" style="width:100%;max-width:100vw;max-height:29.7cm;object-fit:contain;">
+            <img src="/teambeskrivning/{lag_namn.lower()}.jpg" alt="{lag_namn}" class="team-image-print">
         </div>
         '''
     # Förbättrad utskriftsvänlig och lättläst CSS
@@ -106,7 +104,7 @@ def team_beskrivning(spel_id, lag_namn):
         </head>
         <body>
         <div class="container">
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div class="flex gap-2 mb-2">
             <button onclick="window.print()" class="secondary">Skriv ut</button>
             <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="info">
                 Skriv ut orderkort

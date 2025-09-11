@@ -959,9 +959,9 @@ def timer_window(spel_id):
         <div class="timer-container">
             {timer_html}
             
-            <div style="margin-top: 15px;">
+            <div class="margin-top-15">
                 <button type="button" class="maximize-btn" onclick="toggleTimerMaximize()">⛶ Maximera</button>
-                <button type="button" class="minimize-btn" onclick="toggleTimerMaximize()" style="display: none;">⛶ Minimera</button>
+                <button type="button" class="minimize-btn d-none" onclick="toggleTimerMaximize()">⛶ Minimera</button>
             </div>
         </div>
 
