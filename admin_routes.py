@@ -360,7 +360,7 @@ def create_diplomatifas_checklist(spel_id):
             <div class="chatgpt-container substep">
                 <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
                 <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
-                <a href="/admin/{spel_id}/order_summary" target="_blank" class="info">
+                <a href="/admin/{spel_id}/order_summary" target="_blank" class="info sm btn-equal">
                     📋 Visa Order Sammanfattning
                 </a>
             </div>
@@ -368,13 +368,13 @@ def create_diplomatifas_checklist(spel_id):
         elif checkbox_id == "diplo_check3":
             checklist_html += f'''
             <div class="substep">
-                <a href="/admin/{spel_id}/poang" class="primary sm">Visa/ändra handlingspoäng</a>
+                <a href="/admin/{spel_id}/poang" class="primary sm btn-equal">Visa/ändra handlingspoäng</a>
             </div>
             '''
         elif checkbox_id == "diplo_check4":
             checklist_html += f'''
             <div class="substep">
-                <a href="/admin/{spel_id}/backlog" class="success sm">Uppdatera teamens arbete</a>
+                <a href="/admin/{spel_id}/backlog" class="success sm btn-equal">Uppdatera teamens arbete</a>
             </div>
             '''
     
@@ -785,7 +785,7 @@ def admin_start():
         <div class="container">
             <!-- Header Section -->
             <div class="page-header">
-                <h1>🎮 Stabsspel Admin <span class="text-muted" style="font-size: 0.6em;">refactor [4]</span></h1>
+                <h1>🎮 Stabsspel Admin</h1>
                 <p class="page-subtitle">Spelhantering och kontrollpanel</p>
             </div>
             
@@ -847,23 +847,19 @@ def admin_start():
                     </h2>
                     
                     {f'''
-                    <div style="max-height: 400px; overflow-y: auto;">
+                    <div class="scroll-y-400">
                         {''.join([f'''
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #28a745; transition: all 0.3s;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="flex: 1;">
-                                    <h3 style="margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1em;">{s["datum"]}</h3>
-                                    <p style="margin: 0; color: #6c757d; font-size: 0.9em;">📍 {s["plats"]}</p>
-                                    <p style="margin: 5px 0 0 0; color: #adb5bd; font-size: 0.8em;">ID: {s["id"]}</p>
+                        <div class="list-card border-left-success">
+                            <div class="flex-between">
+                                <div class="flex-1">
+                                    <h3 class="h3-compact">{s["datum"]}</h3>
+                                    <p class="mb-0 text-muted">📍 {s["plats"]}</p>
+                                    <p class="mt-5px text-xs text-muted-light">ID: {s["id"]}</p>
                                 </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <a href="/admin/{s["id"]}" class="primary sm">
-                                        ▶️ Öppna
-                                    </a>
-                                    <form method="post" action="/admin/delete_game/{s["id"]}" style="display:inline;" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
-                                        <button type="submit" class="danger sm">
-                                            🗑️ Ta bort
-                                        </button>
+                                <div class="flex gap-2">
+                                    <a href="/admin/{s["id"]}" class="primary sm link-light">▶️ Öppna</a>
+                                    <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
+                                        <button type="submit" class="danger sm">🗑️ Ta bort</button>
                                     </form>
                                 </div>
                             </div>
@@ -871,41 +867,41 @@ def admin_start():
                         ''' for s in spel])}
                     </div>
                     ''' if spel else '''
-                    <div style="text-align: center; padding: 40px 20px; color: #6c757d;">
-                        <div style="font-size: 3em; margin-bottom: 15px;">📭</div>
-                        <h3 style="margin: 0 0 10px 0; color: #495057;">Inga spel ännu</h3>
-                        <p style="margin: 0; font-size: 0.9em;">Skapa ditt första spel genom att fylla i formuläret till vänster.</p>
+                    <div class="text-center empty-box text-muted">
+                        <div class="emoji-xl">📭</div>
+                        <h3 class="mb-0" style="color: #495057;">Inga spel ännu</h3>
+                        <p class="text-sm">Skapa ditt första spel genom att fylla i formuläret till vänster.</p>
                     </div>
                     '''}
                 </div>
             </div>
             
             <!-- Quick Stats -->
-            <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #ffc107;">
-                <h2 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center;">
-                    <span style="background: #ffc107; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em;">📊</span>
+            <div class="stats-card">
+                <h2 class="title-row">
+                    <span class="title-icon">📊</span>
                     Snabbstatistik
                 </h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <div style="font-size: 2em; margin-bottom: 5px;">🎮</div>
-                        <h3 style="margin: 0; color: #2c3e50;">{len(spel)}</h3>
-                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Totalt antal spel</p>
+                <div class="grid-auto-200">
+                    <div class="stat-box">
+                        <div class="emoji-lg">🎮</div>
+                        <h3 class="mb-0" style="color: var(--c-text);">{len(spel)}</h3>
+                        <p class="mt-5px text-sm text-muted">Totalt antal spel</p>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <div style="font-size: 2em; margin-bottom: 5px;">👥</div>
-                        <h3 style="margin: 0; color: #2c3e50;">5-9</h3>
-                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Team per spel</p>
+                    <div class="stat-box">
+                        <div class="emoji-lg">👥</div>
+                        <h3 class="mb-0" style="color: var(--c-text);">5-9</h3>
+                        <p class="mt-5px text-sm text-muted">Team per spel</p>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <div style="font-size: 2em; margin-bottom: 5px;">⏱️</div>
-                        <h3 style="margin: 0; color: #2c3e50;">10-15</h3>
-                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Minuter per fas</p>
+                    <div class="stat-box">
+                        <div class="emoji-lg">⏱️</div>
+                        <h3 class="mb-0" style="color: var(--c-text);">10-15</h3>
+                        <p class="mt-5px text-sm text-muted">Minuter per fas</p>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <div style="font-size: 2em; margin-bottom: 5px;">🔄</div>
-                        <h3 style="margin: 0; color: #2c3e50;">3</h3>
-                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9em;">Faser per runda</p>
+                    <div class="stat-box">
+                        <div class="emoji-lg">🔄</div>
+                        <h3 class="mb-0" style="color: var(--c-text);">3</h3>
+                        <p class="mt-5px text-sm text-muted">Faser per runda</p>
                     </div>
                 </div>
             </div>
@@ -984,7 +980,7 @@ def admin_panel(spel_id):
     
     # Skapa klickbara lagnamn
     lag_html = ', '.join([
-        f'<a href="/team/{spel_id}/{lag}" target="_blank" style="color: #ffffff; text-decoration: underline; font-weight: 500;">{lag}</a>' for lag in data['lag']
+        f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
     ])
     
     # Skapa timer HTML baserat på fas (utan rubrik eftersom vi använder visuell progress)
@@ -1026,7 +1022,7 @@ def admin_panel(spel_id):
             <div class="container">
             <!-- Header Section -->
             <div class="admin-panel-header">
-                <h1>Adminpanel för spel {spel_id} <span class="text-muted" style="font-size: 0.6em;">refactor [4]</span></h1>
+                <h1>Adminpanel för spel {spel_id}</h1>
                 <p class="admin-panel-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
                 <p class="admin-panel-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
                 <p class="admin-panel-subtitle">Lag: {lag_html}</p>
@@ -1065,7 +1061,7 @@ def create_quarter_bar_html(quarters, current_round):
     """Skapa kvartalsvisualisering med design-system färger"""
     quarter_html = '<div class="card">'
     quarter_html += '<h3 class="card-title">KVARTALSFÖRLOPP</h3>'
-    quarter_html += '<div class="flex" style="gap: 10px; align-items: center;">'
+    quarter_html += '<div class="flex gap-2 flex-center">'
     
     for i, quarter in enumerate(quarters):
         is_active = quarter["active"]
@@ -1088,7 +1084,7 @@ def create_quarter_bar_html(quarters, current_round):
             border = "1px solid #e2e8f0"
         
         quarter_html += f'''
-        <div class="quarter-pill" style="flex:1; background:{bg_color}; color:{text_color}; border:{border};">
+        <div class="quarter-pill" style="flex:1" data-bg="{bg_color}" data-fg="{text_color}" data-border="{border}">
             {quarter["name"]}
         </div>
         '''
@@ -1099,7 +1095,7 @@ def create_quarter_bar_html(quarters, current_round):
 def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rubrik, runda):
     """Skapa timer HTML baserat på fas"""
     if avslutat:
-        return '<h2 class="section-title text-danger" style="margin: 30px 0;">Spelet är avslutat</h2>'
+        return '<h2 class="section-title text-danger mt-4">Spelet är avslutat</h2>'
     
     if fas in ["Orderfas", "Diplomatifas"]:
         timer_html = ''
@@ -1129,7 +1125,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         if runda >= MAX_RUNDA:
             timer_html += f'''
             <div class="text-center margin-20-0">
-                <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
+                <form method="post" action="/admin/{spel_id}/ny_runda" class="d-inline">
                     <button type="submit" id="start-ny-runda-btn" disabled class="secondary lg">Starta ny runda</button>
                 </form>
             </div>
@@ -1137,7 +1133,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         else:
             timer_html += f'''
             <div class="text-center margin-20-0">
-                <form method="post" action="/admin/{spel_id}/ny_runda" style="display:inline;">
+                <form method="post" action="/admin/{spel_id}/ny_runda" class="d-inline">
                     <button type="submit" id="start-ny-runda-btn" class="primary lg">Starta ny runda</button>
                 </form>
             </div>
@@ -1147,7 +1143,7 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         if runda >= MAX_RUNDA:
             timer_html += f'''
             <div class="text-center margin-20-0">
-                <form method="post" action="/admin/{spel_id}/slut" style="display:inline;">
+                <form method="post" action="/admin/{spel_id}/slut" class="d-inline">
                     <button type="submit" class="danger lg">Avsluta spelet</button>
                 </form>
             </div>

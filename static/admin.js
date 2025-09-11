@@ -593,4 +593,14 @@ document.addEventListener('DOMContentLoaded', function () {
       if (prop && val) el.style[prop.trim()] = val.trim();
     });
   });
+
+  // Apply quarter pill dynamic colors/borders
+  document.querySelectorAll('.quarter-pill').forEach(function (el) {
+    const bg = el.getAttribute('data-bg');
+    const fg = el.getAttribute('data-fg');
+    const border = el.getAttribute('data-border');
+    if (bg) el.style.backgroundColor = bg;
+    if (fg) el.style.color = fg;
+    if (border) el.style.border = border;
+  });
 });

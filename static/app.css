@@ -355,6 +355,9 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
   font-size: 16px; 
 }
 
+/* Equal width utility for small inline CTA buttons in checklists */
+.btn-equal { min-width: 260px; text-align: center; }
+
 /* ============================================================================
    LAYOUT KOMPONENTER
    ============================================================================ */
@@ -790,6 +793,7 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 .mb-2 { margin-bottom: 0.5rem; }
 .fw-semibold { font-weight: 600; }
 .text-right { text-align: right; }
+.underline { text-decoration: underline; }
 
 /* Width utilities for tables */
 .w-35 { width: 35%; }
@@ -803,6 +807,51 @@ button.lg, a.primary.lg, a.success.lg, a.warning.lg, a.danger.lg, a.info.lg, a.s
 .substep {
   margin: 8px 0 16px 24px;
 }
+
+/* Spacing utilities */
+.p-20 { padding: 20px; }
+.mt-5px { margin-top: 5px; }
+.mb-0 { margin-bottom: 0; }
+
+/* Typography utilities */
+.text-sm { font-size: 0.9em; }
+.text-xs { font-size: 0.8em; }
+.text-muted-light { color: #adb5bd; }
+.muted-note { color: var(--c-muted); font-size: 0.6em; }
+
+/* Flex helpers */
+.flex-1 { flex: 1; }
+
+/* Scroll helpers */
+.scroll-y-400 { max-height: 400px; overflow-y: auto; }
+
+/* List card for existing games */
+.list-card {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border-left: 4px solid transparent;
+  transition: all 0.3s;
+}
+.border-left-success { border-left-color: #28a745; }
+
+.h3-compact { margin: 0 0 5px 0; color: var(--c-text); font-size: 1.1em; }
+
+/* Empty state */
+.empty-box { padding: 40px 20px; }
+.emoji-xl { font-size: 3em; margin-bottom: 15px; }
+
+/* Stats card */
+.stats-card { background: white; padding: 25px; border-radius: 12px; box-shadow: var(--shadow-sm); border-left: 5px solid #ffc107; }
+.title-row { margin: 0 0 20px 0; color: var(--c-text); display: flex; align-items: center; }
+.title-icon { background: #ffc107; color: white; padding: 8px 12px; border-radius: 50%; margin-right: 12px; font-size: 0.8em; }
+.grid-auto-200 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+.stat-box { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+.emoji-lg { font-size: 2em; }
+
+/* Links */
+.link-light { color: #ffffff !important; }
 
 /* ============================================================================
    ANIMATIONER
