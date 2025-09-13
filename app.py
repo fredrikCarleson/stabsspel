@@ -763,7 +763,7 @@ def timer_window(spel_id):
                     <h2>⏰ ORDERFAS</h2>
                     <div id="timer" class="timer-display">{initial_time}</div>
                 </div>
-                <div class="margin-20-0">
+                <div class="timer-controls">
                     <button onclick="startTimer()" class="success">▶️ Starta</button>
                     <button onclick="pauseTimer()" class="warning">⏸️ Pausa</button>
                     <button onclick="resetTimer()" class="danger">🔄 Återställ</button>
@@ -780,7 +780,7 @@ def timer_window(spel_id):
                     <h2>⏰ DIPLOMATIFAS</h2>
                     <div id="timer" class="timer-display">{data.get("diplomatifas_min", 10)}:00</div>
                 </div>
-                <div class="margin-20-0">
+                <div class="timer-controls">
                     <button onclick="startTimer()" class="success">▶️ Starta</button>
                     <button onclick="pauseTimer()" class="warning">⏸️ Pausa</button>
                     <button onclick="resetTimer()" class="danger">🔄 Återställ</button>
@@ -797,7 +797,7 @@ def timer_window(spel_id):
                     <h2>⏰ RESULTATFAS</h2>
                     <div id="timer" class="timer-display">05:00</div>
                 </div>
-                <div class="margin-20-0">
+                <div class="timer-controls">
                     <button onclick="startTimer()" class="success">▶️ Starta</button>
                     <button onclick="pauseTimer()" class="warning">⏸️ Pausa</button>
                     <button onclick="resetTimer()" class="danger">🔄 Återställ</button>
@@ -816,105 +816,10 @@ def timer_window(spel_id):
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="0">
-        <link rel="stylesheet" href="/static/app.css?v=5">
-        <style>
-            body {{
-                margin: 0;
-                padding: 20px;
-                font-family: Arial, sans-serif;
-                background: #f8f9fa;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-            }}
-            
-            .timer-container {{
-                transition: all 0.5s ease-in-out;
-                position: relative;
-            }}
-
-            .timer-container.maximized {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                z-index: 9999;
-                background: linear-gradient(135deg, #2c3e50, #34495e);
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                margin: 0;
-                padding: 0;
-                border-radius: 0;
-                box-shadow: none;
-            }}
-
-            .timer-container.maximized #timer {{
-                font-size: 15vw !important;
-                margin: 20px 0;
-                text-align: center;
-            }}
-
-            .timer-container.maximized h2 {{
-                font-size: 3vw !important;
-                margin-bottom: 30px;
-            }}
-
-            .timer-container.maximized button {{
-                font-size: 1.5vw !important;
-                padding: 15px 30px !important;
-                margin: 0 15px !important;
-            }}
-
-            .timer-container.maximized .status {{
-                font-size: 1.2vw !important;
-                padding: 12px 24px !important;
-                margin-top: 30px !important;
-            }}
-
-            .maximize-btn {{
-                background: #6c757d !important;
-                color: white;
-                padding: 8px 16px;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: 600;
-                margin: 0 8px;
-                transition: all 0.3s;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            }}
-
-            .maximize-btn:hover {{
-                background: #5a6268 !important;
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            }}
-
-            .minimize-btn {{
-                background: #dc3545 !important;
-                color: white;
-                padding: 8px 16px;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: 600;
-                margin: 0 8px;
-                transition: all 0.3s;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            }}
-
-            .minimize-btn:hover {{
-                background: #c82333 !important;
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            }}
-        </style>
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/app.css?v=6">
     </head>
-    <body>
+    <body class="timer-window">
         <div class="timer-container">
             {timer_html}
             
@@ -964,7 +869,8 @@ def timer_window(spel_id):
                     isRunning = true;
                     timerId = setInterval(updateTimer, 1000);
                     document.getElementById('status').textContent = 'Status: Kör';
-                    document.getElementById('status').style.background = '#27ae60';
+                    document.getElementById('status').className = 'status-badge';
+                    document.getElementById('status').style.background = 'var(--c-success)';
                 }}
             }}
             
@@ -973,7 +879,8 @@ def timer_window(spel_id):
                     isRunning = false;
                     clearInterval(timerId);
                     document.getElementById('status').textContent = 'Status: Pausad';
-                    document.getElementById('status').style.background = '#6c757d';
+                    document.getElementById('status').className = 'status-badge';
+                    document.getElementById('status').style.background = 'var(--c-secondary)';
                 }}
             }}
             
@@ -982,7 +889,8 @@ def timer_window(spel_id):
                 timeLeft = {data.get("orderfas_min", 15) if current_phase == "order" else data.get("diplomatifas_min", 10) if current_phase == "diplomati" else 5} * 60;
                 updateDisplay();
                 document.getElementById('status').textContent = 'Status: Pausad';
-                document.getElementById('status').style.background = '#6c757d';
+                document.getElementById('status').className = 'status-badge';
+                document.getElementById('status').style.background = 'var(--c-secondary)';
             }}
             
             function updateTimer() {{
@@ -992,7 +900,8 @@ def timer_window(spel_id):
                 }} else {{
                     pauseTimer();
                     document.getElementById('status').textContent = 'Status: Slut';
-                    document.getElementById('status').style.background = '#e74c3c';
+                    document.getElementById('status').className = 'status-badge';
+                    document.getElementById('status').style.background = 'var(--c-danger)';
                     // Spela ljud om det finns
                     var audio = new Audio('/static/alarm.mp3');
                     audio.play().catch(e => console.log('Kunde inte spela ljud:', e));

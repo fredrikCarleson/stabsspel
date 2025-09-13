@@ -1127,7 +1127,7 @@ def admin_panel(spel_id):
             <div class="container">
             <!-- Header Section -->
             <div class="admin-panel-header">
-                <h1>Adminpanel för spel {spel_id}</h1>
+                <h1>Adminpanel för spel {spel_id} <span style="font-size: 0.6em; color: #7bc96f;">refactor 1</span></h1>
                 <p class="admin-panel-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
                 <p class="admin-panel-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
                 <p class="admin-panel-subtitle">Lag: {lag_html}</p>
@@ -1176,20 +1176,20 @@ def create_quarter_bar_html(quarters, current_round):
         is_current = current_round == i + 1
         
         if is_current:
-            # Current quarter - use vibrant blue
-            bg_color = "#2563eb"
+            # Current quarter - use softer blue
+            bg_color = "#6ba3f5"
             text_color = "white"
-            border = "2px solid #1d4ed8"
+            border = "2px solid #4a8ce8"
         elif is_active:
-            # Completed quarter - use vibrant green
-            bg_color = "#16a34a"
+            # Completed quarter - use softer green
+            bg_color = "#7bc96f"
             text_color = "white"
-            border = "1px solid #15803d"
+            border = "1px solid #6bb85f"
         else:
             # Future quarter - use light gray
-            bg_color = "#f1f5f9"
-            text_color = "#64748b"
-            border = "1px solid #e2e8f0"
+            bg_color = "#f5f6f7"
+            text_color = "#7a8a9c"
+            border = "1px solid #e8e9ea"
         
         quarter_html += f'''
         <div class="quarter-pill flex-1" data-bg="{bg_color}" data-fg="{text_color}" data-border="{border}">
