@@ -43,7 +43,7 @@ class TestBasicFunctionality(unittest.TestCase):
     def test_create_new_game(self):
         """Test creating a new game with skapa_nytt_spel"""
         # Updated to match the actual function signature
-        game_id = skapa_nytt_spel("2025-01-01", "Test Location", 20, 10, 15)
+        game_id = skapa_nytt_spel("2025-01-01", "Test Location", 20, 10, 15, "test123")
         
         # Check that a game ID was returned
         self.assertIsInstance(game_id, str)
@@ -200,7 +200,7 @@ class TestDataConsistency(unittest.TestCase):
     def test_game_data_structure(self):
         """Test that game data structure is consistent"""
         # Create a test game
-        game_id = skapa_nytt_spel("2025-01-01", "Test", 20, 10, 15)
+        game_id = skapa_nytt_spel("2025-01-01", "Test", 20, 10, 15, "test123")
         
         # Load the created game data
         game_file = os.path.join('speldata', f"game_{game_id}.json")

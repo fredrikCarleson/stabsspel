@@ -4,6 +4,7 @@ from datetime import datetime
 import time
 import secrets
 import hashlib
+import base64
 
 TEAMS = [
     ("Alfa", 25),
@@ -16,6 +17,42 @@ TEAMS = [
     ("Regeringen", 10),
     ("USA", 12)
 ]
+
+# Lösenordskryptering
+def encrypt_password(password):
+    """Kryptera lösenord med salt och hash"""
+    salt = secrets.token_hex(16)
+    password_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+    return f"{salt}:{password_hash.hex()}"
+
+def verify_password(stored_password, provided_password):
+    """Verifiera lösenord mot lagrat hash"""
+    try:
+        salt, password_hash = stored_password.split(':')
+        password_hash_bytes = bytes.fromhex(password_hash)
+        new_hash = hashlib.pbkdf2_hmac('sha256', provided_password.encode(), salt.encode(), 100000)
+        return password_hash_bytes == new_hash
+    except:
+        return False
+
+def get_default_password():
+    """Returnera standardlösenord för befintliga spel"""
+    return "apa123"
+
+def check_game_password(spel_id, provided_password):
+    """Kontrollera om angivet lösenord stämmer för spelet"""
+    data = load_game_data(spel_id)
+    if not data:
+        return False
+    
+    stored_password = data.get("password")
+    
+    # Om inget lösenord finns lagrat, använd standardlösenord
+    if not stored_password:
+        return provided_password == get_default_password()
+    
+    # Verifiera mot lagrat lösenord
+    return verify_password(stored_password, provided_password)
 
 # Bas-HP-tabell som dictionary för enklare uppslag
 DEFAULT_HP = {namn: hp for namn, hp in TEAMS}
@@ -358,7 +395,7 @@ def save_game_data(spel_id, data):
             print(f"Error saving game data for {spel_id}: {e}")
             raise e
 
-def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min):
+def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min, password=None):
     spel_id = datetime.now().strftime("%Y%m%d%H%M%S")
     filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
     
@@ -389,6 +426,11 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
     # Generera tokens för alla team
     team_tokens = generate_team_tokens(spel_id, lag)
     
+    # Kryptera lösenord om det finns
+    encrypted_password = None
+    if password:
+        encrypted_password = encrypt_password(password)
+    
     data = {
         "id": spel_id,
         "datum": datum,
@@ -405,6 +447,7 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
         "orderfas_min": orderfas_min,
         "diplomatifas_min": diplomatifas_min,
         "team_tokens": team_tokens,
+        "password": encrypted_password,
     }
     # Initiera poäng baserat på spelstorlek
     data["poang"] = {}

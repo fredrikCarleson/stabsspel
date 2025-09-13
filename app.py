@@ -2,7 +2,7 @@ from flask import Flask, send_from_directory, make_response, jsonify, request
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
-from models import suggest_teams, DATA_DIR
+from models import suggest_teams, DATA_DIR, check_game_password
 import os
 import json
 import time
@@ -315,7 +315,7 @@ def startsida():
                 </div>
             </div>
             <div class="game-actions">
-                <a href="/admin/{s["id"]}" class="primary">Öppna</a>
+                <a href="/admin/{s["id"]}" class="primary">Öppna (kräver lösenord)</a>
                 <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
                     <button type="submit" class="danger">Ta bort</button>
                 </form>

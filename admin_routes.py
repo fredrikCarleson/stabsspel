@@ -5,7 +5,8 @@ import json
 import time
 from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
-    avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG
+    avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
+    check_game_password
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
@@ -751,7 +752,8 @@ def admin_start():
         antal_spelare = int(intervall) if intervall else 20
         orderfas_min = int(request.form.get("orderfas_min") or 10)
         diplomatifas_min = int(request.form.get("diplomatifas_min") or 10)
-        spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min)
+        password = request.form.get("password", "").strip()
+        spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min, password)
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
     
     # Lista befintliga spel
@@ -780,7 +782,7 @@ def admin_start():
         <div class="container">
             <!-- Header Section -->
             <div class="page-header">
-                <h1>🎮 Stabsspel Admin</h1>
+                <h1>🎮 Stabsspel Admin <small style="font-size: 0.6em; color: #666;">refactor [1]</small></h1>
                 <p class="page-subtitle">Spelhantering och kontrollpanel</p>
             </div>
             
@@ -823,6 +825,14 @@ def admin_start():
                             <div>
                                 <label for="diplomatifas_min">🤝 Diplomatifas (min)</label>
                                 <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required>
+                            </div>
+                        </div>
+                        
+                        <div class="admin-form-grid-single">
+                            <div>
+                                <label for="password">🔒 Spellösenord</label>
+                                <input type="password" name="password" id="password" placeholder="Lämna tomt för standardlösenord" maxlength="50">
+                                <small class="text-muted">Används för att skydda spelet. Standard: apa123 för befintliga spel</small>
                             </div>
                         </div>
                         
@@ -923,11 +933,95 @@ def admin_start():
         </style>
     '''
 
-@admin_bp.route("/admin/<spel_id>")
+@admin_bp.route("/admin/<spel_id>", methods=["GET", "POST"])
 def admin_panel(spel_id):
+    # Kontrollera lösenord om det är POST
+    if request.method == "POST":
+        provided_password = request.form.get("password", "").strip()
+        if not check_game_password(spel_id, provided_password):
+            return f'''
+            <!DOCTYPE html>
+            <html lang="sv">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Lösenord krävs - Stabsspel</title>
+                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="/static/app.css">
+            </head>
+            <body>
+                <div class="container">
+                    <div class="page-header">
+                        <h1>🔒 Lösenord krävs</h1>
+                        <p class="page-subtitle">Spelet är skyddat med lösenord</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="notification error">
+                            ❌ Felaktigt lösenord. Försök igen.
+                        </div>
+                        
+                        <form method="post">
+                            <div>
+                                <label for="password">Spellösenord</label>
+                                <input type="password" name="password" id="password" required placeholder="Ange lösenord">
+                                <small class="text-muted">Standard för befintliga spel: apa123</small>
+                            </div>
+                            <button type="submit" class="primary">Öppna spel</button>
+                        </form>
+                        
+                        <div class="mt-4">
+                            <a href="/admin" class="secondary">← Tillbaka till admin</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ''', 401
+    
+    # Om lösenordet är korrekt, fortsätt till admin-panelen
+    
     data = load_game_data(spel_id)
     if not data:
         return "Spelet hittades inte.", 404
+    
+    # Kontrollera om lösenord behövs (för GET-requests)
+    stored_password = data.get("password")
+    # Om det är en GET-request, visa lösenordsprompt
+    if request.method == "GET":
+        return f'''<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lösenord krävs - Stabsspel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>🔒 Lösenord krävs</h1>
+            <p class="page-subtitle">Spelet är skyddat med lösenord</p>
+        </div>
+        
+        <div class="card">
+            <form method="post">
+                <div>
+                    <label for="password">Spellösenord</label>
+                    <input type="password" name="password" id="password" required placeholder="Ange lösenord">
+                    <small class="text-muted">Standard för befintliga spel: apa123</small>
+                </div>
+                <button type="submit" class="primary">Öppna spel</button>
+            </form>
+            
+            <div class="mt-4">
+                <a href="/admin" class="secondary">← Tillbaka till admin</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>'''
     
     # Beräkna timer-värden
     fas_min = get_fas_minutes(data)

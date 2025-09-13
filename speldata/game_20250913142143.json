@@ -1,9 +1,9 @@
 {
-  "id": "20250904230536",
-  "datum": "2025-09-04",
-  "plats": "b2",
+  "id": "20250913142143",
+  "datum": "2025-09-13",
+  "plats": "lördag",
   "antal_spelare": 27,
-  "skapad": "2025-09-04T23:05:36.491159",
+  "skapad": "2025-09-13T14:21:43.235656",
   "fas": "Orderfas",
   "runda": 1,
   "lag": [
@@ -249,27 +249,18 @@
   "orderfas_min": 10,
   "diplomatifas_min": 10,
   "team_tokens": {
-    "Alfa": "hJLsoxUgfho2ForuzqPELQ_fc947fbbf190",
-    "Bravo": "t9aMP5tKUX_Ga5jfTe1bCw_fc439184b292",
-    "STT": "1_HNK93YxLuezeQZnEeHkQ_38338bf3f0fb",
-    "FM": "0IOeK6HJLfWTfSogWZmv5w_6994806fb6ae",
-    "BS": "TnBTUX51Q6LtpQmlDRGewQ_89f8e6bd757e",
-    "Media": "2oa4AWTE4XzaOEkk7RIohA_b1df7aa1ec71",
-    "SÄPO": "LcgJc7yx-oqXIOS_sNFJow_417cdc58252d",
-    "Regeringen": "NWDMrc-CCFTagTvteuRClg_2469989f789c",
-    "USA": "Uk4atDxU6yYR1XIK--E_4Q_f7da9b377b23"
+    "Alfa": "1d_LprQCgReQfUuTl82CXQ_522fe59fddba",
+    "Bravo": "_WAADkw7BWuJDJQuhvghOQ_aff572f01eea",
+    "STT": "fxbMc0mEatUczJnL3dePxg_76dfaeac75d5",
+    "FM": "CcOXm4HKHV_duqN52Qy9fQ_b58fe3ba28f9",
+    "BS": "xrbROlEuV4d3-Otcs0vYfQ_8bb1389b6a09",
+    "Media": "VZPQ0nLbxNccAZZJdFDqjA_70babd47f104",
+    "SÄPO": "-whe-jsfplG0P2PDaXUqDg_e81096347a0c",
+    "Regeringen": "3M3N2d31ZyElWxS4nYQj0w_99bcb60152da",
+    "USA": "yuqDNaOxjry2g657A2uh5A_e9b47c237922"
   },
-  "checkbox_states": {},
-  "team_orders": {},
-  "timer_status": "stopped",
-  "timer_start": null,
-  "timer_elapsed": 0,
-  "fashistorik": [
-    {
-      "runda": 1,
-      "fas": "Orderfas",
-      "status": "pågående"
-    }
-  ],
-  "avslutat": false
+  "password": "0580f4e0a5b5fdeb3bd895166dd0d5b6:8dd0f20b62095cc157ba9e8ce0cf238ffd4e60fc808de4f41749d0922e899427",
+  "checkbox_states": {
+    "order_check1": true
+  }
 }
