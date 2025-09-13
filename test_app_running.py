@@ -101,7 +101,7 @@ class TestAppRunning(unittest.TestCase):
             'team_routes.py',
             'models.py',
             'requirements.txt',
-            'static/style.css'
+            'static/app.css'
         ]
         
         for file_path in required_files:
