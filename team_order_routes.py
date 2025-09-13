@@ -4,42 +4,55 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 """
 
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
-from models import validate_team_token, get_team_by_token, load_game_data, save_game_data
+from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer
 import json
 import time
 
 team_order_bp = Blueprint('team_order', __name__)
 
-def get_phase_timer(data):
-    """Get remaining time for current phase"""
-    # Use admin timer system instead of fas_start_time
-    fas_minutes = 0
-    if data["fas"] == "Orderfas":
-        fas_minutes = data.get("orderfas_min", 10)
-    elif data["fas"] == "Diplomatifas":
-        fas_minutes = data.get("diplomatifas_min", 10)
-    
-    # Use admin timer system
-    total_sec = fas_minutes * 60
-    now = int(time.time())
-    timer_status = data.get("timer_status", "stopped")
-    timer_start = data.get("timer_start")
-    timer_elapsed = data.get("timer_elapsed", 0)
-    
-    if timer_status == "running" and timer_start:
-        elapsed = now - timer_start + timer_elapsed
-    else:
-        elapsed = timer_elapsed
-    
-    remaining_seconds = max(0, total_sec - elapsed)
-    
-    return int(remaining_seconds)
 
 def format_time(seconds):
     """Format seconds to MM:SS"""
     minutes = seconds // 60
     seconds = seconds % 60
     return f"{minutes:02d}:{seconds:02d}"
+
+def validate_order_hp(data, team_name, order_data):
+    """Validate that team doesn't exceed their HP limit"""
+    try:
+        # Get team's current HP
+        team_hp = 25  # Default
+        for team, hp_data in data.get("poang", {}).items():
+            if team == team_name:
+                team_hp = hp_data.get("aktuell", 25)
+                # Add regeringsstöd bonus if applicable
+                if hp_data.get("regeringsstod", False):
+                    team_hp += 10
+                break
+        
+        # Calculate used HP from order data
+        used_hp = 0
+        if "activities" in order_data:
+            for activity in order_data["activities"]:
+                try:
+                    hp_value = int(activity.get("hp", 0))
+                    if hp_value < 0:
+                        return {"valid": False, "error": "Negativa HP-värden är inte tillåtna"}
+                    used_hp += hp_value
+                except (ValueError, TypeError):
+                    return {"valid": False, "error": "Ogiltiga HP-värden i order"}
+        
+        # Check if HP limit is exceeded
+        if used_hp > team_hp:
+            return {
+                "valid": False, 
+                "error": f"Du har använt {used_hp} HP men har bara {team_hp} HP tillgängliga!"
+            }
+        
+        return {"valid": True, "used_hp": used_hp, "max_hp": team_hp}
+        
+    except Exception as e:
+        return {"valid": False, "error": f"Valideringsfel: {str(e)}"}
 
 def can_submit_orders(data):
     """Check if orders can be submitted in current phase"""
@@ -132,6 +145,11 @@ def team_save_order(spel_id, token):
     if not order_data:
         return jsonify({"success": False, "error": "No order data received"}), 400
     
+    # Validate HP usage
+    validation_result = validate_order_hp(data, team_name, order_data)
+    if not validation_result["valid"]:
+        return jsonify({"success": False, "error": validation_result["error"]}), 400
+    
     # Initialize team_orders structure if it doesn't exist
     if "team_orders" not in data:
         data["team_orders"] = {}
@@ -179,6 +197,11 @@ def team_submit_order(spel_id, token):
     order_data = request.get_json()
     if not order_data:
         return jsonify({"success": False, "error": "No order data received"}), 400
+    
+    # Validate HP usage
+    validation_result = validate_order_hp(data, team_name, order_data)
+    if not validation_result["valid"]:
+        return jsonify({"success": False, "error": validation_result["error"]}), 400
     
     # Initialize team_orders structure if it doesn't exist
     if "team_orders" not in data:

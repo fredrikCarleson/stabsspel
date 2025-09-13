@@ -83,6 +83,37 @@ def create_game_session(spel_id):
         'authenticated': True
     }
 
+def get_phase_timer(data):
+    """Get remaining time for current phase - unified timer logic"""
+    import time
+    
+    # Use admin timer system instead of fas_start_time
+    fas_minutes = 0
+    if data["fas"] == "Orderfas":
+        fas_minutes = data.get("orderfas_min", 10)
+    elif data["fas"] == "Diplomatifas":
+        fas_minutes = data.get("diplomatifas_min", 10)
+    
+    # Use admin timer system
+    total_sec = fas_minutes * 60
+    now = int(time.time())
+    timer_status = data.get("timer_status", "stopped")
+    timer_start = data.get("timer_start")
+    timer_elapsed = data.get("timer_elapsed", 0)
+    
+    if timer_status == "running" and timer_start:
+        elapsed = now - timer_start + timer_elapsed
+    else:
+        elapsed = timer_elapsed
+    
+    remaining_seconds = max(0, total_sec - elapsed)
+    
+    return int(remaining_seconds)
+
+def is_declaration_period(runda):
+    """Check if current round is during declaration period (runda 3 = april-juni)"""
+    return runda == 3
+
 # Bas-HP-tabell som dictionary för enklare uppslag
 DEFAULT_HP = {namn: hp for namn, hp in TEAMS}
 

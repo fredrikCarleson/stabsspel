@@ -6,7 +6,7 @@ import time
 from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
-    check_game_password, is_game_session_valid, create_game_session
+    check_game_password, is_game_session_valid, create_game_session, get_phase_timer, is_declaration_period
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
@@ -18,6 +18,21 @@ def check_admin_session(spel_id):
     """Kontrollera om admin har giltig session för spelet"""
     session_key = f"game_session_{spel_id}"
     return is_game_session_valid(spel_id, session.get(session_key))
+
+def create_declaration_warning(runda):
+    """Create warning HTML for declaration period (runda 3)"""
+    if is_declaration_period(runda):
+        return f'''
+        <div class="notification warning">
+            <div class="notification-icon">⚠️</div>
+            <div class="notification-content">
+                <strong>Deklarationstider (April-Juni)</strong>
+                <p>Under denna runda är det <strong>absolut förbjudet</strong> för STT att produktionssätta något nytt. 
+                Informera STT om denna begränsning och att de måste planera sina leveranser därefter.</p>
+            </div>
+        </div>
+        '''
+    return ""
 
 # ============================================================================
 # HJÄLPFUNKTIONER
@@ -1035,25 +1050,14 @@ def admin_panel(spel_id):
 </body>
 </html>'''
     
-    # Beräkna timer-värden
-    fas_min = get_fas_minutes(data)
-    total_sec = fas_min * 60
-    now = int(time.time())
-    timer_status = data.get("timer_status", "stopped")
-    timer_start = data.get("timer_start")
-    timer_elapsed = data.get("timer_elapsed", 0)
-    
-    if timer_status == "running" and timer_start:
-        elapsed = now - timer_start + timer_elapsed
-    else:
-        elapsed = timer_elapsed
-    
-    remaining = max(0, total_sec - elapsed)
+    # Beräkna timer-värden med centraliserad funktion
+    remaining = get_phase_timer(data)
     
     # Hämta spelstatus
     avslutat = data.get("avslutat", False)
     runda = data.get("runda", 1)
     fas = data.get("fas", "Orderfas")
+    timer_status = data.get("timer_status", "stopped")
     
     # Skapa historik
     historik = data.get("fashistorik", [])
@@ -1129,6 +1133,9 @@ def admin_panel(spel_id):
                 <p class="admin-panel-subtitle">Lag: {lag_html}</p>
                 {create_action_buttons(spel_id)}
             </div>
+            
+            <!-- Declaration Period Warning -->
+            {create_declaration_warning(runda)}
             
             <!-- Timer Section (moved right after header) -->
             <div class="admin-content-card">
