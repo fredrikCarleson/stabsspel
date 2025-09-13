@@ -54,6 +54,35 @@ def check_game_password(spel_id, provided_password):
     # Verifiera mot lagrat lösenord
     return verify_password(stored_password, provided_password)
 
+def is_game_session_valid(spel_id, session_data):
+    """Kontrollera om session är giltig för spelet"""
+    if not session_data:
+        return False
+    
+    # Kontrollera att sessionen är för rätt spel
+    if session_data.get('spel_id') != spel_id:
+        return False
+    
+    # Kontrollera att sessionen inte är utgången
+    import time
+    session_time = session_data.get('timestamp', 0)
+    current_time = time.time()
+    session_timeout = 1200  # 20 minuter
+    
+    if current_time - session_time > session_timeout:
+        return False
+    
+    return True
+
+def create_game_session(spel_id):
+    """Skapa session för spel"""
+    import time
+    return {
+        'spel_id': spel_id,
+        'timestamp': time.time(),
+        'authenticated': True
+    }
+
 # Bas-HP-tabell som dictionary för enklare uppslag
 DEFAULT_HP = {namn: hp for namn, hp in TEAMS}
 
@@ -292,6 +321,8 @@ def suggest_teams(num_players):
         return grundteam
 
 def get_next_fas(current_fas, runda):
+    # TODO: Granska fasövergångar - verifiera att logiken stämmer med spelreglerna
+    # Enligt reglerna: Orderfas -> Diplomatifas -> Resultatfas -> Orderfas (ny runda)
     if runda < MAX_RUNDA:
         idx = FASER.index(current_fas)
         return FASER[(idx + 1) % len(FASER)]

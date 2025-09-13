@@ -72,8 +72,8 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 5,
-        "slutford": false
+        "spenderade_hp": 15,
+        "slutford": true
       },
       {
         "id": "alfa_2",
@@ -259,8 +259,8 @@
     "Regeringen": "lRvM8mhKl5hrKlNv4qGypA_d803a9972744",
     "USA": "MbBhHgdWi4yn_F4Kw7xUeg_5908bcdff384"
   },
-  "timer_status": "stopped",
-  "timer_start": null,
+  "timer_status": "running",
+  "timer_start": 1757767955,
   "team_orders": {
     "orders_round_1": {
       "Alfa": {
@@ -975,5 +975,11 @@
       "status": "pågående"
     }
   ],
-  "checkbox_states": {}
+  "checkbox_states": {
+    "diplo_check1": true,
+    "diplo_check2": true,
+    "diplo_check3": true,
+    "diplo_check4": true
+  },
+  "fas_start_time": 1757767955
 }

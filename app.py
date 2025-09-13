@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, make_response, jsonify, request
+from flask import Flask, send_from_directory, make_response, jsonify, request, session
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
@@ -17,6 +17,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 # Disable static file caching during development and force template reloads
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = 1200  # 20 minutes in seconds
 
 # Add cache-busting headers for static files
 @app.after_request

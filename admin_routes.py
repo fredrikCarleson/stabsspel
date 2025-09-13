@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string, make_response
+from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string, make_response, session
 from markupsafe import Markup
 import os
 import json
@@ -6,13 +6,18 @@ import time
 from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
-    check_game_password
+    check_game_password, is_game_session_valid, create_game_session
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
 from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls
 
 admin_bp = Blueprint('admin', __name__)
+
+def check_admin_session(spel_id):
+    """Kontrollera om admin har giltig session för spelet"""
+    session_key = f"game_session_{spel_id}"
+    return is_game_session_valid(spel_id, session.get(session_key))
 
 # ============================================================================
 # HJÄLPFUNKTIONER
@@ -935,8 +940,13 @@ def admin_start():
 
 @admin_bp.route("/admin/<spel_id>", methods=["GET", "POST"])
 def admin_panel(spel_id):
-    # Kontrollera lösenord om det är POST
-    if request.method == "POST":
+    # Kontrollera session först
+    session_key = f"game_session_{spel_id}"
+    if request.method == "GET" and is_game_session_valid(spel_id, session.get(session_key)):
+        # Session är giltig, fortsätt till admin-panelen
+        pass
+    elif request.method == "POST":
+        # Kontrollera lösenord
         provided_password = request.form.get("password", "").strip()
         if not check_game_password(spel_id, provided_password):
             return f'''
@@ -978,17 +988,19 @@ def admin_panel(spel_id):
             </body>
             </html>
             ''', 401
-    
-    # Om lösenordet är korrekt, fortsätt till admin-panelen
+        else:
+            # Lösenord korrekt, skapa session
+            session[session_key] = create_game_session(spel_id)
+            session.permanent = True
     
     data = load_game_data(spel_id)
     if not data:
         return "Spelet hittades inte.", 404
     
-    # Kontrollera om lösenord behövs (för GET-requests)
+    # Kontrollera om lösenord behövs (för GET-requests utan giltig session)
     stored_password = data.get("password")
-    # Om det är en GET-request, visa lösenordsprompt
-    if request.method == "GET":
+    # Om det är en GET-request utan giltig session, visa lösenordsprompt
+    if request.method == "GET" and not is_game_session_valid(spel_id, session.get(session_key)):
         return f'''<!DOCTYPE html>
 <html lang="sv">
 <head>

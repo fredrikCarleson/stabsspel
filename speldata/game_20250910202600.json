@@ -4,7 +4,7 @@
   "plats": "test33",
   "antal_spelare": 27,
   "skapad": "2025-09-10T20:26:00.657488",
-  "fas": "Diplomatifas",
+  "fas": "Resultatfas",
   "runda": 2,
   "lag": [
     "Alfa",
@@ -72,8 +72,8 @@
         "id": "alfa_1",
         "namn": "Inloggning val",
         "estimaterade_hp": 15,
-        "spenderade_hp": 5,
-        "slutford": false
+        "spenderade_hp": 15,
+        "slutford": true
       },
       {
         "id": "alfa_2",
@@ -972,10 +972,18 @@
     {
       "runda": 2,
       "fas": "Diplomatifas",
+      "status": "avklarad"
+    },
+    {
+      "runda": 2,
+      "fas": "Resultatfas",
       "status": "pågående"
     }
   ],
   "checkbox_states": {
-    "diplo_check1": true
+    "diplo_check1": true,
+    "diplo_check2": true,
+    "diplo_check3": true,
+    "diplo_check4": true
   }
 }
