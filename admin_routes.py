@@ -10,7 +10,7 @@ from models import (
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
-from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls
+from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls, create_time_adjustment_modal
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1214,6 +1214,9 @@ def create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, rub
         
         timer_html += create_timer_controls(spel_id, remaining, timer_status)
         
+        # Add time adjustment modal
+        timer_html += create_time_adjustment_modal(spel_id, data.get("orderfas_min", 10), data.get("diplomatifas_min", 10))
+        
         if fas == "Orderfas":
             timer_html += create_orderfas_checklist(spel_id, data)
         elif fas == "Diplomatifas":
@@ -1357,6 +1360,50 @@ def admin_timer_action(spel_id):
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
     except Exception as e:
         print(f"Error in admin_timer_action: {e}")
+        return f"Ett fel uppstod: {str(e)}", 500
+
+@admin_bp.route("/admin/<spel_id>/adjust_times", methods=["POST"])
+def admin_adjust_times(spel_id):
+    """Handle time adjustments for Order and Diplomacy phases"""
+    try:
+        data = load_game_data(spel_id)
+        if not data:
+            return "Spelet hittades inte.", 404
+        
+        # Get new times from form
+        orderfas_min = int(request.form.get("orderfas_min", data.get("orderfas_min", 10)))
+        diplomatifas_min = int(request.form.get("diplomatifas_min", data.get("diplomatifas_min", 10)))
+        
+        # Validate times (1-60 minutes)
+        if not (1 <= orderfas_min <= 60 and 1 <= diplomatifas_min <= 60):
+            return "Tiderna måste vara mellan 1 och 60 minuter.", 400
+        
+        # Update the game data
+        data["orderfas_min"] = orderfas_min
+        data["diplomatifas_min"] = diplomatifas_min
+        
+        # If timer is currently running, we might want to adjust the remaining time
+        # based on the current phase
+        current_phase = data.get("fas", "Orderfas")
+        if data.get("timer_status") == "running" and current_phase in ["Orderfas", "Diplomatifas"]:
+            # Reset timer with new duration for current phase
+            if current_phase == "Orderfas":
+                new_duration = orderfas_min * 60
+            else:  # Diplomatifas
+                new_duration = diplomatifas_min * 60
+            
+            # Update timer to reflect new duration
+            data["timer_elapsed"] = 0
+            data["timer_start"] = int(time.time())
+            data["fas_start_time"] = int(time.time())
+        
+        save_game_data(spel_id, data)
+        
+        # Redirect back to admin panel with success message
+        return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+        
+    except Exception as e:
+        print(f"Error in admin_adjust_times: {e}")
         return f"Ett fel uppstod: {str(e)}", 500
 
 @admin_bp.route("/admin/<spel_id>/slut", methods=["POST"])

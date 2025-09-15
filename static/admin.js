@@ -3,6 +3,29 @@
  * Extracted from inline scripts for better organization
  */
 
+// Time adjustment modal functionality
+function openTimeAdjustmentModal(spelId) {
+    const modal = document.getElementById('timeAdjustmentModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closeTimeAdjustmentModal() {
+    const modal = document.getElementById('timeAdjustmentModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('timeAdjustmentModal');
+    if (event.target === modal) {
+        closeTimeAdjustmentModal();
+    }
+}
+
 // Timer functionality
 function openTimerWindow(spelId) {
     // Hämta aktuell tid och status från admin-timern

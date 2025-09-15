@@ -104,6 +104,38 @@ def create_script_references():
     <script src="/static/admin.js"></script>
     '''
 
+def create_time_adjustment_modal(spel_id, orderfas_min, diplomatifas_min):
+    """Skapa modal för att ändra fas-tider"""
+    return f'''
+    <!-- Time Adjustment Modal -->
+    <div id="timeAdjustmentModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Ändra fas-tider</h3>
+                <span class="close" onclick="closeTimeAdjustmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="timeAdjustmentForm" method="post" action="/admin/{spel_id}/adjust_times">
+                    <div class="form-group">
+                        <label for="orderfas_min">⏱️ Orderfas (minuter):</label>
+                        <input type="number" id="orderfas_min" name="orderfas_min" 
+                               min="1" max="60" value="{orderfas_min}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="diplomatifas_min">🤝 Diplomatifas (minuter):</label>
+                        <input type="number" id="diplomatifas_min" name="diplomatifas_min" 
+                               min="1" max="60" value="{diplomatifas_min}" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" onclick="closeTimeAdjustmentModal()" class="secondary">Avbryt</button>
+                        <button type="submit" class="success">💾 Spara ändringar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    '''
+
 def create_timer_controls(spel_id, remaining, timer_status):
     """Skapa timer-kontroller med design-systemets klasser"""
     return f'''
@@ -118,6 +150,7 @@ def create_timer_controls(spel_id, remaining, timer_status):
                 <button name="action" value="start" class="success">▶️ Starta</button>
                 <button name="action" value="pause" class="warning">⏸️ Pausa</button>
                 <button name="action" value="reset" class="danger">🔄 Återställ</button>
+                <button type="button" onclick="openTimeAdjustmentModal('{spel_id}')" class="info">⚙️ Ändra tid</button>
             </form>
         </div>
         
