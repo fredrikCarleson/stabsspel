@@ -91,8 +91,11 @@ def team_enter_order(spel_id, token):
     
     # Orders loading logic (debug removed)
     
-    # Check if order is already submitted (final)
-    is_submitted = team_orders and team_orders.get("final", False)
+    # Check if this is admin edit mode
+    is_admin_edit = request.args.get('admin_edit') == 'true'
+    
+    # Check if order is already submitted (final) - but allow admin editing
+    is_submitted = team_orders and team_orders.get("final", False) and not is_admin_edit
     
     # Get team's max HP
     team_max_hp = 25  # Default
@@ -110,6 +113,7 @@ def team_enter_order(spel_id, token):
                                          team_name=team_name, 
                                          token=token,
                                          data=data,
+                                         is_admin_edit=is_admin_edit,
                                          remaining_time=remaining_time,
                                          team_max_hp=team_max_hp,
                                          existing_orders=team_orders,
@@ -596,6 +600,11 @@ TEAM_ORDER_TEMPLATE = """
     <div class="container">
         <div class="header">
             <h1>📋 Ange Order - {{ team_name }}</h1>
+            {% if is_admin_edit %}
+            <div style="background: #ffc107; color: #000; padding: 8px 16px; border-radius: 6px; margin: 10px 0; font-weight: bold; font-size: 0.9rem;">
+                🔓 ADMIN EDIT MODE - Editing order during Diplomacy phase
+            </div>
+            {% endif %}
             <div class="game-info">
                 <span>🎮 Spel: {{ data.id }}</span>
                 <span>🔄 Runda: {{ data.runda }}</span>
@@ -635,10 +644,22 @@ TEAM_ORDER_TEMPLATE = """
                 
                 <div class="submit-section">
                     <button type="button" class="save-btn" onclick="saveOrder(false)" {% if is_submitted %}disabled{% endif %}>
-                        {% if is_submitted %}✅ Order Skickad{% else %}💾 Spara Order{% endif %}
+                        {% if is_admin_edit %}
+                            💾 Spara Ändringar
+                        {% elif is_submitted %}
+                            ✅ Order Skickad
+                        {% else %}
+                            💾 Spara Order
+                        {% endif %}
                     </button>
                     <button type="submit" class="submit-btn" id="submitBtn" {% if is_submitted %}disabled{% endif %}>
-                        {% if is_submitted %}✅ Order Skickad{% else %}📤 Slutför Order{% endif %}
+                        {% if is_admin_edit %}
+                            📤 Uppdatera Order
+                        {% elif is_submitted %}
+                            ✅ Order Skickad
+                        {% else %}
+                            📤 Slutför Order
+                        {% endif %}
                     </button>
                 </div>
             </form>
@@ -660,8 +681,10 @@ TEAM_ORDER_TEMPLATE = """
             
             // Check if order is already submitted
             {% if is_submitted %}
-                // Disable form if order is already submitted
+                // Disable form if order is already submitted (but not in admin edit mode)
+                {% if not is_admin_edit %}
                 disableForm();
+                {% endif %}
             {% endif %}
         });
         
@@ -916,6 +939,9 @@ TEAM_ORDER_TEMPLATE = """
             .then(data => {
                 if (data.success) {
                     if (isFinal) {
+                        {% if is_admin_edit %}
+                        showStatus('Order uppdaterad framgångsrikt!', 'success');
+                        {% else %}
                         showStatus('Order skickad framgångsrikt!', 'success');
                         document.getElementById('submitBtn').disabled = true;
                         document.getElementById('submitBtn').textContent = '✅ Order Skickad';
@@ -924,8 +950,13 @@ TEAM_ORDER_TEMPLATE = """
                         if (saveBtn) {
                             saveBtn.style.display = 'none';
                         }
+                        {% endif %}
                     } else {
+                        {% if is_admin_edit %}
+                        showStatus('Ändringar sparade framgångsrikt!', 'success');
+                        {% else %}
                         showStatus('Order sparad framgångsrikt!', 'success');
+                        {% endif %}
                     }
                 } else {
                     // Om filen är låst, försök igen

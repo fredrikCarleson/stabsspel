@@ -188,22 +188,26 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
             <a href="/admin/{spel_id}" class="back-button">← Tillbaka till admin</a>
             
             <div class="header">
-                <h1>📋 Order från {team_name}</h1>
-                <p>Spel: {data.get('id', 'Okänt')} | Runda: {data.get('runda', 'Okänt')} | Fas: {data.get('fas', 'Okänt')}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h1>📋 Order från {team_name}</h1>
+                        <p>Spel: {data.get('id', 'Okänt')} | Runda: {data.get('runda', 'Okänt')} | Fas: {data.get('fas', 'Okänt')}</p>
+                    </div>
+                    {f'''
+                    <div style="text-align: right;">
+                        <button onclick="unlockForEditing()" class="unlock-button" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                            🔓 Unlock for Editing
+                        </button>
+                        <small style="display: block; margin-top: 5px; color: rgba(255,255,255,0.8); font-size: 12px;">Available during Diplomacy phase</small>
+                    </div>
+                    ''' if data.get('fas') == 'Diplomatifas' else ''}
+                </div>
             </div>
             
             <div class="order-info">
                 <h3>📅 Orderinformation</h3>
                 <p><strong>Inskickad:</strong> {submitted_time}</p>
                 <p><strong>Antal aktiviteter:</strong> {len(activities)}</p>
-                {f'''
-                <div style="margin-top: 15px;">
-                    <button onclick="unlockForEditing()" class="unlock-button" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                        🔓 Unlock for Editing
-                    </button>
-                    <small style="display: block; margin-top: 5px; color: #6c757d;">Available during Diplomacy phase</small>
-                </div>
-                ''' if data.get('fas') == 'Diplomatifas' else ''}
             </div>
             
             <div class="hp-summary">
