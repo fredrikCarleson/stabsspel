@@ -2008,8 +2008,16 @@ def format_orders_for_chatgpt(data, all_orders):
                             paverkar_codes.append(team_codes[paverkar_team])
                     paverkar_text = ','.join(paverkar_codes) if paverkar_codes else '-'
                     
+                    # Use exact backlog item name if available, otherwise use custom description
+                    activity_name = activity.get('aktivitet', '')
+                    if activity.get('backlog_item') and activity.get('backlog_selected') != 'custom':
+                        # Extract the exact backlog item name from the dropdown text
+                        # The activity['aktivitet'] contains the full dropdown text like "Back-end API för inskickade röster (25 HP)"
+                        # We want just the task name part
+                        activity_name = activity_name.split(' (')[0] if ' (' in activity_name else activity_name
+                    
                     # Skapa raden
-                    line = f"TEAM: {team_code} | AKT: {activity['aktivitet'][:120]} | SYFTE: {activity['syfte'][:160]} | HP: {activity['hp']} | PÅVERKAR: {paverkar_text} | TYP: {activity_typ} | MÅL: {activity_mal} | PRIO: {priority} | MILJÖ: {miljo}"
+                    line = f"TEAM: {team_code} | AKT: {activity_name[:120]} | SYFTE: {activity['syfte'][:160]} | HP: {activity['hp']} | PÅVERKAR: {paverkar_text} | TYP: {activity_typ} | MÅL: {activity_mal} | PRIO: {priority} | MILJÖ: {miljo}"
                     formatted_lines.append(line)
                 
                 # Lägg till summa för teamet
@@ -2063,21 +2071,25 @@ def auto_fill_orders(spel_id):
             "Alfa": [
                 {
                     "id": int(time.time() * 1000) + 1,
-                    "aktivitet": "Implementera en ny CI/CD-pipeline",
+                    "aktivitet": "Inloggning val (15 HP)",
                     "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
                     "malomrade": "eget",
                     "paverkar": ["Alfa", "STT"],
                     "typ": "bygga",
-                    "hp": 10
+                    "hp": 10,
+                    "backlog_selected": "alfa_1",
+                    "backlog_item": "Inloggning val"
                 },
                 {
                     "id": int(time.time() * 1000) + 2,
-                    "aktivitet": "Leverera en första version av röst-API:t",
+                    "aktivitet": "Back-end API för inskickade röster (25 HP)",
                     "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
                     "malomrade": "eget",
                     "paverkar": ["Alfa", "STT"],
                     "typ": "bygga",
-                    "hp": 9
+                    "hp": 9,
+                    "backlog_selected": "alfa_2",
+                    "backlog_item": "Back-end API för inskickade röster"
                 },
                 {
                     "id": int(time.time() * 1000) + 3,
@@ -2086,18 +2098,22 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Media", "Bravo"],
                     "typ": "bygga",
-                    "hp": 6
+                    "hp": 6,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 }
             ],
             "Bravo": [
                 {
                     "id": int(time.time() * 1000) + 4,
-                    "aktivitet": "Genomföra en tvåveckors kravworkshop",
+                    "aktivitet": "Grafisk visning valet - Krav (10 HP)",
                     "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
                     "malomrade": "eget",
                     "paverkar": ["Bravo"],
                     "typ": "bygga",
-                    "hp": 12
+                    "hp": 12,
+                    "backlog_selected": "bravo_1_Krav",
+                    "backlog_item": "Grafisk visning valet - Krav"
                 },
                 {
                     "id": int(time.time() * 1000) + 5,
@@ -2106,7 +2122,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Regeringen", "Alfa"],
                     "typ": "bygga",
-                    "hp": 7
+                    "hp": 7,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 },
                 {
                     "id": int(time.time() * 1000) + 6,
@@ -2115,27 +2133,33 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Media", "Alfa"],
                     "typ": "bygga",
-                    "hp": 6
+                    "hp": 6,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 }
             ],
             "STT": [
                 {
                     "id": int(time.time() * 1000) + 7,
-                    "aktivitet": "Hardening av valservern",
+                    "aktivitet": "Infrastruktur för val (setup, hardening, konfig) (20 HP)",
                     "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
                     "malomrade": "eget",
                     "paverkar": ["STT"],
                     "typ": "bygga",
-                    "hp": 12
+                    "hp": 12,
+                    "backlog_selected": "stt_1",
+                    "backlog_item": "Infrastruktur för val (setup, hardening, konfig)"
                 },
                 {
                     "id": int(time.time() * 1000) + 8,
-                    "aktivitet": "Säkerställa drift under deklarationstid",
+                    "aktivitet": "Infrastruktur för deklaration (20 HP)",
                     "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
                     "malomrade": "eget",
                     "paverkar": ["Alfa", "Bravo"],
                     "typ": "bygga",
-                    "hp": 7
+                    "hp": 7,
+                    "backlog_selected": "stt_2",
+                    "backlog_item": "Infrastruktur för deklaration"
                 },
                 {
                     "id": int(time.time() * 1000) + 9,
@@ -2144,7 +2168,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Alfa", "Bravo"],
                     "typ": "bygga",
-                    "hp": 6
+                    "hp": 6,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 }
             ],
             "FM": [
@@ -2155,7 +2181,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["STT"],
                     "typ": "forstora",
-                    "hp": 8
+                    "hp": 8,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 },
                 {
                     "id": int(time.time() * 1000) + 11,
@@ -2164,7 +2192,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Regeringen", "Media"],
                     "typ": "forstora",
-                    "hp": 4
+                    "hp": 4,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 }
             ],
             "BS": [
@@ -2175,7 +2205,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["STT"],
                     "typ": "forstora",
-                    "hp": 7
+                    "hp": 7,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 },
                 {
                     "id": int(time.time() * 1000) + 13,
@@ -2184,7 +2216,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Alfa", "Bravo"],
                     "typ": "forstora",
-                    "hp": 5
+                    "hp": 5,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 }
             ],
             "SÄPO": [
@@ -2195,7 +2229,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Alfa"],
                     "typ": "bygga",
-                    "hp": 7
+                    "hp": 7,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 },
                 {
                     "id": int(time.time() * 1000) + 15,
@@ -2204,7 +2240,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Media"],
                     "typ": "bygga",
-                    "hp": 5
+                    "hp": 5,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 }
             ],
             "Regeringen": [
@@ -2215,7 +2253,9 @@ def auto_fill_orders(spel_id):
                     "malomrade": "eget",
                     "paverkar": ["Bravo"],
                     "typ": "bygga",
-                    "hp": 6
+                    "hp": 6,
+                    "backlog_selected": "custom",
+                    "backlog_item": ""
                 },
                 {
                     "id": int(time.time() * 1000) + 17,
@@ -2823,16 +2863,18 @@ ORDER_SUMMARY_TEMPLATE = """
 {{ formatted_text }}
 
 Baserat på dessa order, ge förslag på:
-1. Uppdaterad backlogstatus: hur många fler (eller färre) poäng varje team har på sina arbetsuppgifter.
+1. Uppdaterad backlogstatus: hur många fler (eller färre) poäng varje team har på sina arbetsuppgifter. Använd EXAKTA namnen från backlog-uppgifterna (t.ex. "Back-end API för inskickade röster", "Grafisk visning valet - Krav", "Infrastruktur för val").
 2. Plus/minus poäng för varje team inför nästa runda.
 3. Konsekvenser av teamens handlingar.
 4. Eventuella konflikter mellan team.
 5. Samlad resultatrapport i tidningsformat.
+
+VIKTIGT: När du refererar till backlog-uppgifter, använd alltid de EXAKTA namnen som visas i ordern (t.ex. "Back-end API för inskickade röster" istället för "Röst-API").
 {% else %}
 Inga order har skickats in ännu.
 {% endif %}
                 </div>
-                <button class="info sm" onclick="copyToClipboard()" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">📋 Kopiera</button>
+                <button class="copy-button" onclick="copyToClipboard()" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">📋 Kopiera</button>
             </div>
             
             <h2>📊 Detaljerad Översikt</h2>
@@ -2892,57 +2934,91 @@ Inga order har skickats in ännu.
             const textElement = document.getElementById('copyText');
             const text = textElement.textContent || textElement.innerText;
             
-            // Fallback för äldre webbläsare
+            // Try modern clipboard API first
             if (navigator.clipboard && window.isSecureContext) {
-                // Modern metod
                 navigator.clipboard.writeText(text).then(function() {
                     showCopySuccess();
                 }).catch(function(err) {
-                    console.error('Kunde inte kopiera text: ', err);
+                    console.error('Modern clipboard failed: ', err);
                     fallbackCopyTextToClipboard(text);
                 });
             } else {
-                // Fallback för äldre webbläsare
+                // Use fallback method
                 fallbackCopyTextToClipboard(text);
             }
         }
         
         function fallbackCopyTextToClipboard(text) {
+            // Create a temporary textarea element
             const textArea = document.createElement("textarea");
             textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
+            
+            // Make it invisible but still selectable
             textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
             textArea.style.opacity = "0";
+            textArea.style.pointerEvents = "none";
+            textArea.setAttribute('readonly', '');
             
             document.body.appendChild(textArea);
+            
+            // Select and copy
             textArea.focus();
             textArea.select();
+            textArea.setSelectionRange(0, 99999); // For mobile devices
             
             try {
                 const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
                 if (successful) {
                     showCopySuccess();
                 } else {
-                    alert('Kunde inte kopiera text. Kopiera manuellt istället.');
+                    showCopyError();
                 }
             } catch (err) {
-                console.error('Fallback: Kunde inte kopiera text: ', err);
-                alert('Kunde inte kopiera text. Kopiera manuellt istället.');
+                console.error('Fallback copy failed: ', err);
+                document.body.removeChild(textArea);
+                showCopyError();
             }
-            
-            document.body.removeChild(textArea);
         }
         
         function showCopySuccess() {
             const button = document.querySelector('.copy-button');
-            const originalText = button.textContent;
-            button.textContent = '✅ Kopierat!';
-            button.className = 'btn btn--success';
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.className = 'btn btn--info';
-            }, 2000);
+            if (button) {
+                const originalText = button.textContent;
+                const originalStyle = button.style.cssText;
+                
+                button.textContent = '✅ Kopierat!';
+                button.style.background = '#28a745';
+                button.style.borderColor = '#28a745';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.cssText = originalStyle;
+                }, 2000);
+            }
+        }
+        
+        function showCopyError() {
+            const button = document.querySelector('.copy-button');
+            if (button) {
+                const originalText = button.textContent;
+                const originalStyle = button.style.cssText;
+                
+                button.textContent = '❌ Kopiera manuellt';
+                button.style.background = '#dc3545';
+                button.style.borderColor = '#dc3545';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.cssText = originalStyle;
+                }, 3000);
+            }
+            
+            // Also show a more helpful message
+            alert('Automatisk kopiering misslyckades. Markera texten i rutan ovan och kopiera manuellt (Ctrl+C eller Cmd+C).');
         }
     </script>
 </body>

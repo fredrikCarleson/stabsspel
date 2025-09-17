@@ -4,7 +4,7 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 """
 
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
-from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer
+from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG
 import json
 import time
 
@@ -16,6 +16,29 @@ def format_time(seconds):
     minutes = seconds // 60
     seconds = seconds % 60
     return f"{minutes:02d}:{seconds:02d}"
+
+def generate_backlog_options():
+    """Generate HTML options for backlog dropdown"""
+    options = ['<option value="">Välj backlog-uppgift...</option>']
+    
+    for team_name, tasks in BACKLOG.items():
+        options.append(f'<optgroup label="Team {team_name}">')
+        
+        for task in tasks:
+            if 'faser' in task:  # Bravo tasks with phases
+                for phase in task['faser']:
+                    option_text = f"{task['namn']} - {phase['namn']} ({phase['estimaterade_hp']} HP)"
+                    option_value = f"{task['id']}_{phase['namn']}"
+                    options.append(f'<option value="{option_value}">{option_text}</option>')
+            else:  # Regular tasks (Alfa, STT)
+                option_text = f"{task['namn']} ({task['estimaterade_hp']} HP)"
+                option_value = task['id']
+                options.append(f'<option value="{option_value}">{option_text}</option>')
+        
+        options.append('</optgroup>')
+    
+    options.append('<option value="custom">Annat (egen beskrivning)</option>')
+    return '\n'.join(options)
 
 def validate_order_hp(data, team_name, order_data):
     """Validate that team doesn't exceed their HP limit"""
@@ -118,7 +141,8 @@ def team_enter_order(spel_id, token):
                                          team_max_hp=team_max_hp,
                                          existing_orders=team_orders,
                                          is_submitted=is_submitted,
-                                         format_time=format_time)
+                                         format_time=format_time,
+                                         backlog_options=generate_backlog_options())
     
     response = make_response(html_content)
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -727,7 +751,9 @@ TEAM_ORDER_TEMPLATE = """
                 malomrade: 'eget',
                 paverkar: [],
                 typ: 'bygga',
-                hp: 0
+                hp: 0,
+                backlog_selected: 'custom',
+                backlog_item: ''
             };
             
             activities.push(activity);
@@ -757,9 +783,18 @@ TEAM_ORDER_TEMPLATE = """
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Aktivitet (Vad?)</label>
+                                <select 
+                                    id="backlog-select-${activity.id}"
+                                    onchange="handleBacklogSelection(${activity.id}, this.value)"
+                                    style="margin-bottom: 10px;"
+                                >
+                                    {{ backlog_options | safe }}
+                                </select>
                                 <textarea 
+                                    id="activity-text-${activity.id}"
                                     placeholder="Beskriv aktiviteten..."
                                     onchange="updateActivity(${activity.id}, 'aktivitet', this.value)"
+                                    style="display: ${activity.backlog_selected === 'custom' || !activity.backlog_selected ? 'block' : 'none'};"
                                 >${activity.aktivitet}</textarea>
                             </div>
                             
@@ -844,6 +879,14 @@ TEAM_ORDER_TEMPLATE = """
                     const checkbox = document.querySelector(`input[value="${team}"]`);
                     if (checkbox) checkbox.checked = true;
                 });
+                
+                // Restore backlog selection state
+                if (activity.backlog_selected && activity.backlog_selected !== 'custom') {
+                    const select = document.getElementById(`backlog-select-${activity.id}`);
+                    if (select) {
+                        select.value = activity.backlog_selected;
+                    }
+                }
             });
         }
         
@@ -852,6 +895,36 @@ TEAM_ORDER_TEMPLATE = """
             if (activity) {
                 activity[field] = value;
                 updateHPSummary();
+            }
+        }
+        
+        function handleBacklogSelection(id, value) {
+            const activity = activities.find(a => a.id === id);
+            if (!activity) return;
+            
+            const textarea = document.getElementById(`activity-text-${id}`);
+            const select = document.getElementById(`backlog-select-${id}`);
+            
+            if (value === 'custom') {
+                // Show textarea for custom input
+                textarea.style.display = 'block';
+                activity.backlog_selected = 'custom';
+                activity.backlog_item = '';
+            } else if (value === '') {
+                // No selection
+                textarea.style.display = 'none';
+                textarea.value = '';
+                activity.aktivitet = '';
+                activity.backlog_selected = '';
+                activity.backlog_item = '';
+            } else {
+                // Backlog item selected
+                textarea.style.display = 'none';
+                const selectedOption = select.options[select.selectedIndex];
+                const backlogText = selectedOption.text;
+                activity.aktivitet = backlogText;
+                activity.backlog_selected = value;
+                activity.backlog_item = value;
             }
         }
         
