@@ -62,5 +62,5 @@ instance/
 *.tmp
 *.temp
 
-# Game data (optional - you might want to keep this for testing)
-# speldata/
+# Game data - should not be deployed to production
+speldata/
