@@ -2881,6 +2881,48 @@ def admin_backlog(spel_id):
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/app.css?v=5">
     <link rel="stylesheet" href="/static/print.css" media="print">
+    
+    <style>
+    /* Enhanced input fields for backlog page only */
+    .compact-input {{
+        width: 60px !important;
+        height: 36px !important;
+        padding: 6px 8px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+        border: 2px solid #e8e9ea !important;
+        border-radius: 6px !important;
+        background: white !important;
+        transition: all 0.2s ease !important;
+    }}
+    
+    .compact-input:focus {{
+        outline: none !important;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+        transform: scale(1.05) !important;
+    }}
+    
+    .compact-input[readonly] {{
+        background: #f8f9fa !important;
+        color: #6c757d !important;
+        border-color: #e8e9ea !important;
+        cursor: not-allowed !important;
+    }}
+    
+    /* Remove the tiny spinner arrows */
+    .compact-input::-webkit-outer-spin-button,
+    .compact-input::-webkit-inner-spin-button {{
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }}
+    
+    .compact-input[type=number] {{
+        -moz-appearance: textfield !important;
+    }}
+    </style>
+    
     <div class="container">
         <div class="backlog-header">
             <h1>Team Backlogs – Runda {data.get("runda", 1)}</h1>
