@@ -835,44 +835,17 @@ def create_historik_html(rundor):
     return historik_html
 
 def create_team_overview(data):
-    """Skapa översikt för alla team med liggande stapeldiagram"""
+    """Skapa kompakt översikt för alla team med card-baserad layout"""
     if "backlog" not in data or not isinstance(data["backlog"], dict):
         return ""
     
     overview_html = '''
     <div class="section-header">
         <h3>📊 Team Översikt</h3>
-        <div class="margin-20-0">
+    </div>
+    
+    <div class="team-overview-grid">
     '''
-    
-    # Samla alla uppgifter från alla team
-    all_tasks = []
-    
-    for lag in data["lag"]:
-        if lag in data["backlog"]:
-            for uppgift in data["backlog"][lag]:
-                # Filtrera bort återkommande uppgifter
-                is_aterkommande = "typ" in uppgift and uppgift["typ"] == "aterkommande"
-                if not is_aterkommande:
-                    if lag == "Bravo":
-                        # Bravo har faser - beräkna total progress
-                        total_estimaterade = sum(fas["estimaterade_hp"] for fas in uppgift["faser"])
-                        total_spenderade = sum(fas["spenderade_hp"] for fas in uppgift["faser"])
-                        progress_percent = min(100, (total_spenderade / total_estimaterade * 100) if total_estimaterade > 0 else 0)
-                    else:
-                        # Enkla uppgifter
-                        progress_percent = min(100, (uppgift["spenderade_hp"] / uppgift["estimaterade_hp"] * 100) if uppgift["estimaterade_hp"] > 0 else 0)
-                    
-                    all_tasks.append({
-                        "lag": lag,
-                        "namn": uppgift["namn"],
-                        "progress": progress_percent,
-                        "spenderade": uppgift["spenderade_hp"] if lag != "Bravo" else total_spenderade,
-                        "estimaterade": uppgift["estimaterade_hp"] if lag != "Bravo" else total_estimaterade
-                    })
-    
-    # Sortera efter progress (högst först)
-    all_tasks.sort(key=lambda x: x["progress"], reverse=True)
     
     # Skapa färgskala funktion
     def get_progress_color(percent):
@@ -887,36 +860,114 @@ def create_team_overview(data):
         else:
             return "#dc3545"  # Röd
     
-    # Skapa stapeldiagram för varje uppgift
-    for task in all_tasks:
-        color = get_progress_color(task["progress"])
-        overview_html += f'''
-        <div class="card">
-            <div class="flex-between mb-2">
-                <div class="flex">
-                    <strong class="mr-2">{task["lag"]}</strong>
-                    <span class="text-muted">{task["namn"]}</span>
+    # Skapa team-kort för varje lag
+    for lag in data["lag"]:
+        if lag in data["backlog"]:
+            team_tasks = []
+            total_estimaterade = 0
+            total_spenderade = 0
+            
+            for uppgift in data["backlog"][lag]:
+                # Filtrera bort återkommande uppgifter
+                is_aterkommande = "typ" in uppgift and uppgift["typ"] == "aterkommande"
+                if not is_aterkommande:
+                    if lag == "Bravo":
+                        # Bravo har faser - beräkna total progress
+                        task_estimaterade = sum(fas["estimaterade_hp"] for fas in uppgift["faser"])
+                        task_spenderade = sum(fas["spenderade_hp"] for fas in uppgift["faser"])
+                        progress_percent = min(100, (task_spenderade / task_estimaterade * 100) if task_estimaterade > 0 else 0)
+                    else:
+                        # Enkla uppgifter
+                        task_estimaterade = uppgift["estimaterade_hp"]
+                        task_spenderade = uppgift["spenderade_hp"]
+                        progress_percent = min(100, (task_spenderade / task_estimaterade * 100) if task_estimaterade > 0 else 0)
+                    
+                    team_tasks.append({
+                        "namn": uppgift["namn"],
+                        "progress": progress_percent,
+                        "spenderade": task_spenderade,
+                        "estimaterade": task_estimaterade
+                    })
+                    
+                    total_estimaterade += task_estimaterade
+                    total_spenderade += task_spenderade
+            
+            # Beräkna team-total progress
+            team_progress = min(100, (total_spenderade / total_estimaterade * 100) if total_estimaterade > 0 else 0)
+            team_color = get_progress_color(team_progress)
+            
+            # Team-färg baserat på lag
+            team_bg_colors = {
+                "Alfa": "linear-gradient(135deg, #5ba3e8 0%, #4a8ce8 100%)",
+                "Bravo": "linear-gradient(135deg, #5dd085 0%, #4ac870 100%)",
+                "STT": "linear-gradient(135deg, #f5d547 0%, #f0c040 100%)",
+                "FM": "linear-gradient(135deg, #f08a82 0%, #e67a73 100%)",
+                "BS": "linear-gradient(135deg, #4a5a6c 0%, #3a4a5c 100%)",
+                "Media": "linear-gradient(135deg, #b07cc6 0%, #a06bb8 100%)",
+                "Säpo": "linear-gradient(135deg, #4a6bb8 0%, #3a5ba8 100%)",
+                "Regeringen": "linear-gradient(135deg, #8a9ba8 0%, #7a8b98 100%)",
+                "USA": "linear-gradient(135deg, #4ac5d8 0%, #3ab5c8 100%)"
+            }
+            
+            team_bg = team_bg_colors.get(lag, "linear-gradient(135deg, #6ba3f5 0%, #4a8ce8 100%)")
+            
+            overview_html += f'''
+            <div class="team-overview-card">
+                <div class="team-overview-header" style="background: {team_bg};">
+                    <div class="team-overview-title">
+                        <h4>🟢 {lag}</h4>
+                        <div class="team-overview-progress">
+                            <span class="team-progress-percent">{team_progress:.0f}%</span>
+                            <span class="team-progress-hp">{total_spenderade}/{total_estimaterade} HP</span>
+                        </div>
+                    </div>
+                    <div class="team-overview-bar">
+                        <div class="team-progress-fill" style="width: {team_progress}%; background: {team_color};"></div>
+                    </div>
                 </div>
-                <div class="fw-semibold">{task["progress"]:.0f}%</div>
+                
+                <div class="team-overview-content">
+            '''
+            
+            # Visa uppgifter i kompakt format
+            for task in team_tasks[:3]:  # Visa max 3 uppgifter per team
+                task_color = get_progress_color(task["progress"])
+                overview_html += f'''
+                    <div class="team-task-item">
+                        <div class="team-task-info">
+                            <span class="team-task-name">{task["namn"]}</span>
+                            <span class="team-task-hp">{task["spenderade"]}/{task["estimaterade"]} HP</span>
+                        </div>
+                        <div class="team-task-bar">
+                            <div class="team-task-fill" style="width: {task["progress"]}%; background: {task_color};"></div>
+                        </div>
+                    </div>
+                '''
+            
+            # Visa "..." om det finns fler uppgifter
+            if len(team_tasks) > 3:
+                remaining = len(team_tasks) - 3
+                overview_html += f'''
+                    <div class="team-task-more">
+                        <span class="text-muted">+{remaining} fler uppgifter</span>
+                    </div>
+                '''
+            
+            overview_html += '''
+                </div>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" data-width="{task["progress"]}" data-color="{color}"></div>
-            </div>
-            <div class="text-right text-muted mt-1">
-                {task["spenderade"]} / {task["estimaterade"]} HP
-            </div>
-        </div>
-        '''
+            '''
     
-    if not all_tasks:
+    if not any(lag in data["backlog"] for lag in data["lag"]):
         overview_html += '''
-        <div class="text-center text-muted p-20">
-            <p>Inga uppgifter att visa ännu.</p>
+        <div class="team-overview-empty">
+            <div class="text-center text-muted">
+                <p>Inga uppgifter att visa ännu.</p>
+            </div>
         </div>
         '''
     
     overview_html += '''
-        </div>
     </div>
     '''
     
@@ -1351,6 +1402,164 @@ def admin_panel(spel_id):
         
         <!-- Include admin JavaScript -->
         {create_script_references()}
+        
+        <style>
+        /* Team Overview Grid Layout */
+        .team-overview-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+        
+        .team-overview-card {{
+            background: white;
+            border: 1px solid #e8e9ea;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        
+        .team-overview-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }}
+        
+        .team-overview-header {{
+            color: white;
+            padding: 16px 20px;
+            position: relative;
+        }}
+        
+        .team-overview-title {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }}
+        
+        .team-overview-title h4 {{
+            margin: 0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }}
+        
+        .team-overview-progress {{
+            text-align: right;
+        }}
+        
+        .team-progress-percent {{
+            display: block;
+            font-size: 1.2em;
+            font-weight: bold;
+        }}
+        
+        .team-progress-hp {{
+            display: block;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }}
+        
+        .team-overview-bar {{
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }}
+        
+        .team-progress-fill {{
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }}
+        
+        .team-overview-content {{
+            padding: 16px 20px;
+        }}
+        
+        .team-task-item {{
+            margin-bottom: 12px;
+        }}
+        
+        .team-task-item:last-child {{
+            margin-bottom: 0;
+        }}
+        
+        .team-task-info {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }}
+        
+        .team-task-name {{
+            font-size: 0.9em;
+            color: #2c3e50;
+            font-weight: 500;
+        }}
+        
+        .team-task-hp {{
+            font-size: 0.8em;
+            color: #6c757d;
+        }}
+        
+        .team-task-bar {{
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+        }}
+        
+        .team-task-fill {{
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }}
+        
+        .team-task-more {{
+            text-align: center;
+            padding: 8px 0;
+            border-top: 1px solid #e9ecef;
+            margin-top: 8px;
+        }}
+        
+        .team-overview-empty {{
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }}
+        
+        /* Reduce overall spacing in admin panel */
+        .admin-content-card {{
+            margin-bottom: 16px;
+        }}
+        
+        .card {{
+            margin-bottom: 16px;
+        }}
+        
+        .section-header {{
+            margin-bottom: 16px;
+        }}
+        
+        .section-header h3 {{
+            margin-bottom: 8px;
+        }}
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {{
+            .team-overview-grid {{
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }}
+            
+            .team-overview-card {{
+                margin-bottom: 0;
+            }}
+        }}
+        </style>
         </body>
         </html>
     '''
