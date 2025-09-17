@@ -196,6 +196,14 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
                 <h3>📅 Orderinformation</h3>
                 <p><strong>Inskickad:</strong> {submitted_time}</p>
                 <p><strong>Antal aktiviteter:</strong> {len(activities)}</p>
+                {f'''
+                <div style="margin-top: 15px;">
+                    <button onclick="unlockForEditing()" class="unlock-button" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        🔓 Unlock for Editing
+                    </button>
+                    <small style="display: block; margin-top: 5px; color: #6c757d;">Available during Diplomacy phase</small>
+                </div>
+                ''' if data.get('fas') == 'Diplomatifas' else ''}
             </div>
             
             <div class="hp-summary">
@@ -208,6 +216,58 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
                 {activities_html if activities_html else '<p class="text-muted text-center">Inga aktiviteter hittades</p>'}
             </div>
         </div>
+        
+        <!-- Password Modal -->
+        <div id="passwordModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
+                <h3 style="margin: 0 0 20px 0; color: #2c3e50;">🔒 Unlock for Editing</h3>
+                <p style="margin: 0 0 20px 0; color: #6c757d;">Enter the game password to edit this order:</p>
+                <input type="password" id="gamePassword" placeholder="Game password" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 20px; font-size: 16px;">
+                <div style="text-align: right;">
+                    <button onclick="closePasswordModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; margin-right: 10px; cursor: pointer;">Cancel</button>
+                    <button onclick="verifyPasswordAndEdit()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Unlock</button>
+                </div>
+                <div id="passwordError" style="color: #dc3545; margin-top: 10px; display: none;">❌ Incorrect password</div>
+            </div>
+        </div>
+        
+        <script>
+            function unlockForEditing() {{
+                document.getElementById('passwordModal').style.display = 'block';
+                document.getElementById('gamePassword').focus();
+            }}
+            
+            function closePasswordModal() {{
+                document.getElementById('passwordModal').style.display = 'none';
+                document.getElementById('gamePassword').value = '';
+                document.getElementById('passwordError').style.display = 'none';
+            }}
+            
+            function verifyPasswordAndEdit() {{
+                const password = document.getElementById('gamePassword').value;
+                if (!password) {{
+                    document.getElementById('passwordError').style.display = 'block';
+                    return;
+                }}
+                
+                // Redirect to edit page with password
+                window.location.href = `/admin/{spel_id}/edit_order/{team_name}?password=${{encodeURIComponent(password)}}`;
+            }}
+            
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {{
+                if (e.key === 'Escape') {{
+                    closePasswordModal();
+                }}
+            }});
+            
+            // Submit on Enter key
+            document.getElementById('gamePassword').addEventListener('keydown', function(e) {{
+                if (e.key === 'Enter') {{
+                    verifyPasswordAndEdit();
+                }}
+            }});
+        </script>
     </body>
     </html>
     '''
@@ -1801,6 +1861,101 @@ def admin_view_order(spel_id, team_name):
     except Exception as e:
         return f"Fel: {str(e)}", 500
 
+@admin_bp.route("/admin/<spel_id>/edit_order/<team_name>")
+def admin_edit_order(spel_id, team_name):
+    """Edit team order during diplomacy phase (admin only)"""
+    try:
+        # Get password from query parameter
+        provided_password = request.args.get('password', '').strip()
+        
+        # Verify password
+        if not check_game_password(spel_id, provided_password):
+            return f'''
+            <!DOCTYPE html>
+            <html lang="sv">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Access Denied - Stabsspel</title>
+                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="/static/app.css">
+            </head>
+            <body>
+                <div class="container">
+                    <div class="page-header">
+                        <h1>🔒 Access Denied</h1>
+                        <p class="page-subtitle">Incorrect game password</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="notification error">
+                            ❌ Incorrect password. Please try again.
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="/admin/{spel_id}/view_order/{team_name}" class="secondary">← Back to Order View</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ''', 401
+        
+        # Load game data
+        data = load_game_data(spel_id)
+        if not data:
+            return "Game not found", 404
+        
+        # Check that team exists
+        if team_name not in data.get("lag", []):
+            return "Team not found", 404
+        
+        # Check if we're in diplomacy phase
+        if data.get('fas') != 'Diplomatifas':
+            return f'''
+            <!DOCTYPE html>
+            <html lang="sv">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Not Available - Stabsspel</title>
+                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="/static/app.css">
+            </head>
+            <body>
+                <div class="container">
+                    <div class="page-header">
+                        <h1>⏰ Not Available</h1>
+                        <p class="page-subtitle">Order editing only available during Diplomacy phase</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="notification warning">
+                            ⚠️ Order editing is only available during the Diplomacy phase. Current phase: {data.get('fas', 'Unknown')}
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="/admin/{spel_id}/view_order/{team_name}" class="secondary">← Back to Order View</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ''', 403
+        
+        # Get team token for the order form
+        team_tokens = data.get("team_tokens", {})
+        if team_name not in team_tokens:
+            return "Team token not found", 404
+        
+        team_token = team_tokens[team_name]
+        
+        # Redirect to team order form with admin flag
+        return redirect(f"/team/{spel_id}/{team_token}/enter_order?admin_edit=true")
+        
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
 def format_orders_for_chatgpt(data, all_orders):
     """Formatera order för ChatGPT enligt den nya standarden"""
     try:
@@ -2614,6 +2769,26 @@ ORDER_SUMMARY_TEMPLATE = """
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
+        
+        .team-order-link {
+            background: #4a5a6c;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.3s ease;
+            border: 1px solid #4a5a6c;
+        }
+        
+        .team-order-link:hover {
+            background: #3a4a5c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: white;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
@@ -2660,6 +2835,11 @@ Inga order har skickats in ännu.
                             🟢 Team {{ team_name }}
                         </div>
                         <div class="team-content">
+                            <div style="margin-bottom: 20px; text-align: center;">
+                                <a href="/admin/{{ spel_id }}/view_order/{{ team_name }}" target="_blank" class="team-order-link">
+                                    👁️ View {{ team_name }} Order
+                                </a>
+                            </div>
                             {% for activity in team_orders.orders.activities %}
                             <div class="activity">
                                 <h4>{{ activity.aktivitet }}</h4>
