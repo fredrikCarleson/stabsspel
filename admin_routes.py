@@ -71,33 +71,61 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
         hp = activity.get("hp", 0)
         total_hp += hp
         
+        # Get affected teams
+        paverkar = activity.get('paverkar', [])
+        paverkar_text = ', '.join(paverkar) if paverkar else 'Ingen'
+        
+        # Determine activity type icon and color
+        typ = activity.get('typ', 'bygga')
+        typ_icon = '🔨' if typ == 'bygga' else '💥'
+        typ_color = '#28a745' if typ == 'bygga' else '#dc3545'
+        
+        # Determine target area
+        malomrade = activity.get('malomrade', 'eget')
+        malomrade_text = 'Eget mål' if malomrade == 'eget' else 'Annat mål'
+        malomrade_icon = '🎯' if malomrade == 'eget' else '🌐'
+        
         activities_html += f'''
-        <div class="activity-view">
-            <div class="activity-header">
-                <h4 class="margin-0 text-dark">Aktivitet {i}</h4>
-                <span class="bg-primary text-white padding-4-8 border-radius-4 font-size-12">{hp} HP</span>
+        <div class="activity-card">
+            <div class="activity-card-header">
+                <div class="activity-number">
+                    <span class="activity-badge">{i}</span>
+                </div>
+                <div class="activity-hp">
+                    <span class="hp-badge">{hp} HP</span>
+                </div>
             </div>
             
-            <div class="activity-content">
-                <div>
-                    <strong>Aktivitet:</strong><br>
-                    <p class="margin-5-0 text-muted">{activity.get('aktivitet', 'Ingen aktivitet angiven')}</p>
+            <div class="activity-card-body">
+                <div class="activity-main">
+                    <h4 class="activity-title">{activity.get('aktivitet', 'Ingen aktivitet angiven')}</h4>
+                    <p class="activity-purpose">{activity.get('syfte', 'Inget syfte angivet')}</p>
                 </div>
-                <div>
-                    <strong>Syfte/Mål:</strong><br>
-                    <p class="margin-5-0 text-muted">{activity.get('syfte', 'Inget syfte angivet')}</p>
-                </div>
-                <div>
-                    <strong>Målområde:</strong><br>
-                    <p class="margin-5-0 text-muted">{'Eget mål' if activity.get('malomrade') == 'eget' else 'Annat mål'}</p>
-                </div>
-                <div>
-                    <strong>Typ av handling:</strong><br>
-                    <p class="margin-5-0 text-muted">{'Bygga/Förstärka' if activity.get('typ') == 'bygga' else 'Förstöra/Störa'}</p>
-                </div>
-                <div class="grid-full">
-                    <strong>Påverkar:</strong><br>
-                    <p class="margin-5-0 text-muted">{', '.join(activity.get('paverkar', [])) if activity.get('paverkar') else 'Ingen påverkan angiven'}</p>
+                
+                <div class="activity-details">
+                    <div class="detail-item">
+                        <div class="detail-icon">{malomrade_icon}</div>
+                        <div class="detail-content">
+                            <div class="detail-label">Målområde</div>
+                            <div class="detail-value">{malomrade_text}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-icon" style="color: {typ_color}">{typ_icon}</div>
+                        <div class="detail-content">
+                            <div class="detail-label">Typ</div>
+                            <div class="detail-value">{'Bygga/Förstärka' if typ == 'bygga' else 'Förstöra/Störa'}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-icon">👥</div>
+                        <div class="detail-content">
+                            <div class="detail-label">Påverkar</div>
+                            <div class="detail-value">{paverkar_text}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -176,9 +204,109 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
             .back-button:hover {{
                 background: #5a6268;
             }}
+            .activities-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+            }}
+            .activity-card {{
+                background: white;
+                border: 1px solid #e9ecef;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }}
+            .activity-card:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            }}
+            .activity-card-header {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .activity-badge {{
+                background: rgba(255,255,255,0.2);
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 14px;
+            }}
+            .hp-badge {{
+                background: rgba(255,255,255,0.2);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 14px;
+            }}
+            .activity-card-body {{
+                padding: 20px;
+            }}
+            .activity-main {{
+                margin-bottom: 20px;
+            }}
+            .activity-title {{
+                margin: 0 0 10px 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: #2c3e50;
+                line-height: 1.4;
+            }}
+            .activity-purpose {{
+                margin: 0;
+                color: #6c757d;
+                font-size: 14px;
+                line-height: 1.5;
+            }}
+            .activity-details {{
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }}
+            .detail-item {{
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 8px 0;
+            }}
+            .detail-icon {{
+                font-size: 16px;
+                width: 24px;
+                text-align: center;
+            }}
+            .detail-content {{
+                flex: 1;
+            }}
+            .detail-label {{
+                font-size: 12px;
+                color: #6c757d;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 2px;
+            }}
+            .detail-value {{
+                font-size: 14px;
+                color: #2c3e50;
+                font-weight: 500;
+            }}
             @media (max-width: 768px) {{
-                .activity-content {{
-                    grid-template-columns: 1fr !important;
+                .activities-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                .activity-card {{
+                    margin-bottom: 15px;
                 }}
             }}
         </style>
@@ -217,7 +345,9 @@ def generate_order_view_html(spel_id, team_name, team_orders, data):
             
             <div class="activities">
                 <h3 class="card-title mb-3">📝 Aktiviteter</h3>
-                {activities_html if activities_html else '<p class="text-muted text-center">Inga aktiviteter hittades</p>'}
+                <div class="activities-grid">
+                    {activities_html if activities_html else '<p class="text-muted text-center">Inga aktiviteter hittades</p>'}
+                </div>
             </div>
         </div>
         
@@ -2739,50 +2869,126 @@ ORDER_SUMMARY_TEMPLATE = """
             padding: 28px;
         }
         
-        .activity {
-            background: #f8f9fa;
-            border-left: 4px solid #4a5a6c;
+        .team-activities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .activity-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .activity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .activity-card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .activity-badge {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .hp-badge {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .activity-card-body {
             padding: 20px;
+        }
+        
+        .activity-main {
             margin-bottom: 20px;
-            border-radius: 0 8px 8px 0;
-            border: 1px solid #e8e9ea;
         }
         
-        .activity:last-child {
-            margin-bottom: 0;
-        }
-        
-        .activity h4 {
-            color: #2c3e50;
-            margin-bottom: 12px;
-            font-size: 1.2em;
+        .activity-title {
+            margin: 0 0 10px 0;
+            font-size: 18px;
             font-weight: 600;
+            color: #2c3e50;
+            line-height: 1.4;
+        }
+        
+        .activity-purpose {
+            margin: 0;
+            color: #6c757d;
+            font-size: 14px;
+            line-height: 1.5;
         }
         
         .activity-details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
+            grid-template-columns: 1fr;
+            gap: 12px;
         }
         
         .detail-item {
-            background: white;
-            padding: 12px 16px;
-            border-radius: 6px;
-            border: 1px solid #e8e9ea;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+        }
+        
+        .detail-icon {
+            font-size: 16px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        .detail-content {
+            flex: 1;
         }
         
         .detail-label {
-            font-weight: 600;
-            color: #5a6a7c;
-            font-size: 0.9em;
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
         
         .detail-value {
+            font-size: 14px;
             color: #2c3e50;
-            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            .team-activities-grid {
+                grid-template-columns: 1fr;
+            }
+            .activity-card {
+                margin-bottom: 15px;
+            }
         }
         
         .no-orders {
@@ -2890,30 +3096,53 @@ Inga order har skickats in ännu.
                             </a>
                         </div>
                         <div class="team-content">
-                            {% for activity in team_orders.orders.activities %}
-                            <div class="activity">
-                                <h4>{{ activity.aktivitet }}</h4>
-                                <p><strong>Syfte/Mål:</strong> {{ activity.syfte }}</p>
-                                <div class="activity-details">
-                                    <div class="detail-item">
-                                        <div class="detail-label">HP</div>
-                                        <div class="detail-value">{{ activity.hp }}</div>
+                            <div class="team-activities-grid">
+                                {% for activity in team_orders.orders.activities %}
+                                <div class="activity-card">
+                                    <div class="activity-card-header">
+                                        <div class="activity-number">
+                                            <span class="activity-badge">{{ loop.index }}</span>
+                                        </div>
+                                        <div class="activity-hp">
+                                            <span class="hp-badge">{{ activity.hp }} HP</span>
+                                        </div>
                                     </div>
-                                    <div class="detail-item">
-                                        <div class="detail-label">Påverkar</div>
-                                        <div class="detail-value">{{ ', '.join(activity.paverkar) if activity.paverkar else 'Ingen' }}</div>
-                                    </div>
-                                    <div class="detail-item">
-                                        <div class="detail-label">Typ</div>
-                                        <div class="detail-value">{{ activity.typ }}</div>
-                                    </div>
-                                    <div class="detail-item">
-                                        <div class="detail-label">Målområde</div>
-                                        <div class="detail-value">{{ activity.malomrade }}</div>
+                                    
+                                    <div class="activity-card-body">
+                                        <div class="activity-main">
+                                            <h4 class="activity-title">{{ activity.aktivitet }}</h4>
+                                            <p class="activity-purpose">{{ activity.syfte }}</p>
+                                        </div>
+                                        
+                                        <div class="activity-details">
+                                            <div class="detail-item">
+                                                <div class="detail-icon">🎯</div>
+                                                <div class="detail-content">
+                                                    <div class="detail-label">Målområde</div>
+                                                    <div class="detail-value">{{ 'Eget mål' if activity.malomrade == 'eget' else 'Annat mål' }}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="detail-item">
+                                                <div class="detail-icon" style="color: {{ '#28a745' if activity.typ == 'bygga' else '#dc3545' }}">{{ '🔨' if activity.typ == 'bygga' else '💥' }}</div>
+                                                <div class="detail-content">
+                                                    <div class="detail-label">Typ</div>
+                                                    <div class="detail-value">{{ 'Bygga/Förstärka' if activity.typ == 'bygga' else 'Förstöra/Störa' }}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="detail-item">
+                                                <div class="detail-icon">👥</div>
+                                                <div class="detail-content">
+                                                    <div class="detail-label">Påverkar</div>
+                                                    <div class="detail-value">{{ ', '.join(activity.paverkar) if activity.paverkar else 'Ingen' }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
                         </div>
                     </div>
                     {% endif %}
