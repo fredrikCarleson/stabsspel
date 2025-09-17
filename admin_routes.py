@@ -2793,6 +2793,12 @@ ORDER_SUMMARY_TEMPLATE = """
             color: white;
             text-decoration: none;
         }
+        
+        .team-header a:hover {
+            background: rgba(255,255,255,0.3) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -2835,15 +2841,13 @@ Inga order har skickats in ännu.
                 {% for team_name, team_orders in all_orders.items() %}
                     {% if team_orders and team_orders.orders and team_orders.orders.activities %}
                     <div class="team-section">
-                        <div class="team-header {{ team_name.lower() }}">
-                            🟢 Team {{ team_name }}
+                        <div class="team-header {{ team_name.lower() }}" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>🟢 Team {{ team_name }}</span>
+                            <a href="/admin/{{ spel_id }}/view_order/{{ team_name }}" target="_blank" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+                                👁️ View {{ team_name }} Order
+                            </a>
                         </div>
                         <div class="team-content">
-                            <div style="margin-bottom: 20px; text-align: center;">
-                                <a href="/admin/{{ spel_id }}/view_order/{{ team_name }}" target="_blank" class="team-order-link">
-                                    👁️ View {{ team_name }} Order
-                                </a>
-                            </div>
                             {% for activity in team_orders.orders.activities %}
                             <div class="activity">
                                 <h4>{{ activity.aktivitet }}</h4>
