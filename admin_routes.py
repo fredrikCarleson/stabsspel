@@ -465,7 +465,31 @@ def create_orderfas_checklist(spel_id, data):
             </div>
         '''
 
+    # Lägg till Order Sammanfattning checkbox
+    order_summary_checkbox_id = "order_summary_check"
+    order_summary_checked = get_checkbox_state(data, order_summary_checkbox_id)
+    order_summary_checked_attr = "checked" if order_summary_checked else ""
+    
     checklist_html += f'''
+        </div>
+    </div>
+
+    <!-- Order Sammanfattning Section -->
+    <div class="checklist-container border-left-info">
+        <h3 class="checklist-title">📋 Order Sammanfattning</h3>
+        <div class="checklist-content">
+            <div class="checklist-item">
+                <input type="checkbox" id="{order_summary_checkbox_id}" name="{order_summary_checkbox_id}" {order_summary_checked_attr} class="checkbox-large" onchange="updateNextFasButton(); saveCheckboxState('{order_summary_checkbox_id}', this.checked);">
+                <span class="team-status">Visa Order Sammanfattning</span>
+            </div>
+        </div>
+        
+        <div class="chatgpt-container substep">
+            <h4 class="chatgpt-title">📋 ChatGPT Order Sammanfattning</h4>
+            <p class="chatgpt-description">Kopiera alla teams order för att få ChatGPT-förslag på konsekvenser</p>
+            <a href="/admin/{spel_id}/order_summary" target="_blank" class="info sm btn-equal">
+                📋 Visa Order Sammanfattning
+            </a>
         </div>
     </div>
 
@@ -491,8 +515,13 @@ def create_orderfas_checklist(spel_id, data):
             const checkbox = document.getElementById('order_check' + i);
             if (checkbox && checkbox.checked) {{ checkedCount++; }}
         }}
+        
+        // Kräv också att Order Sammanfattning är ikryssad
+        const orderSummaryCheck = document.getElementById('order_summary_check');
+        const orderSummaryChecked = orderSummaryCheck && orderSummaryCheck.checked;
+        
         const nextFasButton = document.getElementById('next-fas-btn');
-        if (checkedCount === totalTeams) {{
+        if (checkedCount === totalTeams && orderSummaryChecked) {{
             nextFasButton.disabled = false;
             nextFasButton.className = 'btn btn--success';
         }} else {{
