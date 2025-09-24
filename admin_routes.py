@@ -929,8 +929,8 @@ def create_team_overview(data):
                 <div class="team-overview-content">
             '''
             
-            # Visa uppgifter i kompakt format
-            for task in team_tasks[:3]:  # Visa max 3 uppgifter per team
+            # Visa alla uppgifter
+            for task in team_tasks:  # Visa alla uppgifter per team
                 task_color = get_progress_color(task["progress"])
                 overview_html += f'''
                     <div class="team-task-item">
@@ -941,15 +941,6 @@ def create_team_overview(data):
                         <div class="team-task-bar">
                             <div class="team-task-fill" style="width: {task["progress"]}%; background: {task_color};"></div>
                         </div>
-                    </div>
-                '''
-            
-            # Visa "..." om det finns fler uppgifter
-            if len(team_tasks) > 3:
-                remaining = len(team_tasks) - 3
-                overview_html += f'''
-                    <div class="team-task-more">
-                        <span class="text-muted">+{remaining} fler uppgifter</span>
                     </div>
                 '''
             
@@ -1109,6 +1100,18 @@ def admin_start():
                     <div id="team-info" class="mt-4"></div>
                 </div>
                 
+                <!-- Upload Game -->
+                <div class="admin-form-section info">
+                    <h2>
+                        <span class="admin-form-section-icon">📁</span>
+                        Ladda upp spel
+                    </h2>
+                    <p class="text-muted mb-3">Återställ ett spel från en tidigare nedladdad JSON-fil</p>
+                    <a href="/admin/upload_game" class="secondary lg">
+                        📤 Ladda upp JSON-fil
+                    </a>
+                </div>
+                
                 <!-- Existing Games -->
                 <div class="admin-form-section success">
                     <h2>
@@ -1128,6 +1131,7 @@ def admin_start():
                                 </div>
                                 <div class="flex gap-2">
                                     <a href="/admin/{s["id"]}" class="primary sm link-light">▶️ Öppna</a>
+                                    <a href="/admin/download_game/{s["id"]}" class="secondary sm link-light">💾 Ladda ner</a>
                                     <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
                                         <button type="submit" class="danger sm">🗑️ Ta bort</button>
                                     </form>
@@ -2957,6 +2961,209 @@ def delete_game_route(spel_id):
     except Exception as e:
         print(f"Error deleting game {spel_id}: {e}")
         return redirect(url_for("admin.admin_start"))
+
+@admin_bp.route("/admin/download_game/<spel_id>")
+def download_game(spel_id):
+    """Download game data as JSON file"""
+    try:
+        data = load_game_data(spel_id)
+        if not data:
+            return "Game not found", 404
+        
+        # Create filename with game info
+        filename = f"stabsspel_{data.get('datum', 'unknown')}_{data.get('plats', 'unknown')}_{spel_id}.json"
+        
+        # Create response with JSON data
+        from flask import Response
+        response = Response(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            mimetype='application/json',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"',
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        )
+        return response
+        
+    except Exception as e:
+        print(f"Error downloading game {spel_id}: {e}")
+        return f"Error downloading game: {e}", 500
+
+@admin_bp.route("/admin/upload_game", methods=["GET", "POST"])
+def upload_game():
+    """Upload and restore game from JSON file"""
+    if request.method == "GET":
+        # Show upload form
+        return '''
+        <!DOCTYPE html>
+        <html lang="sv">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ladda upp spel - Stabsspel Admin</title>
+            <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="/static/app.css?v=5">
+            <style>
+                .upload-container {
+                    max-width: 600px;
+                    margin: 2rem auto;
+                    padding: 2rem;
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                .upload-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                .file-input {
+                    padding: 1rem;
+                    border: 2px dashed #ddd;
+                    border-radius: 8px;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: border-color 0.3s;
+                }
+                .file-input:hover {
+                    border-color: #007bff;
+                }
+                .file-input input[type="file"] {
+                    display: none;
+                }
+                .btn {
+                    padding: 0.75rem 1.5rem;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    text-decoration: none;
+                    display: inline-block;
+                    text-align: center;
+                }
+                .btn-primary {
+                    background: #007bff;
+                    color: white;
+                }
+                .btn-secondary {
+                    background: #6c757d;
+                    color: white;
+                }
+                .btn:hover {
+                    opacity: 0.9;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="page-header">
+                    <h1>📁 Ladda upp spel</h1>
+                    <p class="page-subtitle">Återställ spel från JSON-fil</p>
+                </div>
+                
+                <div class="upload-container">
+                    <form method="post" enctype="multipart/form-data" class="upload-form">
+                        <div class="file-input" onclick="document.getElementById('gameFile').click()">
+                            <input type="file" id="gameFile" name="gameFile" accept=".json" required>
+                            <p>📄 Klicka här för att välja JSON-fil</p>
+                            <small>Välj en .json-fil som tidigare laddats ner från Stabsspel</small>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <button type="submit" class="btn btn-primary">📤 Ladda upp spel</button>
+                            <a href="/admin" class="btn btn-secondary">🔙 Tillbaka till admin</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <script>
+                document.getElementById('gameFile').addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const label = document.querySelector('.file-input p');
+                        label.textContent = `📄 Vald fil: ${file.name}`;
+                    }
+                });
+            </script>
+        </body>
+        </html>
+        '''
+    
+    elif request.method == "POST":
+        try:
+            # Check if file was uploaded
+            if 'gameFile' not in request.files:
+                return "No file uploaded", 400
+            
+            file = request.files['gameFile']
+            if file.filename == '':
+                return "No file selected", 400
+            
+            if not file.filename.endswith('.json'):
+                return "File must be a JSON file", 400
+            
+            # Read and parse JSON
+            try:
+                game_data = json.load(file)
+            except json.JSONDecodeError as e:
+                return f"Invalid JSON file: {e}", 400
+            
+            # Validate game data structure
+            required_fields = ['id', 'datum', 'plats', 'runda', 'fas']
+            for field in required_fields:
+                if field not in game_data:
+                    return f"Invalid game file: missing field '{field}'", 400
+            
+            # Generate new ID to avoid conflicts
+            import time
+            new_id = f"{int(time.time())}"
+            game_data['id'] = new_id
+            game_data['spel_id'] = new_id
+            
+            # Save the game
+            save_game_data(new_id, game_data)
+            
+            return f'''
+            <!DOCTYPE html>
+            <html lang="sv">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Spel uppladdat - Stabsspel Admin</title>
+                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="/static/app.css?v=5">
+            </head>
+            <body>
+                <div class="container">
+                    <div class="page-header">
+                        <h1>✅ Spel uppladdat!</h1>
+                        <p class="page-subtitle">Spelet har återställts framgångsrikt</p>
+                    </div>
+                    
+                    <div style="max-width: 600px; margin: 2rem auto; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <h3>📋 Spelinformation:</h3>
+                        <ul>
+                            <li><strong>Datum:</strong> {game_data.get('datum', 'Okänt')}</li>
+                            <li><strong>Plats:</strong> {game_data.get('plats', 'Okänt')}</li>
+                            <li><strong>Runda:</strong> {game_data.get('runda', 'Okänt')}</li>
+                            <li><strong>Fas:</strong> {game_data.get('fas', 'Okänt')}</li>
+                            <li><strong>Nytt ID:</strong> {new_id}</li>
+                        </ul>
+                        
+                        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+                            <a href="/admin/{new_id}" class="btn btn-primary">🎮 Öppna spel</a>
+                            <a href="/admin" class="btn btn-secondary">🔙 Tillbaka till admin</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            '''
+            
+        except Exception as e:
+            print(f"Error uploading game: {e}")
+            return f"Error uploading game: {e}", 500
 
 # HTML Template för order sammanfattning för ChatGPT
 ORDER_SUMMARY_TEMPLATE = """
