@@ -930,7 +930,7 @@ TEAM_ORDER_TEMPLATE = """
             
             activities.forEach((activity, index) => {
                 const activityHtml = `
-                    <div class="activity-row">
+                    <div class="activity-row" data-activity-id="${activity.id}">
                         <div class="activity-header">
                             <div class="activity-number">${index + 1}</div>
                             <button type="button" class="remove-activity" onclick="removeActivity(${activity.id})">
@@ -1034,8 +1034,12 @@ TEAM_ORDER_TEMPLATE = """
             // Restore checkbox states
             activities.forEach(activity => {
                 activity.paverkar.forEach(team => {
-                    const checkbox = document.querySelector(`input[value="${team}"]`);
-                    if (checkbox) checkbox.checked = true;
+                    // Find checkbox within this specific activity's container
+                    const activityContainer = document.querySelector(`[data-activity-id="${activity.id}"]`);
+                    if (activityContainer) {
+                        const checkbox = activityContainer.querySelector(`input[value="${team}"]`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                 });
                 
                 // Restore backlog selection state
