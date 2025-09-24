@@ -800,13 +800,6 @@ TEAM_ORDER_TEMPLATE = """
             </div>
         </div>
         
-        <!-- Team Overview Section -->
-        {% if team_overview_html %}
-        <div class="team-overview-section">
-            {{ team_overview_html | safe }}
-        </div>
-        {% endif %}
-        
         <div class="order-form">
             <form id="orderForm">
                 <div class="form-section">
@@ -846,6 +839,13 @@ TEAM_ORDER_TEMPLATE = """
                 </div>
             </form>
         </div>
+        
+        <!-- Team Overview Section - Moved to bottom -->
+        {% if team_overview_html %}
+        <div class="team-overview-section">
+            {{ team_overview_html | safe }}
+        </div>
+        {% endif %}
         
         <div id="status-message"></div>
     </div>
