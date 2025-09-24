@@ -318,6 +318,7 @@ def startsida():
             </div>
             <div class="game-actions">
                 <a href="/admin/{s["id"]}" class="primary">Öppna (kräver lösenord)</a>
+                <a href="/admin/download_game/{s["id"]}" class="secondary">💾 Ladda ner</a>
                 <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
                     <button type="submit" class="danger">Ta bort</button>
                 </form>
@@ -712,7 +713,12 @@ def startsida():
         
         <div class="games-section">
             <div class="container">
-                <h2 class="section-title">Befintliga spel</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title">Befintliga spel</h2>
+                    <a href="/admin/upload_game" class="secondary" style="padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px;">
+                        📤 Ladda upp spel
+                    </a>
+                </div>
                 {f'<div class="games-grid">{spel_html}</div>' if spel_html else '<div class="no-games">Inga aktiva spel hittades. Skapa ditt första spel för att komma igång!</div>'}
             </div>
         </div>
