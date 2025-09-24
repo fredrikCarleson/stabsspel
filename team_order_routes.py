@@ -5,6 +5,7 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
 from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG
+from admin_routes import create_team_overview
 import json
 import time
 
@@ -130,6 +131,9 @@ def team_enter_order(spel_id, token):
                 team_max_hp += 10
             break
     
+    # Generate team overview HTML
+    team_overview_html = create_team_overview(data)
+    
     # Create response with anti-caching headers
     html_content = render_template_string(TEAM_ORDER_TEMPLATE, 
                                          spel_id=spel_id, 
@@ -142,7 +146,8 @@ def team_enter_order(spel_id, token):
                                          existing_orders=team_orders,
                                          is_submitted=is_submitted,
                                          format_time=format_time,
-                                         backlog_options=generate_backlog_options())
+                                         backlog_options=generate_backlog_options(),
+                                         team_overview_html=team_overview_html)
     
     response = make_response(html_content)
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -618,6 +623,152 @@ TEAM_ORDER_TEMPLATE = """
         .hp-over {
             color: #dc3545;
         }
+        
+        /* Team Overview Styles */
+        .team-overview-section {
+            margin-bottom: 20px;
+        }
+        
+        .team-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .team-overview-card {
+            background: white;
+            border: 1px solid #e8e9ea;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .team-overview-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .team-overview-header {
+            color: white;
+            padding: 12px 16px;
+            position: relative;
+        }
+        
+        .team-overview-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .team-overview-title h4 {
+            margin: 0;
+            font-size: 1em;
+            font-weight: 600;
+        }
+        
+        .team-overview-progress {
+            text-align: right;
+        }
+        
+        .team-progress-percent {
+            display: block;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .team-progress-hp {
+            display: block;
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .team-overview-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .team-progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .team-overview-content {
+            padding: 12px 16px;
+        }
+        
+        .team-task-item {
+            margin-bottom: 8px;
+        }
+        
+        .team-task-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .team-task-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .team-task-name {
+            font-size: 0.85em;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .team-task-hp {
+            font-size: 0.8em;
+            color: #6c757d;
+            font-weight: 600;
+        }
+        
+        .team-task-bar {
+            height: 3px;
+            background: #f1f3f4;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .team-task-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .team-task-more {
+            text-align: center;
+            padding: 8px 0;
+            border-top: 1px solid #f1f3f4;
+            margin-top: 8px;
+        }
+        
+        .team-overview-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        /* Responsive adjustments for team overview */
+        @media (max-width: 768px) {
+            .team-overview-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .team-overview-card {
+                margin-bottom: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -648,6 +799,13 @@ TEAM_ORDER_TEMPLATE = """
                 Kvar: <span id="remaining-hp" class="hp-remaining">{{ team_max_hp }}</span>
             </div>
         </div>
+        
+        <!-- Team Overview Section -->
+        {% if team_overview_html %}
+        <div class="team-overview-section">
+            {{ team_overview_html | safe }}
+        </div>
+        {% endif %}
         
         <div class="order-form">
             <form id="orderForm">
