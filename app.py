@@ -1,11 +1,21 @@
+import os
+import json
+import time
+import sys
+
+# Windows consoles often use cp1252; avoid UnicodeEncodeError on startup logs
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from flask import Flask, send_from_directory, make_response, jsonify, request, session
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
 from models import suggest_teams, DATA_DIR, check_game_password
-import os
-import json
-import time
 
 app = Flask(__name__)
 app.register_blueprint(admin_bp)

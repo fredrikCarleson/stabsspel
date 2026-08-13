@@ -38,7 +38,7 @@ class TestBasicFunctionality(unittest.TestCase):
     
     def test_static_files_load(self):
         """Test that static files are accessible"""
-        response = self.app.get('/static/style.css')
+        response = self.app.get('/static/app.css')
         self.assertEqual(response.status_code, 200)
     
     def test_health_endpoint(self):

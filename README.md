@@ -93,7 +93,7 @@ Stabsspel/
 ├── Procfile              # Render deployment
 ├── runtime.txt           # Python-version
 ├── static/               # Statiska filer
-│   ├── style.css
+│   ├── app.css
 │   └── alarm.mp3
 ├── teambeskrivning/      # Team-beskrivningar
 └── speldata/             # Speldata (skapas automatiskt)

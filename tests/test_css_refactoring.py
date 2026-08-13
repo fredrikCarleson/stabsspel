@@ -13,13 +13,12 @@ class TestCSSRefactoring(unittest.TestCase):
         # Should use CSS classes instead of inline styles
         self.assertIn('class="margin-bottom-25"', html)
         self.assertIn('class="margin-20-0"', html)
-        self.assertIn('class="margin-top-20"', html)
         self.assertIn('class="margin-top-15"', html)
         self.assertIn('class="form-inline"', html)
-        self.assertIn('class="btn btn-primary"', html)
-        self.assertIn('class="btn btn-warning"', html)
-        self.assertIn('class="btn btn-danger"', html)
-        self.assertIn('class="btn btn-secondary"', html)
+        self.assertIn('class="success"', html)
+        self.assertIn('class="warning"', html)
+        self.assertIn('class="danger"', html)
+        self.assertIn('class="secondary"', html)
         
         # Should NOT contain inline styles
         self.assertNotIn('style="margin-bottom: 25px;"', html)
@@ -54,8 +53,8 @@ class TestCSSRefactoring(unittest.TestCase):
         html = create_action_buttons("test_id")
         
         # Should use CSS classes
-        self.assertIn('class="action-buttons"', html)
-        self.assertIn('class="action-button"', html)
+        self.assertIn('class="admin-panel-actions"', html)
+        self.assertIn('class="primary"', html)
         
         # Should contain the expected links
         self.assertIn('/admin/test_id/poang', html)

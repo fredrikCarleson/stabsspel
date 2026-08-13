@@ -72,7 +72,7 @@ def test_static_files():
     print("\n🎨 Testing static files...")
     
     static_files = [
-        "static/style.css",
+        "static/app.css",
         "static/alarm.mp3"
     ]
     

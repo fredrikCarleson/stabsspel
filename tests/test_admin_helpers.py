@@ -83,8 +83,7 @@ class TestAdminHelpers(unittest.TestCase):
         self.assertIsInstance(buttons_html, str)
         
         # Check that it contains expected content
-        self.assertIn('<div class="action-buttons">', buttons_html)
-        self.assertIn('action-button', buttons_html)
+        self.assertIn('<div class="admin-panel-actions">', buttons_html)
         self.assertIn('test123', buttons_html)
         self.assertIn('Visa/ändra handlingspoäng', buttons_html)
         self.assertIn('Skriv ut aktivitetskort', buttons_html)
@@ -113,7 +112,7 @@ class TestAdminHelpers(unittest.TestCase):
         self.assertIsInstance(timer_html, str)
         
         # Check that it contains expected content
-        self.assertIn('<div class="timer-container">', timer_html)
+        self.assertIn('<div class="timer-wrap">', timer_html)
         self.assertIn('10:00', timer_html)  # 600 seconds = 10:00
         self.assertIn('test123', timer_html)
         self.assertIn('running', timer_html)

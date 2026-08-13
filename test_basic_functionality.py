@@ -130,7 +130,7 @@ class TestBasicFunctionality(unittest.TestCase):
             'team_routes.py',
             'models.py',
             'requirements.txt',
-            'static/style.css'
+            'static/app.css'
         ]
         
         for file_path in required_files:
@@ -144,7 +144,7 @@ class TestBasicFunctionality(unittest.TestCase):
     def test_static_files(self):
         """Test that static files exist"""
         static_files = [
-            'static/style.css',
+            'static/app.css',
             'static/alarm.mp3'
         ]
         
