@@ -1,10 +1,26 @@
 import os
 import json
+import copy
+import shutil
+import threading
+import uuid
 from datetime import datetime
 import time
 import secrets
 import hashlib
 import base64
+
+_save_locks_guard = threading.Lock()
+_save_locks = {}
+
+
+def _save_lock_for(spel_id):
+    with _save_locks_guard:
+        lock = _save_locks.get(spel_id)
+        if lock is None:
+            lock = threading.Lock()
+            _save_locks[spel_id] = lock
+        return lock
 
 TEAMS = [
     ("Alfa", 25),
@@ -352,18 +368,52 @@ def suggest_teams(num_players):
         return grundteam
 
 def get_next_fas(current_fas, runda):
-    # TODO: Granska fasövergångar - verifiera att logiken stämmer med spelreglerna
-    # Enligt reglerna: Orderfas -> Diplomatifas -> Resultatfas -> Orderfas (ny runda)
-    if runda < MAX_RUNDA:
-        idx = FASER.index(current_fas)
-        return FASER[(idx + 1) % len(FASER)]
-    else:
-        if current_fas == "Orderfas":
-            return "Resultatfas"
-        elif current_fas == "Resultatfas":
-            return "Orderfas"
-        else:
-            return "Resultatfas"
+    """Return the next phase. Last round stays on Resultatfas instead of opening round 5."""
+    if current_fas not in FASER:
+        return "Orderfas"
+    if runda >= MAX_RUNDA and current_fas == "Resultatfas":
+        return "Resultatfas"
+    idx = FASER.index(current_fas)
+    return FASER[(idx + 1) % len(FASER)]
+
+
+def clone_backlog_for_teams(lag):
+    """Deep-copy backlog templates so one game cannot mutate another."""
+    backlog_data = {}
+    for lag_namn in lag:
+        if lag_namn not in BACKLOG:
+            continue
+        cloned = copy.deepcopy(BACKLOG[lag_namn])
+        for uppgift in cloned:
+            if not isinstance(uppgift, dict):
+                continue
+            uppgift["spenderade_hp"] = 0
+            uppgift["slutford"] = False
+            for fas in uppgift.get("faser", []):
+                fas["spenderade_hp"] = 0
+                fas["slutford"] = False
+        backlog_data[lag_namn] = cloned
+    return backlog_data
+
+
+def list_saved_games():
+    """Load all valid game files, skipping corrupt or incomplete JSON."""
+    games = []
+    if not os.path.isdir(DATA_DIR):
+        return games
+    for fil in os.listdir(DATA_DIR):
+        if not fil.startswith("game_") or not fil.endswith(".json"):
+            continue
+        path = os.path.join(DATA_DIR, fil)
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict) and data.get("id"):
+                games.append(data)
+        except (OSError, json.JSONDecodeError):
+            continue
+    games.sort(key=lambda g: str(g.get("skapad") or g.get("datum") or ""), reverse=True)
+    return games
 
 def get_fas_minutes(data):
     if data["fas"] == "Orderfas":
@@ -399,91 +449,52 @@ def load_game_data(spel_id):
 
 def save_game_data(spel_id, data):
     """Spara speldata till fil med atomisk skrivning för att undvika korruption"""
+    os.makedirs(DATA_DIR, exist_ok=True)
     filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    temp_filnamn = filnamn + ".tmp"
     backup_filnamn = filnamn + ".backup"
-    
-    # Försök flera gånger på Windows för att hantera fil-låsning
-    max_retries = 3
+    # Unique tmp per write so concurrent requests cannot delete each other's file
+    temp_filnamn = f"{filnamn}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    max_retries = 5
     retry_delay = 0.1
-    
-    for attempt in range(max_retries):
-        try:
-            # Skapa backup av nuvarande fil om den finns
-            if os.path.exists(filnamn):
-                try:
-                    import shutil
-                    shutil.copy2(filnamn, backup_filnamn)
-                except:
-                    pass  # Ignorera backup-fel
-            
-            # Skriv till temporär fil först
-            with open(temp_filnamn, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            
-            # Atomisk flytt av temporär fil till slutgiltig fil
-            if os.name == 'nt':  # Windows
-                # På Windows behöver vi hantera fil-låsning
-                try:
-                    # Försök att flytta direkt först - använd os.replace för atomisk operation
-                    os.replace(temp_filnamn, filnamn)
-                except PermissionError:
-                    # Om det misslyckas, vänta lite och försök igen
-                    import time
-                    time.sleep(retry_delay)
-                    os.replace(temp_filnamn, filnamn)
-            else:  # Unix/Linux
+
+    with _save_lock_for(spel_id):
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if os.path.exists(filnamn):
+                    try:
+                        shutil.copy2(filnamn, backup_filnamn)
+                    except OSError:
+                        pass
+
+                with open(temp_filnamn, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+
                 os.replace(temp_filnamn, filnamn)
-            
-            # Om vi kom hit så lyckades det
-            break
-            
-        except PermissionError as e:
-            if attempt < max_retries - 1:
-                # Vänta lite innan nästa försök
-                import time
-                time.sleep(retry_delay * (attempt + 1))
-                continue
-            else:
-                # Sista försöket misslyckades
-                raise e
-        except Exception as e:
-            # Rensa upp temporär fil om något går fel
-            if os.path.exists(temp_filnamn):
-                try:
-                    os.remove(temp_filnamn)
-                except:
-                    pass
-            print(f"Error saving game data for {spel_id}: {e}")
-            raise e
+                return
+            except (PermissionError, FileNotFoundError, OSError) as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                break
+
+        if os.path.exists(temp_filnamn):
+            try:
+                os.remove(temp_filnamn)
+            except OSError:
+                pass
+        print(f"Error saving game data for {spel_id}: {last_error}")
+        raise last_error
 
 def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min, password=None):
     spel_id = datetime.now().strftime("%Y%m%d%H%M%S")
     filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
     
-    # Skapa backlog med korrekt data från BACKLOG
     lag = suggest_teams(antal_spelare)
-    backlog_data = {}
-    for lag_namn in lag:
-        if lag_namn in BACKLOG:
-            # Kopiera BACKLOG-data och säkerställ att spenderade_hp är 0
-            backlog_data[lag_namn] = []
-            for uppgift in BACKLOG[lag_namn]:
-                if isinstance(uppgift, dict):
-                    # För enkla uppgifter
-                    ny_uppgift = uppgift.copy()
-                    ny_uppgift["spenderade_hp"] = 0
-                    ny_uppgift["slutford"] = False
-                    backlog_data[lag_namn].append(ny_uppgift)
-                else:
-                    # För komplexa uppgifter med faser
-                    ny_uppgift = uppgift.copy()
-                    if "faser" in ny_uppgift:
-                        for fas in ny_uppgift["faser"]:
-                            fas["spenderade_hp"] = 0
-                            fas["slutford"] = False
-                    ny_uppgift["slutford"] = False
-                    backlog_data[lag_namn].append(ny_uppgift)
+    backlog_data = clone_backlog_for_teams(lag)
     
     # Generera tokens för alla team
     team_tokens = generate_team_tokens(spel_id, lag)

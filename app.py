@@ -15,7 +15,7 @@ from flask import Flask, send_from_directory, make_response, jsonify, request, s
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
-from models import suggest_teams, DATA_DIR, check_game_password
+from models import suggest_teams, DATA_DIR, check_game_password, list_saved_games
 
 app = Flask(__name__)
 app.register_blueprint(admin_bp)
@@ -277,59 +277,38 @@ def test_css():
 
 @app.route("/")
 def startsida():
-    # Lista befintliga spel
-    spel = []
-    for fil in os.listdir(DATA_DIR):
-        if fil.startswith("game_") and fil.endswith(".json"):
-            with open(os.path.join(DATA_DIR, fil), encoding="utf-8") as f:
-                data = json.load(f)
-                spel.append({"id": data["id"], "datum": data["datum"], "plats": data["plats"]})
-    
     spel_html = ''
-    for s in spel:
-        # Hämta speldata för att få team-information
-        try:
-            with open(os.path.join(DATA_DIR, f"game_{s['id']}.json"), encoding="utf-8") as f:
-                game_data = json.load(f)
-                teams = game_data.get("teams", [])
-                current_phase = game_data.get("current_phase", "order")
-                current_round = game_data.get("current_round", 1)
-        except:
-            teams = []
-            current_phase = "order"
-            current_round = 1
-        
-        # Bestäm status baserat på fas och runda
-        if current_phase == "finished":
+    for game_data in list_saved_games():
+        runda = game_data.get("runda", 1)
+        fas = game_data.get("fas", "Orderfas")
+        avslutat = game_data.get("avslutat", False)
+
+        if avslutat:
             status = "Avslutat"
             status_class = "status-finished"
-        elif current_round > 1:
-            status = f"Runda {current_round}"
-            status_class = "status-active"
         else:
-            status = "Aktivt"
+            status = f"Runda {runda} – {fas}"
             status_class = "status-active"
-        
-        # Skapa team-indikatorer
+
         team_indicators = ""
-        for team in teams[:4]:  # Visa max 4 team
-            team_name = team.get("name", "").lower()
-            team_indicators += f'<span class="team-indicator team-{team_name}"></span>'
-        
+        for team_name in game_data.get("lag", [])[:4]:
+            slug = str(team_name).lower()
+            team_indicators += f'<span class="team-indicator team-{slug}"></span>'
+
         spel_html += f'''
         <div class="game-card">
             <div class="game-info">
-                <h3>{s["datum"]} – {s["plats"]}</h3>
-                <p class="game-id">ID: {s["id"]}</p>
+                <h3>{game_data.get("datum", "")} – {game_data.get("plats", "")}</h3>
+                <p class="game-id">ID: {game_data.get("id", "")}</p>
                 <div class="game-status">
                     <span class="status-badge {status_class}">{status}</span>
                     <div class="team-indicators">{team_indicators}</div>
                 </div>
             </div>
             <div class="game-actions">
-                <a href="/admin/{s["id"]}" class="primary">Öppna (kräver lösenord)</a>
-                <a href="/admin/download_game/{s["id"]}" class="secondary">💾 Ladda ner</a>
-                <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
+                <a href="/admin/{game_data.get("id", "")}" class="primary">Öppna (kräver lösenord)</a>
+                <a href="/admin/download_game/{game_data.get("id", "")}" class="secondary">💾 Ladda ner</a>
+                <form method="post" action="/admin/delete_game/{game_data.get("id", "")}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
                     <button type="submit" class="danger">Ta bort</button>
                 </form>
             </div>

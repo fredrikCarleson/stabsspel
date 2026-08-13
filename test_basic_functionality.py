@@ -9,7 +9,7 @@ from unittest.mock import patch
 import sys
 sys.path.append('.')
 
-from models import TEAMS, BACKLOG, FASER, MAX_RUNDA, skapa_nytt_spel
+from models import TEAMS, BACKLOG, FASER, MAX_RUNDA, skapa_nytt_spel, get_next_fas, clone_backlog_for_teams
 
 class TestBasicFunctionality(unittest.TestCase):
     """Basic functionality tests that can be run quickly"""
@@ -39,6 +39,18 @@ class TestBasicFunctionality(unittest.TestCase):
         # Test MAX_RUNDA
         self.assertIsInstance(MAX_RUNDA, int)
         self.assertEqual(MAX_RUNDA, 4)
+
+    def test_get_next_fas_cycles_and_stops_on_last_round(self):
+        self.assertEqual(get_next_fas("Orderfas", 1), "Diplomatifas")
+        self.assertEqual(get_next_fas("Diplomatifas", 1), "Resultatfas")
+        self.assertEqual(get_next_fas("Resultatfas", 1), "Orderfas")
+        self.assertEqual(get_next_fas("Orderfas", 4), "Diplomatifas")
+        self.assertEqual(get_next_fas("Resultatfas", 4), "Resultatfas")
+
+    def test_clone_backlog_does_not_mutate_template(self):
+        cloned = clone_backlog_for_teams(["Bravo"])
+        cloned["Bravo"][0]["faser"][0]["spenderade_hp"] = 99
+        self.assertEqual(BACKLOG["Bravo"][0]["faser"][0]["spenderade_hp"], 0)
     
     def test_create_new_game(self):
         """Test creating a new game with skapa_nytt_spel"""

@@ -6,7 +6,8 @@ import time
 from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
-    check_game_password, is_game_session_valid, create_game_session, get_phase_timer, is_declaration_period
+    check_game_password, is_game_session_valid, create_game_session, get_phase_timer, is_declaration_period,
+    list_saved_games, clone_backlog_for_teams
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
@@ -14,10 +15,38 @@ from admin_helpers import add_no_cache_headers, create_team_info_js, create_comp
 
 admin_bp = Blueprint('admin', __name__)
 
+PUBLIC_ADMIN_ENDPOINTS = {
+    "admin.admin_start",
+    "admin.admin_panel",
+    "admin.upload_game",
+}
+
 def check_admin_session(spel_id):
     """Kontrollera om admin har giltig session för spelet"""
     session_key = f"game_session_{spel_id}"
     return is_game_session_valid(spel_id, session.get(session_key))
+
+
+@admin_bp.before_request
+def require_admin_session_for_game_routes():
+    """Block unauthenticated mutations and data leaks for a specific game."""
+    if request.endpoint in PUBLIC_ADMIN_ENDPOINTS or request.endpoint is None:
+        return None
+    spel_id = (request.view_args or {}).get("spel_id")
+    if not spel_id:
+        return None
+    if load_game_data(spel_id) is None:
+        return None
+    if check_admin_session(spel_id):
+        return None
+    wants_json = (
+        request.is_json
+        or request.path.endswith("/save_checkbox")
+        or request.path.endswith("/checklist_status")
+    )
+    if wants_json:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
 def create_declaration_warning(runda):
     """Create warning HTML for declaration period (runda 3)"""
@@ -1028,14 +1057,8 @@ def admin_start():
     
     # Lista befintliga spel
     spel = []
-    for fil in os.listdir(DATA_DIR):
-        if fil.startswith("game_") and fil.endswith(".json"):
-            with open(os.path.join(DATA_DIR, fil), encoding="utf-8") as f:
-                data = json.load(f)
-                spel.append({"id": data["id"], "datum": data["datum"], "plats": data["plats"]})
-    
-    # Sortera spel efter datum (nyaste först)
-    spel.sort(key=lambda x: x["datum"], reverse=True)
+    for game in list_saved_games():
+        spel.append({"id": game["id"], "datum": game.get("datum", ""), "plats": game.get("plats", "")})
     
     intervals = [
         ("15-26 (5 team)", 20),
@@ -1754,29 +1777,34 @@ def admin_timer_action(spel_id):
         elif action == "next_fas":
             # Get current round before changing phase
             nuvarande_runda = data.get("runda", 1)
-            
-            # Auto-submit any unsaved orders before changing phase
-            auto_submit_unsaved_orders(data, nuvarande_runda)
-            
-            # Avsluta aktuell fas i historiken
-            data = avsluta_aktuell_fas(data)
-            # Byt fas och nollställ timer
             nuvarande_fas = data["fas"]
-            next_fas = get_next_fas(nuvarande_fas, nuvarande_runda)
-            data["fas"] = next_fas
-            data["timer_status"] = "stopped"
-            data["timer_start"] = None
-            data["timer_elapsed"] = 0
-            # Clear fas_start_time when changing phases
-            if "fas_start_time" in data:
-                del data["fas_start_time"]
-            # Lägg till ny fas i historiken
-            if next_fas == "Orderfas":
-                # Om vi går från Resultatfas till Orderfas, öka runda
-                data["runda"] = nuvarande_runda + 1
-                add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
+
+            if nuvarande_runda >= MAX_RUNDA and nuvarande_fas == "Resultatfas":
+                data["avslutat"] = True
+                data["timer_status"] = "stopped"
+                data["timer_start"] = None
+                data["timer_elapsed"] = 0
+                if "fas_start_time" in data:
+                    del data["fas_start_time"]
+                data = avsluta_aktuell_fas(data)
             else:
-                add_fashistorik_entry(data, nuvarande_runda, next_fas, "pågående")
+                # Auto-submit any unsaved orders before changing phase
+                auto_submit_unsaved_orders(data, nuvarande_runda)
+
+                # Avsluta aktuell fas i historiken
+                data = avsluta_aktuell_fas(data)
+                next_fas = get_next_fas(nuvarande_fas, nuvarande_runda)
+                data["fas"] = next_fas
+                data["timer_status"] = "stopped"
+                data["timer_start"] = None
+                data["timer_elapsed"] = 0
+                if "fas_start_time" in data:
+                    del data["fas_start_time"]
+                if next_fas == "Orderfas":
+                    data["runda"] = nuvarande_runda + 1
+                    add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
+                else:
+                    add_fashistorik_entry(data, nuvarande_runda, next_fas, "pågående")
         save_game_data(spel_id, data)
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
     except Exception as e:
@@ -1958,27 +1986,7 @@ def admin_reset(spel_id):
     
     # Nollställ teamens arbete (backlog)
     if "backlog" in data:
-        from models import BACKLOG
-        for lag in data["lag"]:
-            if lag in BACKLOG and lag in data["backlog"]:
-                # Återställ till original från BACKLOG och säkerställ att spenderade_hp är 0
-                data["backlog"][lag] = []
-                for uppgift in BACKLOG[lag]:
-                    if isinstance(uppgift, dict):
-                        # För enkla uppgifter
-                        ny_uppgift = uppgift.copy()
-                        ny_uppgift["spenderade_hp"] = 0
-                        ny_uppgift["slutford"] = False
-                        data["backlog"][lag].append(ny_uppgift)
-                    else:
-                        # För komplexa uppgifter med faser
-                        ny_uppgift = uppgift.copy()
-                        if "faser" in ny_uppgift:
-                            for fas in ny_uppgift["faser"]:
-                                fas["spenderade_hp"] = 0
-                                fas["slutford"] = False
-                        ny_uppgift["slutford"] = False
-                        data["backlog"][lag].append(ny_uppgift)
+        data["backlog"] = clone_backlog_for_teams(data.get("lag", []))
     
     save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))

@@ -5,7 +5,7 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
 from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG
-from admin_routes import create_team_overview
+from admin_routes import create_team_overview, check_admin_session
 import json
 import time
 
@@ -116,7 +116,7 @@ def team_enter_order(spel_id, token):
     # Orders loading logic (debug removed)
     
     # Check if this is admin edit mode
-    is_admin_edit = request.args.get('admin_edit') == 'true'
+    is_admin_edit = request.args.get('admin_edit') == 'true' and check_admin_session(spel_id)
     
     # Check if order is already submitted (final) - but allow admin editing
     is_submitted = team_orders and team_orders.get("final", False) and not is_admin_edit
@@ -190,14 +190,22 @@ def team_save_order(spel_id, token):
     orders_key = f"orders_round_{data['runda']}"
     if orders_key not in data["team_orders"]:
         data["team_orders"][orders_key] = {}
-    
+
+    existing = data["team_orders"][orders_key].get(team_name, {})
+    admin_edit = request.args.get("admin_edit") == "true" and check_admin_session(spel_id)
+    if existing.get("final") and not admin_edit:
+        return jsonify({"success": False, "error": "Order already submitted"}), 403
+
     # Save order data
-    data["team_orders"][orders_key][team_name] = {
+    saved = {
         "submitted_at": time.time(),
         "phase": data["fas"],
         "round": data["runda"],
         "orders": order_data
     }
+    if existing.get("final") and admin_edit:
+        saved["final"] = True
+    data["team_orders"][orders_key][team_name] = saved
     
     # Save to file
     try:

@@ -6,24 +6,7 @@ This module contains functions for managing game data and operations.
 import os
 import json
 from flask import redirect, url_for
-from models import DATA_DIR, save_game_data
-
-
-def load_game_data(spel_id):
-    """
-    Load game data from file.
-
-    Args:
-        spel_id (str): The ID of the game to load
-
-    Returns:
-        dict or None: Game data dictionary if file exists, None otherwise
-    """
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-    if not os.path.exists(filnamn):
-        return None
-    with open(filnamn, encoding="utf-8") as f:
-        return json.load(f)
+from models import DATA_DIR, save_game_data, load_game_data
 
 
 def save_checkbox_state(spel_id, checkbox_id, checked):

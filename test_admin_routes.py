@@ -12,7 +12,7 @@ import sys
 sys.path.append('.')
 
 from app import app
-from models import TEAMS, BACKLOG, FASER, MAX_RUNDA, skapa_nytt_spel
+from models import TEAMS, BACKLOG, FASER, MAX_RUNDA, skapa_nytt_spel, get_team_base_hp
 
 class TestAdminRoutes(unittest.TestCase):
     """Test cases for admin_routes.py functions"""
@@ -84,6 +84,10 @@ class TestAdminRoutes(unittest.TestCase):
         test_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
         with open(test_file, 'w', encoding='utf-8') as f:
             json.dump(self.test_game_data, f, ensure_ascii=False, indent=2)
+
+    def login_admin(self):
+        """Authenticate as spelledare using the default game password."""
+        return self.app.post(f'/admin/{self.test_spel_id}', data={'password': 'apa123'})
     
     def test_admin_start_page(self):
         """Test admin start page loads correctly"""
@@ -112,6 +116,7 @@ class TestAdminRoutes(unittest.TestCase):
         with patch('models.DATA_DIR', self.test_data_dir):
             with patch('admin_routes.DATA_DIR', self.test_data_dir):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
                     response = self.app.get(f'/admin/{self.test_spel_id}')
                     self.assertEqual(response.status_code, 200)
                     self.assertIn(b'Adminpanel', response.data)
@@ -130,6 +135,7 @@ class TestAdminRoutes(unittest.TestCase):
                     # Start with Orderfas
                     self.test_game_data['fas'] = 'Orderfas'
                     self.save_test_game_data()
+                    self.login_admin()
                     
                     response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'next_fas'})
                     self.assertEqual(response.status_code, 302)  # Redirect
@@ -148,6 +154,7 @@ class TestAdminRoutes(unittest.TestCase):
                     self.test_game_data['fas'] = 'Resultatfas'
                     self.test_game_data['runda'] = 1
                     self.save_test_game_data()
+                    self.login_admin()
                     
                     response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
                     self.assertEqual(response.status_code, 302)  # Redirect
@@ -169,6 +176,7 @@ class TestAdminRoutes(unittest.TestCase):
                     team_names = [team[0] for team in TEAMS]
                     self.test_game_data['handlingspoang'] = {team: 15 for team in team_names}
                     self.save_test_game_data()
+                    self.login_admin()
                     
                     response = self.app.post(f'/admin/{self.test_spel_id}/reset')
                     self.assertEqual(response.status_code, 302)  # Redirect
@@ -182,7 +190,7 @@ class TestAdminRoutes(unittest.TestCase):
                         team_names = [team[0] for team in TEAMS]
                         for team in team_names:
                             # Get the correct base value from TEAMS
-                            expected_bas = next((minp for namn, minp in TEAMS if namn == team), 20)
+                            expected_bas = get_team_base_hp(team, updated_data)
                             self.assertEqual(updated_data['poang'][team]['aktuell'], expected_bas)
                             self.assertEqual(updated_data['poang'][team]['bas'], expected_bas)
                             self.assertFalse(updated_data['poang'][team]['regeringsstod'])
@@ -192,6 +200,7 @@ class TestAdminRoutes(unittest.TestCase):
         with patch('models.DATA_DIR', self.test_data_dir):
             with patch('admin_routes.DATA_DIR', self.test_data_dir):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
                     test_team = 'Alfa'
                     test_task_id = 'alfa_1'  # ID for "Inloggning val"
                     test_hp = 5
@@ -221,6 +230,7 @@ class TestAdminRoutes(unittest.TestCase):
         with patch('models.DATA_DIR', self.test_data_dir):
             with patch('admin_routes.DATA_DIR', self.test_data_dir):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
                     test_team = 'Bravo'
                     new_points = 15
                     
@@ -242,6 +252,7 @@ class TestAdminRoutes(unittest.TestCase):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
                     # Save test game data first
                     self.save_test_game_data()
+                    self.login_admin()
                     
                     checkbox_id = 'test_checkbox'
                     checked_state = True
@@ -262,6 +273,7 @@ class TestAdminRoutes(unittest.TestCase):
         with patch('models.DATA_DIR', self.test_data_dir):
             with patch('admin_routes.DATA_DIR', self.test_data_dir):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
                     # Test start timer
                     response = self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'start'})
                     self.assertEqual(response.status_code, 302)  # Redirect
@@ -275,6 +287,7 @@ class TestAdminRoutes(unittest.TestCase):
         with patch('models.DATA_DIR', self.test_data_dir):
             with patch('admin_routes.DATA_DIR', self.test_data_dir):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
                     response = self.app.get(f'/admin/{self.test_spel_id}/aktivitetskort')
                     self.assertEqual(response.status_code, 200)
                     self.assertIn(b'Aktivitetskort', response.data)
@@ -290,14 +303,15 @@ class TestAdminRoutes(unittest.TestCase):
                     self.assertIn(test_team.encode(), response.data)
     
     def test_game_end_condition(self):
-        """Test game end after 3 rounds"""
+        """Test game end button appears in the last round"""
         with patch('models.DATA_DIR', self.test_data_dir):
             with patch('admin_routes.DATA_DIR', self.test_data_dir):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
-                    # Set up game in final phase of round 3
-                    self.test_game_data['runda'] = 3
+                    # Set up game in final phase of last round
+                    self.test_game_data['runda'] = 4
                     self.test_game_data['fas'] = 'Resultatfas'
                     self.save_test_game_data()
+                    self.login_admin()
                     
                     response = self.app.get(f'/admin/{self.test_spel_id}')
                     self.assertEqual(response.status_code, 200)
@@ -332,16 +346,18 @@ class TestAdminRoutes(unittest.TestCase):
         """Test the delete_game function works correctly"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
             with patch('game_management.DATA_DIR', self.test_data_dir):
-                # Verify game file exists before deletion
-                game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
-                self.assertTrue(os.path.exists(game_file))
-                
-                # Test POST request to delete game
-                response = self.app.post(f'/admin/delete_game/{self.test_spel_id}', follow_redirects=True)
-                self.assertEqual(response.status_code, 200)
-                
-                # Verify game file was deleted
-                self.assertFalse(os.path.exists(game_file))
+                with patch('models.DATA_DIR', self.test_data_dir):
+                    # Verify game file exists before deletion
+                    game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
+                    self.assertTrue(os.path.exists(game_file))
+                    self.login_admin()
+                    
+                    # Test POST request to delete game
+                    response = self.app.post(f'/admin/delete_game/{self.test_spel_id}', follow_redirects=True)
+                    self.assertEqual(response.status_code, 200)
+                    
+                    # Verify game file was deleted
+                    self.assertFalse(os.path.exists(game_file))
     
     def test_delete_game_nonexistent(self):
         """Test delete_game with non-existent game ID"""
@@ -358,8 +374,11 @@ class TestAdminRoutes(unittest.TestCase):
     def test_delete_game_route_accessible(self):
         """Test that delete game route is accessible"""
         with patch('admin_routes.DATA_DIR', self.test_data_dir):
-            # Test that the route exists and responds
-            response = self.app.post(f'/admin/delete_game/{self.test_spel_id}')
+            with patch('models.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
+                    # Test that the route exists and responds
+                    response = self.app.post(f'/admin/delete_game/{self.test_spel_id}')
             self.assertEqual(response.status_code, 302)  # Redirect status
             
             # Test with non-existent game
@@ -411,7 +430,8 @@ class TestAdminRoutes(unittest.TestCase):
                     test_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
                     with open(test_file, 'w', encoding='utf-8') as f:
                         json.dump(test_data_copy, f, ensure_ascii=False, indent=2)
-                    
+
+                    self.login_admin()
                     # Call the ny_runda route
                     response = self.app.post(f'/admin/{self.test_spel_id}/ny_runda')
                     self.assertEqual(response.status_code, 302)  # Redirect
@@ -427,7 +447,7 @@ class TestAdminRoutes(unittest.TestCase):
         from game_management import load_game_data
         
         # Test loading existing game data with patched DATA_DIR
-        with patch('game_management.DATA_DIR', self.test_data_dir):
+        with patch('models.DATA_DIR', self.test_data_dir):
             result = load_game_data(self.test_spel_id)
             self.assertIsNotNone(result)
             self.assertEqual(result["spel_id"], self.test_spel_id)
