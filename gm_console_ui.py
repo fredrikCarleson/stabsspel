@@ -1,0 +1,304 @@
+"""
+HTML for the Game Master live console.
+
+News still happen outside the app (LLM copy → paper headlines → studio).
+This UI keeps that copy step first-class and puts orders, HP, time, and
+phase control on one screen.
+"""
+
+from markupsafe import escape
+import json
+from gm_console import STATUS_LABELS, build_live_state
+from models import MAX_RUNDA
+
+
+def _fmt_time(seconds):
+    seconds = max(0, int(seconds or 0))
+    return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+def _status_class(status):
+    return {
+        "empty": "gm-status-empty",
+        "draft": "gm-status-draft",
+        "submitted": "gm-status-submitted",
+        "changed": "gm-status-changed",
+    }.get(status, "")
+
+
+def create_gm_console_html(spel_id, data):
+    state = build_live_state(data)
+    runda = state["runda"]
+    fas = state["fas"]
+    remaining = state["remaining"]
+    timer_status = state["timer_status"]
+    avslutat = state["avslutat"]
+    missing = state["missing_teams"]
+    can_back = state["can_go_back"]
+    undo_ok = state["undo_available"]
+    test_mode = state["test_mode"]
+
+    next_label = "Nästa fas"
+    next_action = "next_fas"
+    if fas == "Orderfas":
+        next_label = "Nästa: Diplomatifas"
+    elif fas == "Diplomatifas":
+        next_label = "Nästa: Resultatfas"
+    elif fas == "Resultatfas":
+        if runda >= MAX_RUNDA:
+            next_label = "Avsluta spelet"
+            next_action = "end_game"
+        else:
+            next_label = "Starta nästa runda"
+            next_action = "ny_runda"
+
+    next_confirm = ""
+    if next_action == "next_fas" and missing:
+        next_confirm = (
+            f"onsubmit=\"return confirm('Lag utan inskickad order: {escape(', '.join(missing))}. "
+            f"De får inga ordrar. Fortsätt?');\""
+        )
+    elif next_action == "ny_runda":
+        next_confirm = "onsubmit=\"return confirm('Starta nästa runda? Det går att ångra.');\""
+    elif next_action == "end_game":
+        next_confirm = "onsubmit=\"return confirm('Avsluta spelet?');\""
+    else:
+        next_confirm = "onsubmit=\"return confirm('Gå till nästa fas? Det går att ångra.');\""
+
+    back_disabled = "disabled" if not can_back or avslutat else ""
+    undo_disabled = "disabled" if not undo_ok or avslutat else ""
+    next_disabled = "disabled" if avslutat else ""
+    timer_disabled = "disabled" if avslutat else ""
+
+    attention = []
+    if missing and fas in ("Orderfas", "Diplomatifas"):
+        attention.append(f"{len(missing)} lag utan inskickad order: {', '.join(missing)}")
+    if state["conflict_count"]:
+        attention.append(f"{state['conflict_count']} mål med ordrar från flera lag")
+    over = [t for t in state["teams"] if t["remaining"] < 0]
+    if over:
+        attention.append("HP över budget: " + ", ".join(t["team"] for t in over))
+    if not attention:
+        attention.append("Inget som kräver beslut just nu.")
+
+    attention_html = "".join(f"<li>{escape(item)}</li>" for item in attention)
+    teams_html = _team_strip_html(spel_id, state["teams"], test_mode)
+    inbox_html = _inbox_html(spel_id, state["inbox"], fas, test_mode)
+    log_html = _log_html(state["log"])
+    llm_note = ""
+    if fas in ("Diplomatifas", "Resultatfas"):
+        llm_note = f'''
+        <div class="gm-llm">
+            <div>
+                <strong>Nyheter skapas utanför spelet.</strong>
+                Kopiera ordrarna till Grok, Gemini eller ChatGPT, skriv rubriker på papper
+                och läs upp dem i nyhetsstudion.
+            </div>
+            <a href="/admin/{escape(spel_id)}/order_summary" target="_blank" class="primary">Kopiera ordrar till LLM</a>
+        </div>
+        '''
+
+    result_note = ""
+    if fas == "Resultatfas" and not avslutat:
+        result_note = '''
+        <div class="gm-hint">
+            Resultatfas: läs upp nyheterna från studion, visa HP-raden, peka på tidslinjen.
+            Inget av det loggas här — väggen och studion är källan.
+        </div>
+        '''
+
+    test_checked = "checked" if test_mode else ""
+    test_class = "is-on" if test_mode else ""
+
+    state_json = json.dumps({
+        "spel_id": spel_id,
+        "remaining": remaining,
+        "timer_status": timer_status,
+        "fas": fas,
+        "runda": runda,
+    }, ensure_ascii=False)
+
+    return f'''
+    <div class="gm-console" id="gm-console">
+      <script type="application/json" id="gm-state">{state_json}</script>
+      <div class="gm-bar">
+        <div class="gm-bar-now">
+          <div class="gm-round">Runda {runda}/{MAX_RUNDA}</div>
+          <div class="gm-phase" data-fas="{escape(fas)}">{escape(fas)}</div>
+          <div class="gm-clock" id="gm-clock">{_fmt_time(remaining)}</div>
+          <span class="gm-timer-badge" id="gm-timer-badge">{escape(timer_status)}</span>
+        </div>
+        <form method="post" action="/admin/{escape(spel_id)}/timer" class="gm-bar-time">
+          <button name="action" value="start" class="success" {timer_disabled}>Starta</button>
+          <button name="action" value="pause" class="warning" {timer_disabled}>Pausa</button>
+          <button name="action" value="add_min" class="secondary" {timer_disabled}>+1 min</button>
+          <button name="action" value="sub_min" class="secondary" {timer_disabled}>−1 min</button>
+          <button name="action" value="reset" class="secondary" {timer_disabled}
+            onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
+          <button type="button" class="secondary" onclick="openTimerWindow('{escape(spel_id)}')">Spelarskärm</button>
+        </form>
+        <div class="gm-bar-phase">
+          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
+            <button name="action" value="prev_fas" class="secondary" {back_disabled}
+              onclick="return confirm('Gå tillbaka till föregående fas?');">Föregående fas</button>
+          </form>
+          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" {next_confirm}>
+            <button name="action" value="{next_action}" class="success" {next_disabled}>{escape(next_label)}</button>
+          </form>
+          <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
+            <button type="submit" class="secondary" {undo_disabled}>Ångra</button>
+          </form>
+        </div>
+        <div class="gm-bar-tools">
+          <label class="gm-test {test_class}">
+            <input type="checkbox" id="gm-test-mode" {test_checked} onchange="toggleGmTestMode(this.checked)">
+            Testläge
+          </label>
+          <details class="gm-danger">
+            <summary>Mer</summary>
+            <a href="/admin/{escape(spel_id)}/poang">HP-tabell</a>
+            <a href="/admin/{escape(spel_id)}/backlog">Backlog</a>
+            <a href="/admin/{escape(spel_id)}/aktivitetskort" target="_blank">Aktivitetskort</a>
+            <a href="/admin/{escape(spel_id)}/order_summary" target="_blank">LLM-export</a>
+            <a href="/admin">Alla spel</a>
+            <form method="post" action="/admin/{escape(spel_id)}/reset"
+              onsubmit="return confirm('Återställ HELA spelet till runda 1? Detta går att ångra en gång, men raderar rundor och ordrar.');">
+              <button type="submit" class="danger">Återställ spel</button>
+            </form>
+          </details>
+        </div>
+      </div>
+
+      <div class="gm-attention">
+        <h3>Kräver uppmärksamhet</h3>
+        <ul>{attention_html}</ul>
+      </div>
+
+      {llm_note}
+      {result_note}
+
+      <h3 class="gm-section-title">Lag och handlingspoäng</h3>
+      <p class="gm-section-help">Aktuell HP syns här. +/− ändrar poäng. Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell.</p>
+      {teams_html}
+      {_transfer_form_html(spel_id, data.get("lag") or [])}
+
+      <h3 class="gm-section-title">Orderinkorg</h3>
+      <p class="gm-section-help">Alla aktiviteter denna runda. Flera lag mot samma mål markeras. Utkast syns innan de skickats.</p>
+      {inbox_html}
+
+      <h3 class="gm-section-title">Händelselogg</h3>
+      <p class="gm-section-help">Fas- och HP-ändringar i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>
+      {log_html}
+    </div>
+    '''
+
+
+def _team_strip_html(spel_id, teams, test_mode):
+    if not teams:
+        return '<p class="text-muted">Inga lag.</p>'
+    cards = []
+    hidden = "" if test_mode else "hidden"
+    for t in teams:
+        support = "checked" if t["regeringsstod"] else ""
+        remaining_class = "gm-hp-over" if t["remaining"] < 0 else ""
+        bonus = " +10" if t["regeringsstod"] else ""
+        cards.append(f'''
+        <div class="gm-team" data-team="{escape(t["team"])}">
+          <div class="gm-team-head">
+            <strong>{escape(t["team"])}</strong>
+            <span class="gm-status {_status_class(t["status"])}">{escape(t["status_label"])}</span>
+          </div>
+          <div class="gm-hp {remaining_class}">
+            <span class="gm-hp-now">{t["effective"]}</span>
+            <span class="gm-hp-sub">aktuell {t["aktuell"]}{bonus}</span>
+            <span class="gm-hp-sub">lagt {t["spent"]} · kvar {t["remaining"]}</span>
+          </div>
+          <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-actions">
+            <input type="hidden" name="team" value="{escape(t["team"])}">
+            <input type="text" name="reason" placeholder="Orsak" class="gm-reason">
+            <button name="op" value="minus5" class="secondary">−5</button>
+            <button name="op" value="plus5" class="secondary">+5</button>
+          </form>
+          <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-support">
+            <input type="hidden" name="team" value="{escape(t["team"])}">
+            <input type="hidden" name="op" value="support">
+            <label class="gm-support">
+              <input type="checkbox" name="regeringsstod" value="on" {support} onchange="this.form.submit()">
+              Stöd +10
+            </label>
+          </form>
+          <a class="gm-edit-order {hidden} cheat-link" href="/admin/{escape(spel_id)}/edit_order/{escape(t["team"])}">Ange order</a>
+        </div>
+        ''')
+    return '<div class="gm-teams">' + "".join(cards) + "</div>"
+
+
+def _transfer_form_html(spel_id, lag):
+    options = "".join(f'<option value="{escape(name)}">{escape(name)}</option>' for name in lag)
+    return f'''
+    <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-transfer">
+      <input type="hidden" name="op" value="transfer">
+      <label>Överför <input type="number" name="amount" min="1" value="5" class="gm-amount"></label>
+      <label>från <select name="from_team">{options}</select></label>
+      <label>till <select name="to_team">{options}</select></label>
+      <input type="text" name="reason" placeholder="Orsak (spion, regering, förhandling…)" class="gm-reason-wide">
+      <button type="submit" class="primary">Överför HP</button>
+    </form>
+    '''
+
+
+def _inbox_html(spel_id, inbox, fas, test_mode):
+    if not inbox:
+        return '<p class="gm-empty">Inga ordrar ännu. Utkast dyker upp här när ett lag börjar skriva.</p>'
+    can_edit = fas in ("Orderfas", "Diplomatifas")
+    rows = []
+    for row in inbox:
+        conflict = "gm-conflict" if row["conflict"] else ""
+        typ = "Förstöra" if row["typ"] == "forstora" else "Bygga"
+        targets = ", ".join(row["paverkar"]) if row["paverkar"] else "—"
+        edit = ""
+        if can_edit:
+            edit = f'<a href="/admin/{escape(spel_id)}/edit_order/{escape(row["team"])}">Redigera</a>'
+        rows.append(f'''
+        <tr class="{conflict}">
+          <td>{escape(row["team"])}</td>
+          <td><span class="gm-status {_status_class(row["status"])}">{escape(STATUS_LABELS.get(row["status"], row["status"]))}</span></td>
+          <td>{escape(row["aktivitet"])}</td>
+          <td>{row["hp"]}</td>
+          <td>{escape(typ)}</td>
+          <td>{escape(targets)}</td>
+          <td>{edit}</td>
+        </tr>
+        <tr class="gm-purpose {conflict}">
+          <td></td>
+          <td colspan="6">{escape(row["syfte"])}</td>
+        </tr>
+        ''')
+    hidden_fill = "" if test_mode else "hidden"
+    return f'''
+    <div class="gm-inbox-wrap">
+      <table class="gm-inbox">
+        <thead>
+          <tr>
+            <th>Lag</th><th>Status</th><th>Aktivitet</th><th>HP</th><th>Typ</th><th>Påverkar</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {"".join(rows)}
+        </tbody>
+      </table>
+      <form method="post" action="/admin/{escape(spel_id)}/auto_fill_orders" class="gm-autofill {hidden_fill}"
+        onsubmit="return confirm('Ersätt alla ordrar med testdata?');">
+        <button type="submit" class="warning">Auto-fyll testdata</button>
+      </form>
+    </div>
+    '''
+
+
+def _log_html(log):
+    if not log:
+        return '<p class="text-muted">Inga GM-åtgärder ännu.</p>'
+    items = []
+    for entry in log:
+        items.append(f'<li><span class="gm-log-kind">{escape(entry.get("kind") or "")}</span> {escape(entry.get("message") or "")}</li>')
+    return f'<ul class="gm-log">{"".join(items)}</ul>'

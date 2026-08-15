@@ -6,12 +6,26 @@ import time
 from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
-    check_game_password, is_game_session_valid, create_game_session, get_phase_timer, is_declaration_period,
+    check_game_password, is_game_session_valid, create_game_session, refresh_game_session, get_phase_timer, is_declaration_period,
     list_saved_games, clone_backlog_for_teams
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
 from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls, create_time_adjustment_modal
+from gm_console import (
+    add_timer_seconds,
+    adjust_hp,
+    apply_new_round,
+    apply_next_phase,
+    apply_previous_phase,
+    apply_undo,
+    end_game,
+    push_undo,
+    reset_timer_fields,
+    set_regeringsstod,
+    transfer_hp,
+)
+from gm_console_ui import create_gm_console_html
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -38,6 +52,9 @@ def require_admin_session_for_game_routes():
     if load_game_data(spel_id) is None:
         return None
     if check_admin_session(spel_id):
+        session_key = f"game_session_{spel_id}"
+        session[session_key] = refresh_game_session(session.get(session_key))
+        session.permanent = True
         return None
     wants_json = (
         request.is_json
@@ -1058,7 +1075,13 @@ def admin_start():
     # Lista befintliga spel
     spel = []
     for game in list_saved_games():
-        spel.append({"id": game["id"], "datum": game.get("datum", ""), "plats": game.get("plats", "")})
+        spel.append({
+            "id": game["id"],
+            "datum": game.get("datum", ""),
+            "plats": game.get("plats", ""),
+            "runda": game.get("runda", 1),
+            "fas": game.get("fas", ""),
+        })
     
     intervals = [
         ("15-26 (5 team)", 20),
@@ -1075,7 +1098,7 @@ def admin_start():
         <div class="container">
             <!-- Header Section -->
             <div class="page-header">
-                <h1>🎮 Stabsspel Admin <small style="font-size: 0.6em; color: #666;">refactor [1]</small></h1>
+                <h1>Stabsspel Admin</h1>
                 <p class="page-subtitle">Spelhantering och kontrollpanel</p>
             </div>
             
@@ -1125,7 +1148,7 @@ def admin_start():
                             <div>
                                 <label for="password">🔒 Spellösenord</label>
                                 <input type="password" name="password" id="password" placeholder="Lämna tomt för standardlösenord" maxlength="50">
-                                <small class="text-muted">Används för att skydda spelet. Standard: apa123 för befintliga spel</small>
+                                <small class="text-muted">Skyddar spelledarpanelen. Lämna tomt för standardlösenord.</small>
                             </div>
                         </div>
                         
@@ -1164,7 +1187,7 @@ def admin_start():
                                 <div class="flex-1">
                                     <h3 class="h3-compact">{s["datum"]}</h3>
                                     <p class="mb-0 text-muted">📍 {s["plats"]}</p>
-                                    <p class="mt-5px text-xs text-muted-light">ID: {s["id"]}</p>
+                                    <p class="mt-5px text-xs text-muted-light">Runda {s.get("runda", "?")} · {s.get("fas", "")} · ID: {s["id"]}</p>
                                 </div>
                                 <div class="flex gap-2">
                                     <a href="/admin/{s["id"]}" class="primary sm link-light">▶️ Öppna</a>
@@ -1276,7 +1299,7 @@ def admin_panel(spel_id):
                             <div>
                                 <label for="password">Spellösenord</label>
                                 <input type="password" name="password" id="password" required placeholder="Ange lösenord">
-                                <small class="text-muted">Standard för befintliga spel: apa123</small>
+                                <small class="text-muted">Ange spelledarlösenordet för spelet</small>
                             </div>
                             <button type="submit" class="primary">Öppna spel</button>
                         </form>
@@ -1323,7 +1346,7 @@ def admin_panel(spel_id):
                 <div>
                     <label for="password">Spellösenord</label>
                     <input type="password" name="password" id="password" required placeholder="Ange lösenord">
-                    <small class="text-muted">Standard för befintliga spel: apa123</small>
+                    <small class="text-muted">Ange spelledarlösenordet för spelet</small>
                 </div>
                 <button type="submit" class="primary">Öppna spel</button>
             </form>
@@ -1374,8 +1397,7 @@ def admin_panel(spel_id):
         f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
     ])
     
-    # Skapa timer HTML baserat på fas (utan rubrik eftersom vi använder visuell progress)
-    timer_html = create_timer_html(spel_id, data, fas, avslutat, remaining, timer_status, "", runda)
+    console_html = create_gm_console_html(spel_id, data)
     
     # Returnera komplett HTML med förbättrad layout
     html_content = f'''
@@ -1413,31 +1435,18 @@ def admin_panel(spel_id):
             <div class="container">
             <!-- Header Section -->
             <div class="admin-panel-header">
-                <h1>Adminpanel för spel {spel_id} <span style="font-size: 0.6em; color: #7bc96f;">refactor 1</span></h1>
-                <p class="admin-panel-subtitle">Datum: {data["datum"]} | Plats: {data["plats"]} | Antal spelare: {data["antal_spelare"]}</p>
-                <p class="admin-panel-subtitle">Orderfas: {data["orderfas_min"]} min | Diplomatifas: {data["diplomatifas_min"]} min</p>
-                <p class="admin-panel-subtitle">Lag: {lag_html}</p>
-                {create_action_buttons(spel_id)}
+                <h1>Spelledarpanel</h1>
+                <p class="gm-meta">{data["datum"]} · {data["plats"]} · {data["antal_spelare"]} spelare · {lag_html}</p>
             </div>
             
-            <!-- Declaration Period Warning -->
             {create_declaration_warning(runda)}
             
-            <!-- Timer Section (moved right after header) -->
-            <div class="admin-content-card">
-                {timer_html}
-            </div>
+            {console_html}
             
-            <!-- Quarter Progress Bar (moved above team overview) -->
             {quarter_bar_html}
             
-            <!-- Phase Progress Bar (moved above team overview) -->
-            {phase_progress_html}
-            
-            <!-- Team Overview Section -->
             {create_team_overview(data)}
             
-            <!-- History Section -->
             {historik_html}
         </div>
         
@@ -1760,7 +1769,6 @@ def admin_timer_action(spel_id):
         if action == "start":
             data["timer_status"] = "running"
             data["timer_start"] = now
-            # Set fas_start_time when starting a phase timer
             data["fas_start_time"] = now
         elif action == "pause":
             if data.get("timer_status") == "running":
@@ -1768,48 +1776,93 @@ def admin_timer_action(spel_id):
                 data["timer_status"] = "paused"
                 data["timer_elapsed"] = elapsed + data.get("timer_elapsed", 0)
         elif action == "reset":
-            data["timer_status"] = "stopped"
-            data["timer_start"] = None
-            data["timer_elapsed"] = 0
-            # Clear fas_start_time when resetting
-            if "fas_start_time" in data:
-                del data["fas_start_time"]
+            push_undo(data, "Nollställ timer")
+            reset_timer_fields(data)
+        elif action == "add_min":
+            add_timer_seconds(data, 60)
+        elif action == "sub_min":
+            add_timer_seconds(data, -60)
         elif action == "next_fas":
-            # Get current round before changing phase
-            nuvarande_runda = data.get("runda", 1)
-            nuvarande_fas = data["fas"]
-
-            if nuvarande_runda >= MAX_RUNDA and nuvarande_fas == "Resultatfas":
-                data["avslutat"] = True
-                data["timer_status"] = "stopped"
-                data["timer_start"] = None
-                data["timer_elapsed"] = 0
-                if "fas_start_time" in data:
-                    del data["fas_start_time"]
-                data = avsluta_aktuell_fas(data)
-            else:
-                # Auto-submit any unsaved orders before changing phase
-                auto_submit_unsaved_orders(data, nuvarande_runda)
-
-                # Avsluta aktuell fas i historiken
-                data = avsluta_aktuell_fas(data)
-                next_fas = get_next_fas(nuvarande_fas, nuvarande_runda)
-                data["fas"] = next_fas
-                data["timer_status"] = "stopped"
-                data["timer_start"] = None
-                data["timer_elapsed"] = 0
-                if "fas_start_time" in data:
-                    del data["fas_start_time"]
-                if next_fas == "Orderfas":
-                    data["runda"] = nuvarande_runda + 1
-                    add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
-                else:
-                    add_fashistorik_entry(data, nuvarande_runda, next_fas, "pågående")
+            push_undo(data, "Nästa fas")
+            data = apply_next_phase(data, auto_submit_unsaved_orders)
+        elif action == "prev_fas":
+            push_undo(data, "Föregående fas")
+            data = apply_previous_phase(data)
+        elif action == "ny_runda":
+            push_undo(data, "Ny runda")
+            data = apply_new_round(data)
+        elif action == "end_game":
+            push_undo(data, "Avsluta spel")
+            data = end_game(data)
         save_game_data(spel_id, data)
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
     except Exception as e:
         print(f"Error in admin_timer_action: {e}")
         return f"Ett fel uppstod: {str(e)}", 500
+
+
+@admin_bp.route("/admin/<spel_id>/undo", methods=["POST"])
+def admin_undo(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    data, label = apply_undo(data)
+    if label:
+        log = data.setdefault("gm_log", [])
+        log.append({"at": time.time(), "kind": "undo", "message": f"Ångrade: {label}"})
+        data["gm_log"] = log[-50:]
+    save_game_data(spel_id, data)
+    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+
+
+@admin_bp.route("/admin/<spel_id>/hp", methods=["POST"])
+def admin_hp_live(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    op = request.form.get("op")
+    reason = request.form.get("reason", "")
+    try:
+        if op == "plus5":
+            push_undo(data, "HP +5")
+            adjust_hp(data, request.form.get("team"), 5, reason)
+        elif op == "minus5":
+            push_undo(data, "HP -5")
+            adjust_hp(data, request.form.get("team"), -5, reason)
+        elif op == "transfer":
+            push_undo(data, "HP-överföring")
+            transfer_hp(
+                data,
+                request.form.get("from_team"),
+                request.form.get("to_team"),
+                int(request.form.get("amount") or 0),
+                reason,
+            )
+        elif op == "support":
+            push_undo(data, "Regeringsstöd")
+            set_regeringsstod(
+                data,
+                request.form.get("team"),
+                request.form.get("regeringsstod") == "on",
+                reason,
+            )
+        else:
+            return "Okänd HP-åtgärd", 400
+    except (ValueError, TypeError) as exc:
+        return str(exc), 400
+    save_game_data(spel_id, data)
+    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+
+
+@admin_bp.route("/admin/<spel_id>/test_mode", methods=["POST"])
+def admin_test_mode(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+    payload = request.get_json(silent=True) or {}
+    data["test_mode"] = bool(payload.get("enabled"))
+    save_game_data(spel_id, data)
+    return jsonify({"success": True, "test_mode": data["test_mode"]})
 
 @admin_bp.route("/admin/<spel_id>/adjust_times", methods=["POST"])
 def admin_adjust_times(spel_id):
@@ -1830,22 +1883,6 @@ def admin_adjust_times(spel_id):
         # Update the game data
         data["orderfas_min"] = orderfas_min
         data["diplomatifas_min"] = diplomatifas_min
-        
-        # If timer is currently running, we might want to adjust the remaining time
-        # based on the current phase
-        current_phase = data.get("fas", "Orderfas")
-        if data.get("timer_status") == "running" and current_phase in ["Orderfas", "Diplomatifas"]:
-            # Reset timer with new duration for current phase
-            if current_phase == "Orderfas":
-                new_duration = orderfas_min * 60
-            else:  # Diplomatifas
-                new_duration = diplomatifas_min * 60
-            
-            # Update timer to reflect new duration
-            data["timer_elapsed"] = 0
-            data["timer_start"] = int(time.time())
-            data["fas_start_time"] = int(time.time())
-        
         save_game_data(spel_id, data)
         
         # Redirect back to admin panel with success message
@@ -1857,7 +1894,12 @@ def admin_adjust_times(spel_id):
 
 @admin_bp.route("/admin/<spel_id>/slut", methods=["POST"])
 def admin_slut(spel_id):
-    avsluta_spel(spel_id)
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    push_undo(data, "Avsluta spel")
+    data = end_game(data)
+    save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
 @admin_bp.route("/admin/<spel_id>/poang", methods=["GET", "POST"])
@@ -1933,20 +1975,8 @@ def admin_ny_runda(spel_id):
     data = load_game_data(spel_id)
     if not data:
         return "Spelet hittades inte.", 404
-    # Avsluta aktuell fas
-    data = avsluta_aktuell_fas(data)
-    # Starta ny runda med Orderfas
-    data["runda"] = data.get("runda", 1) + 1
-    data["fas"] = "Orderfas"
-    data["timer_status"] = "stopped"
-    data["timer_start"] = None
-    data["timer_elapsed"] = 0
-    add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
-    # Nollställ regeringsstöd
-    data = nollstall_regeringsstod(data)
-    # Nollställ checkbox-tillstånd för nya rundan
-    if "checkbox_states" in data:
-        data["checkbox_states"] = {}
+    push_undo(data, "Ny runda")
+    data = apply_new_round(data)
     save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
@@ -1957,6 +1987,7 @@ def admin_reset(spel_id):
         return "Spelet hittades inte.", 404
     with open(filnamn, encoding="utf-8") as f:
         data = json.load(f)
+    push_undo(data, "Återställ spel")
     data["runda"] = 1
     data["fas"] = "Orderfas"
     data["timer_status"] = "stopped"
@@ -2232,98 +2263,21 @@ def admin_view_order(spel_id, team_name):
 
 @admin_bp.route("/admin/<spel_id>/edit_order/<team_name>")
 def admin_edit_order(spel_id, team_name):
-    """Edit team order during diplomacy phase (admin only)"""
-    try:
-        # Get password from query parameter
-        provided_password = request.args.get('password', '').strip()
-        
-        # Verify password
-        if not check_game_password(spel_id, provided_password):
-            return f'''
-            <!DOCTYPE html>
-            <html lang="sv">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Access Denied - Stabsspel</title>
-                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-                <link rel="stylesheet" href="/static/app.css">
-            </head>
-            <body>
-                <div class="container">
-                    <div class="page-header">
-                        <h1>🔒 Access Denied</h1>
-                        <p class="page-subtitle">Incorrect game password</p>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="notification error">
-                            ❌ Incorrect password. Please try again.
-                        </div>
-                        
-                        <div class="mt-4">
-                            <a href="/admin/{spel_id}/view_order/{team_name}" class="secondary">← Back to Order View</a>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            ''', 401
-        
-        # Load game data
-        data = load_game_data(spel_id)
-        if not data:
-            return "Game not found", 404
-        
-        # Check that team exists
-        if team_name not in data.get("lag", []):
-            return "Team not found", 404
-        
-        # Check if we're in diplomacy phase
-        if data.get('fas') != 'Diplomatifas':
-            return f'''
-            <!DOCTYPE html>
-            <html lang="sv">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Not Available - Stabsspel</title>
-                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-                <link rel="stylesheet" href="/static/app.css">
-            </head>
-            <body>
-                <div class="container">
-                    <div class="page-header">
-                        <h1>⏰ Not Available</h1>
-                        <p class="page-subtitle">Order editing only available during Diplomacy phase</p>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="notification warning">
-                            ⚠️ Order editing is only available during the Diplomacy phase. Current phase: {data.get('fas', 'Unknown')}
-                        </div>
-                        
-                        <div class="mt-4">
-                            <a href="/admin/{spel_id}/view_order/{team_name}" class="secondary">← Back to Order View</a>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            ''', 403
-        
-        # Get team token for the order form
-        team_tokens = data.get("team_tokens", {})
-        if team_name not in team_tokens:
-            return "Team token not found", 404
-        
-        team_token = team_tokens[team_name]
-        
-        # Redirect to team order form with admin flag
-        return redirect(f"/team/{spel_id}/{team_token}/enter_order?admin_edit=true")
-        
-    except Exception as e:
-        return f"Error: {str(e)}", 500
+    """Edit a team order using the existing admin session."""
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    if team_name not in data.get("lag", []):
+        return "Teamet hittades inte.", 404
+    if data.get("fas") not in ("Orderfas", "Diplomatifas"):
+        return (
+            f"Orderredigering är tillgänglig under order- och diplomatifas. "
+            f"Nuvarande fas: {data.get('fas', 'okänd')}"
+        ), 403
+    team_token = (data.get("team_tokens") or {}).get(team_name)
+    if not team_token:
+        return "Team-token saknas.", 404
+    return redirect(f"/team/{spel_id}/{team_token}/enter_order?admin_edit=true")
 
 def format_orders_for_chatgpt(data, all_orders):
     """Formatera order för ChatGPT enligt den nya standarden"""
@@ -2424,6 +2378,12 @@ def auto_fill_orders(spel_id):
         data = load_game_data(spel_id)
         if not data:
             return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+        if not data.get("test_mode"):
+            error = "Auto-fyll kräver testläge"
+            if request.is_json:
+                return jsonify({"success": False, "error": error}), 403
+            return error, 403
+        push_undo(data, "Auto-fyll testdata")
         
         orders_key = f"orders_round_{data['runda']}"
         if "team_orders" not in data:
@@ -2700,12 +2660,14 @@ def auto_fill_orders(spel_id):
         
         # Return info about which teams were processed
         processed_teams = [team for team in data["lag"] if team in test_orders]
-        return jsonify({
-            "success": True, 
-            "message": f"Auto-fyllde order för {len(processed_teams)} team: {', '.join(processed_teams)}",
-            "processed_teams": processed_teams,
-            "total_teams": len(data["lag"])
-        })
+        if request.is_json:
+            return jsonify({
+                "success": True,
+                "message": f"Auto-fyllde order för {len(processed_teams)} team: {', '.join(processed_teams)}",
+                "processed_teams": processed_teams,
+                "total_teams": len(data["lag"])
+            })
+        return redirect(url_for("admin.admin_panel", spel_id=spel_id))
         
     except Exception as e:
         return jsonify({"success": False, "error": f"Fel: {str(e)}"}), 500
@@ -3194,7 +3156,7 @@ ORDER_SUMMARY_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Sammanfattning - ChatGPT</title>
+    <title>Order Sammanfattning - LLM</title>
     <style>
         * {
             margin: 0;
@@ -3531,7 +3493,7 @@ ORDER_SUMMARY_TEMPLATE = """
     <div class="container">
         <div class="header">
             <h1>📋 Order Sammanfattning</h1>
-            <p>Kopiera texten nedan och klistra in i ChatGPT för att få förslag på konsekvenser</p>
+            <p>Kopiera texten nedan och klistra in i Grok, Gemini eller ChatGPT. Nyhetsrubriker skrivs på papper och läses i studion — de lagras inte här.</p>
         </div>
         
         <div class="game-info">
@@ -3543,7 +3505,7 @@ ORDER_SUMMARY_TEMPLATE = """
         
         <div class="content">
             <div class="copy-section">
-                <h3>📋 Kopiera till ChatGPT</h3>
+                <h3>Kopiera till LLM</h3>
                 <div class="copy-text" id="copyText">
 {% if formatted_text %}
 {{ formatted_text }}

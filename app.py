@@ -28,7 +28,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 # Session configuration
-app.config['PERMANENT_SESSION_LIFETIME'] = 1200  # 20 minutes in seconds
+app.config['PERMANENT_SESSION_LIFETIME'] = 6 * 60 * 60  # Cover a full live event
 
 # Add cache-busting headers for static files
 @app.after_request

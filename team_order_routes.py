@@ -198,13 +198,16 @@ def team_save_order(spel_id, token):
 
     # Save order data
     saved = {
-        "submitted_at": time.time(),
+        "submitted_at": existing.get("submitted_at") or time.time(),
+        "updated_at": time.time(),
         "phase": data["fas"],
         "round": data["runda"],
         "orders": order_data
     }
     if existing.get("final") and admin_edit:
         saved["final"] = True
+        saved["edited_by_gm"] = True
+        saved["submitted_at"] = existing.get("submitted_at") or time.time()
     data["team_orders"][orders_key][team_name] = saved
     
     # Save to file
@@ -255,6 +258,7 @@ def team_submit_order(spel_id, token):
     # Save final order data
     data["team_orders"][orders_key][team_name] = {
         "submitted_at": time.time(),
+        "updated_at": time.time(),
         "phase": data["fas"],
         "round": data["runda"],
         "orders": order_data,

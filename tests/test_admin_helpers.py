@@ -99,6 +99,7 @@ class TestAdminHelpers(unittest.TestCase):
         
         # Check that it contains expected script reference
         self.assertIn('<script src="/static/admin.js"></script>', script_refs)
+        self.assertIn('<script src="/static/gm-console.js"></script>', script_refs)
     
     def test_create_timer_controls(self):
         """Test create_timer_controls function"""

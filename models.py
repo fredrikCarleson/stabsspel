@@ -13,6 +13,8 @@ import base64
 _save_locks_guard = threading.Lock()
 _save_locks = {}
 
+SESSION_TIMEOUT_SECONDS = 6 * 60 * 60  # Cover a full live event
+
 
 def _save_lock_for(spel_id):
     with _save_locks_guard:
@@ -83,7 +85,7 @@ def is_game_session_valid(spel_id, session_data):
     import time
     session_time = session_data.get('timestamp', 0)
     current_time = time.time()
-    session_timeout = 1200  # 20 minuter
+    session_timeout = SESSION_TIMEOUT_SECONDS
     
     if current_time - session_time > session_timeout:
         return False
@@ -92,12 +94,19 @@ def is_game_session_valid(spel_id, session_data):
 
 def create_game_session(spel_id):
     """Skapa session för spel"""
-    import time
     return {
         'spel_id': spel_id,
         'timestamp': time.time(),
         'authenticated': True
     }
+
+
+def refresh_game_session(session_data):
+    """Sliding expiry so a live GM is not kicked during play."""
+    if not session_data:
+        return session_data
+    session_data["timestamp"] = time.time()
+    return session_data
 
 def get_phase_timer(data):
     """Get remaining time for current phase - unified timer logic"""
@@ -109,9 +118,12 @@ def get_phase_timer(data):
         fas_minutes = data.get("orderfas_min", 10)
     elif data["fas"] == "Diplomatifas":
         fas_minutes = data.get("diplomatifas_min", 10)
+    elif data["fas"] == "Resultatfas":
+        fas_minutes = data.get("resultatfas_min", 10)
     
     # Use admin timer system
     total_sec = fas_minutes * 60
+    bonus = int(data.get("timer_bonus") or 0)
     now = int(time.time())
     timer_status = data.get("timer_status", "stopped")
     timer_start = data.get("timer_start")
@@ -122,7 +134,7 @@ def get_phase_timer(data):
     else:
         elapsed = timer_elapsed
     
-    remaining_seconds = max(0, total_sec - elapsed)
+    remaining_seconds = max(0, total_sec + bonus - elapsed)
     
     return int(remaining_seconds)
 
@@ -420,6 +432,8 @@ def get_fas_minutes(data):
         return int(data.get("orderfas_min", 10))
     elif data["fas"] == "Diplomatifas":
         return int(data.get("diplomatifas_min", 10))
+    elif data["fas"] == "Resultatfas":
+        return int(data.get("resultatfas_min", 10))
     else:
         return 0
 
@@ -519,6 +533,12 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min,
         "backlog": backlog_data,
         "orderfas_min": orderfas_min,
         "diplomatifas_min": diplomatifas_min,
+        "resultatfas_min": 10,
+        "timer_bonus": 0,
+        "gm_log": [],
+        "gm_undo": [],
+        "test_mode": False,
+        "fashistorik": init_fashistorik_v2(),
         "team_tokens": team_tokens,
         "password": encrypted_password,
     }

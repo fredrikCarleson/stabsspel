@@ -119,7 +119,7 @@ class TestAdminRoutes(unittest.TestCase):
                     self.login_admin()
                     response = self.app.get(f'/admin/{self.test_spel_id}')
                     self.assertEqual(response.status_code, 200)
-                    self.assertIn(b'Adminpanel', response.data)
+                    self.assertIn(b'Spelledarpanel', response.data)
     
     def test_game_not_found(self):
         """Test handling of non-existent game"""
@@ -527,6 +527,39 @@ class TestAdminRoutes(unittest.TestCase):
         from game_management import save_checkbox_state, get_checkbox_state
         self.assertTrue(callable(save_checkbox_state))
         self.assertTrue(callable(get_checkbox_state))
+
+    def test_previous_phase_and_undo(self):
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
+                    self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'next_fas'})
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), encoding='utf-8') as f:
+                        data = json.load(f)
+                    self.assertEqual(data['fas'], 'Diplomatifas')
+                    self.app.post(f'/admin/{self.test_spel_id}/timer', data={'action': 'prev_fas'})
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), encoding='utf-8') as f:
+                        data = json.load(f)
+                    self.assertEqual(data['fas'], 'Orderfas')
+                    self.app.post(f'/admin/{self.test_spel_id}/undo')
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), encoding='utf-8') as f:
+                        data = json.load(f)
+                    self.assertEqual(data['fas'], 'Diplomatifas')
+
+    def test_live_hp_adjust(self):
+        with patch('models.DATA_DIR', self.test_data_dir):
+            with patch('admin_routes.DATA_DIR', self.test_data_dir):
+                with patch('game_management.DATA_DIR', self.test_data_dir):
+                    self.login_admin()
+                    response = self.app.post(f'/admin/{self.test_spel_id}/hp', data={
+                        'op': 'minus5',
+                        'team': 'Alfa',
+                        'reason': 'spion',
+                    })
+                    self.assertEqual(response.status_code, 302)
+                    with open(os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json"), encoding='utf-8') as f:
+                        data = json.load(f)
+                    self.assertEqual(data['poang']['Alfa']['aktuell'], 20)
 
 class TestModels(unittest.TestCase):
     """Test cases for models.py functions"""
