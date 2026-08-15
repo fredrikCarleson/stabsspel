@@ -19,6 +19,7 @@ from gm_console import (
     apply_next_phase,
     apply_previous_phase,
     apply_undo,
+    auto_submit_unsaved_orders,
     end_game,
     push_undo,
     reset_timer_fields,
@@ -83,23 +84,6 @@ def create_declaration_warning(runda):
 # ============================================================================
 # HJÄLPFUNKTIONER
 # ============================================================================
-
-def auto_submit_unsaved_orders(data, current_round):
-    """Auto-submit any unsaved orders when changing phases"""
-    if "team_orders" not in data:
-        return
-    
-    orders_key = f"orders_round_{current_round}"
-    if orders_key not in data["team_orders"]:
-        return
-    
-    # Check each team's orders
-    for team_name, team_orders in data["team_orders"][orders_key].items():
-        # If order exists but not marked as final, mark it as final
-        if team_orders and not team_orders.get("final", False):
-            team_orders["final"] = True
-            team_orders["auto_submitted"] = True
-            team_orders["submitted_at"] = time.time()
 
 def generate_order_view_html(spel_id, team_name, team_orders, data):
     """Generera HTML för att visa en inskickad order"""
@@ -1784,7 +1768,7 @@ def admin_timer_action(spel_id):
             add_timer_seconds(data, -60)
         elif action == "next_fas":
             push_undo(data, "Nästa fas")
-            data = apply_next_phase(data, auto_submit_unsaved_orders)
+            data = apply_next_phase(data)
         elif action == "prev_fas":
             push_undo(data, "Föregående fas")
             data = apply_previous_phase(data)

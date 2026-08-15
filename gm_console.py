@@ -94,6 +94,54 @@ def get_previous_phase(current_fas, runda):
     return None
 
 
+def can_submit_orders(data):
+    """Orders may be saved during Orderfas and Diplomatifas, not Resultatfas."""
+    return data.get("fas") in ("Orderfas", "Diplomatifas")
+
+
+def validate_order_hp(data, team_name, order_data):
+    """Reject negative, malformed, or over-budget HP on an order."""
+    try:
+        entry = (data.get("poang") or {}).get(team_name)
+        team_hp = effective_hp(entry) if entry else 25
+
+        used_hp = 0
+        for activity in (order_data or {}).get("activities") or []:
+            try:
+                hp_value = int(activity.get("hp", 0))
+                if hp_value < 0:
+                    return {"valid": False, "error": "Negativa HP-värden är inte tillåtna"}
+                used_hp += hp_value
+            except (ValueError, TypeError):
+                return {"valid": False, "error": "Ogiltiga HP-värden i order"}
+
+        if used_hp > team_hp:
+            return {
+                "valid": False,
+                "error": f"Du har använt {used_hp} HP men har bara {team_hp} HP tillgängliga!",
+            }
+        return {"valid": True, "used_hp": used_hp, "max_hp": team_hp}
+    except Exception as e:
+        return {"valid": False, "error": f"Valideringsfel: {str(e)}"}
+
+
+def auto_submit_unsaved_orders(data, current_round=None):
+    """Mark current-round drafts as final when leaving a timed phase."""
+    if current_round is None:
+        current_round = data.get("runda", 1)
+    orders_key = f"orders_round_{current_round}"
+    round_orders = (data.get("team_orders") or {}).get(orders_key)
+    if not round_orders:
+        return data
+    now = time.time()
+    for team_orders in round_orders.values():
+        if team_orders and not team_orders.get("final", False):
+            team_orders["final"] = True
+            team_orders["auto_submitted"] = True
+            team_orders["submitted_at"] = now
+    return data
+
+
 def push_undo(data, action):
     """Snapshot current state (except the undo stack itself) before a mutation."""
     snapshot = {k: copy.deepcopy(v) for k, v in data.items() if k != "gm_undo"}
@@ -214,8 +262,8 @@ def apply_next_phase(data, auto_submit_fn=None):
     fas = data.get("fas", "Orderfas")
     if fas == "Resultatfas":
         raise ValueError("Använd ny runda från resultatfasen")
-    if auto_submit_fn:
-        auto_submit_fn(data, runda)
+    submit = auto_submit_fn or auto_submit_unsaved_orders
+    submit(data, runda)
     data = avsluta_aktuell_fas(data)
     next_fas = get_next_fas(fas, runda)
     data["fas"] = next_fas

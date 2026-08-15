@@ -6,6 +6,7 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
 from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG
 from admin_routes import create_team_overview, check_admin_session
+from gm_console import can_submit_orders, validate_order_hp
 import json
 import time
 
@@ -41,48 +42,6 @@ def generate_backlog_options():
     options.append('<option value="custom">Annat (egen beskrivning)</option>')
     return '\n'.join(options)
 
-def validate_order_hp(data, team_name, order_data):
-    """Validate that team doesn't exceed their HP limit"""
-    try:
-        # Get team's current HP
-        team_hp = 25  # Default
-        for team, hp_data in data.get("poang", {}).items():
-            if team == team_name:
-                team_hp = hp_data.get("aktuell", 25)
-                # Add regeringsstöd bonus if applicable
-                if hp_data.get("regeringsstod", False):
-                    team_hp += 10
-                break
-        
-        # Calculate used HP from order data
-        used_hp = 0
-        if "activities" in order_data:
-            for activity in order_data["activities"]:
-                try:
-                    hp_value = int(activity.get("hp", 0))
-                    if hp_value < 0:
-                        return {"valid": False, "error": "Negativa HP-värden är inte tillåtna"}
-                    used_hp += hp_value
-                except (ValueError, TypeError):
-                    return {"valid": False, "error": "Ogiltiga HP-värden i order"}
-        
-        # Check if HP limit is exceeded
-        if used_hp > team_hp:
-            return {
-                "valid": False, 
-                "error": f"Du har använt {used_hp} HP men har bara {team_hp} HP tillgängliga!"
-            }
-        
-        return {"valid": True, "used_hp": used_hp, "max_hp": team_hp}
-        
-    except Exception as e:
-        return {"valid": False, "error": f"Valideringsfel: {str(e)}"}
-
-def can_submit_orders(data):
-    """Check if orders can be submitted in current phase"""
-    # Orders can be submitted during Orderfas and Diplomatifas
-    # regardless of timer status - timer only affects auto-submission
-    return data["fas"] in ["Orderfas", "Diplomatifas"]
 
 @team_order_bp.route("/team/<spel_id>/<token>/enter_order")
 def team_enter_order(spel_id, token):
