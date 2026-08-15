@@ -15,6 +15,7 @@ from models import (
     MAX_RUNDA,
     add_fashistorik_entry,
     avsluta_aktuell_fas,
+    clone_backlog_for_teams,
     get_next_fas,
     get_phase_timer,
     get_team_base_hp,
@@ -29,6 +30,8 @@ STATUS_LABELS = {
     "submitted": "Inskickad",
     "changed": "Ändrad",
 }
+BACKLOG_PHASES = ("Krav", "Design", "Utveckling", "Test")
+BACKLOG_OWNERS = {"alfa": "Alfa", "bravo": "Bravo", "stt": "STT"}
 
 
 def effective_hp(entry):
@@ -330,6 +333,139 @@ def _conflict_key(activity):
     return f"name:{name}" if name else ""
 
 
+def ensure_backlog(data):
+    """Fill missing team backlogs from the template without resetting spend."""
+    if "backlog" not in data or not isinstance(data["backlog"], dict):
+        data["backlog"] = {}
+    template = clone_backlog_for_teams(data.get("lag") or [])
+    for team, tasks in template.items():
+        if team not in data["backlog"]:
+            data["backlog"][team] = tasks
+    return data
+
+
+def split_task_ref(task_id, phase=None):
+    """Return (task_id, phase). Accepts 'alfa_1' or 'bravo_1_Krav'."""
+    task_id = (task_id or "").strip()
+    if not task_id:
+        raise ValueError("Saknar backlog-uppgift")
+    if phase:
+        return task_id, str(phase)
+    for name in BACKLOG_PHASES:
+        suffix = "_" + name
+        if task_id.endswith(suffix):
+            return task_id[: -len(suffix)], name
+    return task_id, None
+
+
+def backlog_owner_for_ref(task_id):
+    raw, _phase = split_task_ref(task_id)
+    prefix = raw.split("_")[0].lower()
+    owner = BACKLOG_OWNERS.get(prefix)
+    if not owner:
+        raise ValueError("Okänd backlog-uppgift")
+    return owner
+
+
+def _find_backlog_task(data, team, task_id, phase=None):
+    ensure_backlog(data)
+    task_id, phase = split_task_ref(task_id, phase)
+    tasks = (data.get("backlog") or {}).get(team)
+    if not tasks:
+        raise ValueError(f"{team} har ingen backlog")
+    for uppgift in tasks:
+        if uppgift.get("id") != task_id:
+            continue
+        if phase:
+            for fas in uppgift.get("faser") or []:
+                if fas.get("namn") == phase:
+                    return uppgift, fas
+            raise ValueError(f"Okänd fas {phase} för {task_id}")
+        return uppgift, None
+    raise ValueError(f"Okänd backlog-uppgift: {team}/{task_id}")
+
+
+def _mark_backlog_complete(uppgift, fas=None):
+    if fas is not None:
+        estimated = int(fas.get("estimaterade_hp") or 0)
+        fas["slutford"] = int(fas.get("spenderade_hp") or 0) >= estimated
+        faser = uppgift.get("faser") or []
+        uppgift["slutford"] = bool(faser) and all(item.get("slutford") for item in faser)
+        return
+    estimated = int(uppgift.get("estimaterade_hp") or 0)
+    done = int(uppgift.get("spenderade_hp") or 0) >= estimated
+    if uppgift.get("typ") == "aterkommande":
+        uppgift["slutford"] = False
+    else:
+        uppgift["slutford"] = done
+
+
+def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
+    """Add (or subtract) spent HP on a backlog task. Never goes below 0."""
+    if team not in (data.get("lag") or []):
+        raise ValueError(f"Okänt lag: {team}")
+    amount = int(amount)
+    if amount == 0:
+        raise ValueError("Beloppet får inte vara 0")
+    uppgift, fas = _find_backlog_task(data, team, task_id, phase)
+    target = fas if fas is not None else uppgift
+    current = int(target.get("spenderade_hp") or 0)
+    target["spenderade_hp"] = max(0, current + amount)
+    _mark_backlog_complete(uppgift, fas)
+    label = uppgift.get("namn") or task_id
+    if fas is not None:
+        label = f"{label} ({fas.get('namn')})"
+    sign = "+" if amount >= 0 else ""
+    actor = log_actor or team
+    append_gm_log(
+        data,
+        "backlog",
+        f"{actor}: {sign}{amount} HP på {team} / {label}. Nu {target['spenderade_hp']}.",
+        {"team": team, "task_id": uppgift.get("id"), "amount": amount},
+    )
+    return data
+
+
+def apply_activity_hp_to_backlog(data, team, activity_index):
+    """Move one order activity's HP onto its linked backlog task (once)."""
+    record = _team_order_record(data, team)
+    if not record:
+        raise ValueError("Ingen order för laget")
+    activities = (record.get("orders") or {}).get("activities") or []
+    try:
+        activity_index = int(activity_index)
+    except (TypeError, ValueError):
+        raise ValueError("Okänd aktivitet") from None
+    if activity_index < 0 or activity_index >= len(activities):
+        raise ValueError("Okänd aktivitet")
+    activity = activities[activity_index]
+    if activity.get("backlog_applied"):
+        raise ValueError("HP redan lagd på backlog")
+    selected = (activity.get("backlog_selected") or "").strip()
+    if not selected or selected == "custom":
+        raise ValueError("Aktiviteten är inte kopplad till en backlog-uppgift")
+    try:
+        hp = int(activity.get("hp") or 0)
+    except (TypeError, ValueError):
+        hp = 0
+    if hp <= 0:
+        raise ValueError("Aktiviteten har 0 HP")
+    owner = backlog_owner_for_ref(selected)
+    add_backlog_spend(data, owner, selected, hp, log_actor=team)
+    activity["backlog_applied"] = True
+    return data
+
+
+def _task_can_apply(activity):
+    selected = (activity.get("backlog_selected") or "").strip()
+    if not selected or selected == "custom" or activity.get("backlog_applied"):
+        return False
+    try:
+        return int(activity.get("hp") or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
 def build_inbox(data):
     """Flat list of current-round activities plus conflict flags."""
     rows = []
@@ -340,6 +476,7 @@ def build_inbox(data):
         activities = ((record or {}).get("orders") or {}).get("activities") or []
         for index, activity in enumerate(activities):
             key = _conflict_key(activity)
+            selected = (activity.get("backlog_selected") or "").strip()
             row = {
                 "team": lag,
                 "index": index,
@@ -353,6 +490,9 @@ def build_inbox(data):
                 "final": bool((record or {}).get("final")),
                 "conflict_key": key,
                 "conflict": False,
+                "backlog_selected": selected,
+                "backlog_applied": bool(activity.get("backlog_applied")),
+                "can_apply_backlog": _task_can_apply(activity),
             }
             rows.append(row)
             if key:
@@ -364,6 +504,66 @@ def build_inbox(data):
             for row in group:
                 row["conflict"] = True
     return rows
+
+
+def build_backlog_board(data):
+    """Per-team backlog rows for the live console."""
+    ensure_backlog(data)
+    board = []
+    for lag in data.get("lag") or []:
+        tasks = (data.get("backlog") or {}).get(lag)
+        if not tasks:
+            continue
+        items = []
+        spent_total = 0
+        est_total = 0
+        for uppgift in tasks:
+            faser = uppgift.get("faser") or []
+            if faser:
+                phases = []
+                for fas in faser:
+                    estimated = int(fas.get("estimaterade_hp") or 0)
+                    spent = int(fas.get("spenderade_hp") or 0)
+                    est_total += estimated
+                    spent_total += spent
+                    phases.append({
+                        "name": fas.get("namn") or "",
+                        "estimated": estimated,
+                        "spent": spent,
+                        "done": bool(fas.get("slutford")),
+                    })
+                items.append({
+                    "id": uppgift.get("id") or "",
+                    "name": uppgift.get("namn") or "",
+                    "kind": "phased",
+                    "estimated": sum(p["estimated"] for p in phases),
+                    "spent": sum(p["spent"] for p in phases),
+                    "done": bool(uppgift.get("slutford")),
+                    "recurring": False,
+                    "phases": phases,
+                })
+            else:
+                estimated = int(uppgift.get("estimaterade_hp") or 0)
+                spent = int(uppgift.get("spenderade_hp") or 0)
+                est_total += estimated
+                spent_total += spent
+                items.append({
+                    "id": uppgift.get("id") or "",
+                    "name": uppgift.get("namn") or "",
+                    "kind": "simple",
+                    "estimated": estimated,
+                    "spent": spent,
+                    "done": bool(uppgift.get("slutford")),
+                    "recurring": uppgift.get("typ") == "aterkommande",
+                    "phases": [],
+                })
+        board.append({
+            "team": lag,
+            "spent": spent_total,
+            "estimated": est_total,
+            "items": items,
+        })
+    return board
 
 
 def build_team_strip(data):
@@ -404,6 +604,7 @@ def build_live_state(data):
         "remaining": get_phase_timer(data),
         "teams": build_team_strip(data),
         "inbox": inbox,
+        "backlog": build_backlog_board(data),
         "conflict_count": len({row["conflict_key"] for row in conflicts}),
         "missing_teams": missing,
         "log": log,

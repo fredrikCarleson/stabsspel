@@ -26,6 +26,36 @@ def _status_class(status):
     }.get(status, "")
 
 
+def attention_items(state):
+    items = []
+    fas = state.get("fas")
+    missing = state.get("missing_teams") or []
+    if missing and fas in ("Orderfas", "Diplomatifas"):
+        items.append(f"{len(missing)} lag utan inskickad order: {', '.join(missing)}")
+    if state.get("conflict_count"):
+        items.append(f"{state['conflict_count']} mål med ordrar från flera lag")
+    over = [t for t in state.get("teams") or [] if t.get("remaining", 0) < 0]
+    if over:
+        items.append("HP över budget: " + ", ".join(t["team"] for t in over))
+    if not items:
+        items.append("Inget som kräver beslut just nu.")
+    return items
+
+
+def _attention_lis(items):
+    return "".join(f"<li>{escape(item)}</li>" for item in items)
+
+
+def live_html_fragments(spel_id, state):
+    """HTML snippets the console can swap in without a full reload."""
+    return {
+        "attention": _attention_lis(attention_items(state)),
+        "inbox": _inbox_html(spel_id, state.get("inbox") or [], state.get("fas"), state.get("test_mode")),
+        "backlog": _backlog_html(state.get("backlog") or [], state.get("avslutat")),
+        "log": _log_html(state.get("log") or []),
+    }
+
+
 def create_gm_console_html(spel_id, data):
     state = build_live_state(data)
     runda = state["runda"]
@@ -70,20 +100,12 @@ def create_gm_console_html(spel_id, data):
     next_disabled = "disabled" if avslutat else ""
     timer_disabled = "disabled" if avslutat else ""
 
-    attention = []
-    if missing and fas in ("Orderfas", "Diplomatifas"):
-        attention.append(f"{len(missing)} lag utan inskickad order: {', '.join(missing)}")
-    if state["conflict_count"]:
-        attention.append(f"{state['conflict_count']} mål med ordrar från flera lag")
-    over = [t for t in state["teams"] if t["remaining"] < 0]
-    if over:
-        attention.append("HP över budget: " + ", ".join(t["team"] for t in over))
-    if not attention:
-        attention.append("Inget som kräver beslut just nu.")
+    attention = attention_items(state)
 
-    attention_html = "".join(f"<li>{escape(item)}</li>" for item in attention)
+    attention_html = _attention_lis(attention)
     teams_html = _team_strip_html(spel_id, state["teams"], test_mode)
     inbox_html = _inbox_html(spel_id, state["inbox"], fas, test_mode)
+    backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_html(state["log"])
     llm_note = ""
     if fas in ("Diplomatifas", "Resultatfas"):
@@ -116,6 +138,7 @@ def create_gm_console_html(spel_id, data):
         "timer_status": timer_status,
         "fas": fas,
         "runda": runda,
+        "avslutat": avslutat,
     }, ensure_ascii=False)
 
     return f'''
@@ -142,11 +165,11 @@ def create_gm_console_html(spel_id, data):
             <button name="action" value="prev_fas" class="secondary" {back_disabled}
               onclick="return confirm('Gå tillbaka till föregående fas?');">Föregående fas</button>
           </form>
-          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" {next_confirm}>
+          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" id="gm-next-form" data-next-action="{next_action}" {next_confirm}>
             <button name="action" value="{next_action}" class="success" {next_disabled}>{escape(next_label)}</button>
           </form>
           <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
-            <button type="submit" class="secondary" {undo_disabled}>Ångra</button>
+            <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
           </form>
         </div>
         <div class="gm-bar-tools">
@@ -171,7 +194,7 @@ def create_gm_console_html(spel_id, data):
 
       <div class="gm-attention">
         <h3>Kräver uppmärksamhet</h3>
-        <ul>{attention_html}</ul>
+        <ul id="gm-attention-list">{attention_html}</ul>
       </div>
 
       {llm_note}
@@ -183,12 +206,17 @@ def create_gm_console_html(spel_id, data):
       {_transfer_form_html(spel_id, data.get("lag") or [])}
 
       <h3 class="gm-section-title">Orderinkorg</h3>
-      <p class="gm-section-help">Alla aktiviteter denna runda. Flera lag mot samma mål markeras. Utkast syns innan de skickats.</p>
-      {inbox_html}
+      <p class="gm-section-help">Alla aktiviteter denna runda. Flera lag mot samma mål markeras. Utkast syns utan omladdning. Lägg HP flyttar orderns poäng till backlog.</p>
+      <div id="gm-inbox-root">{inbox_html}</div>
+
+      <h3 class="gm-section-title">Teamens arbete</h3>
+      <p class="gm-section-help">Bocka av spenderad HP här under diplomati. Du behöver inte öppna backlog-sidan. Fullständig tabell finns under Mer.</p>
+      <p class="gm-live-error" id="gm-live-error" hidden></p>
+      <div id="gm-backlog-root">{backlog_html}</div>
 
       <h3 class="gm-section-title">Händelselogg</h3>
       <p class="gm-section-help">Fas- och HP-ändringar i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>
-      {log_html}
+      <div id="gm-log-root">{log_html}</div>
     </div>
     '''
 
@@ -210,8 +238,8 @@ def _team_strip_html(spel_id, teams, test_mode):
           </div>
           <div class="gm-hp {remaining_class}">
             <span class="gm-hp-now">{t["effective"]}</span>
-            <span class="gm-hp-sub">aktuell {t["aktuell"]}{bonus}</span>
-            <span class="gm-hp-sub">lagt {t["spent"]} · kvar {t["remaining"]}</span>
+            <span class="gm-hp-sub gm-hp-aktuell">aktuell {t["aktuell"]}{bonus}</span>
+            <span class="gm-hp-sub gm-hp-budget">lagt {t["spent"]} · kvar {t["remaining"]}</span>
           </div>
           <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-actions">
             <input type="hidden" name="team" value="{escape(t["team"])}">
@@ -259,6 +287,15 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
         edit = ""
         if can_edit:
             edit = f'<a href="/admin/{escape(spel_id)}/edit_order/{escape(row["team"])}">Redigera</a>'
+        backlog_cell = "—"
+        if row.get("can_apply_backlog"):
+            backlog_cell = (
+                f'<button type="button" class="secondary gm-mini" data-backlog-apply '
+                f'data-team="{escape(row["team"])}" data-index="{row["index"]}">'
+                f'Lägg +{row["hp"]} HP</button>'
+            )
+        elif row.get("backlog_applied"):
+            backlog_cell = '<span class="gm-applied">Tillagd</span>'
         rows.append(f'''
         <tr class="{conflict}">
           <td>{escape(row["team"])}</td>
@@ -267,11 +304,12 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
           <td>{row["hp"]}</td>
           <td>{escape(typ)}</td>
           <td>{escape(targets)}</td>
+          <td>{backlog_cell}</td>
           <td>{edit}</td>
         </tr>
         <tr class="gm-purpose {conflict}">
           <td></td>
-          <td colspan="6">{escape(row["syfte"])}</td>
+          <td colspan="7">{escape(row["syfte"])}</td>
         </tr>
         ''')
     hidden_fill = "" if test_mode else "hidden"
@@ -280,7 +318,7 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
       <table class="gm-inbox">
         <thead>
           <tr>
-            <th>Lag</th><th>Status</th><th>Aktivitet</th><th>HP</th><th>Typ</th><th>Påverkar</th><th></th>
+            <th>Lag</th><th>Status</th><th>Aktivitet</th><th>HP</th><th>Typ</th><th>Påverkar</th><th>Backlog</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -293,6 +331,59 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
       </form>
     </div>
     '''
+
+
+def _spend_buttons(team, task_id, phase="", disabled=""):
+    phase_attr = f' data-phase="{escape(phase)}"' if phase else ""
+    return (
+        f'<button type="button" class="secondary gm-mini" data-backlog-delta="-5" '
+        f'data-team="{escape(team)}" data-task="{escape(task_id)}"{phase_attr} {disabled}>−5</button>'
+        f'<button type="button" class="secondary gm-mini" data-backlog-delta="5" '
+        f'data-team="{escape(team)}" data-task="{escape(task_id)}"{phase_attr} {disabled}>+5</button>'
+    )
+
+
+def _backlog_html(board, avslutat=False):
+    if not board:
+        return '<p class="gm-empty">Inga utvecklingsteam med backlog i det här spelet.</p>'
+    disabled = "disabled" if avslutat else ""
+    cards = []
+    for team in board:
+        rows = []
+        for item in team.get("items") or []:
+            done_class = " is-done" if item.get("done") else ""
+            recurring = ' <span class="gm-recurring">återkommande</span>' if item.get("recurring") else ""
+            if item.get("kind") == "phased":
+                rows.append(
+                    f'<div class="gm-backlog-item{done_class}">'
+                    f'<div class="gm-backlog-name"><strong>{escape(item["name"])}</strong>'
+                    f' <span class="gm-hp-sub">{item["spent"]}/{item["estimated"]}</span></div>'
+                )
+                for phase in item.get("phases") or []:
+                    phase_done = " is-done" if phase.get("done") else ""
+                    rows.append(
+                        f'<div class="gm-backlog-row gm-backlog-phase{phase_done}">'
+                        f'<span>{escape(phase["name"])}</span>'
+                        f'<span class="gm-backlog-count">{phase["spent"]}/{phase["estimated"]}</span>'
+                        f'<span class="gm-backlog-btns">{_spend_buttons(team["team"], item["id"], phase["name"], disabled)}</span>'
+                        f'</div>'
+                    )
+                rows.append("</div>")
+            else:
+                rows.append(
+                    f'<div class="gm-backlog-row{done_class}">'
+                    f'<span class="gm-backlog-name">{escape(item["name"])}{recurring}</span>'
+                    f'<span class="gm-backlog-count">{item["spent"]}/{item["estimated"]}</span>'
+                    f'<span class="gm-backlog-btns">{_spend_buttons(team["team"], item["id"], "", disabled)}</span>'
+                    f'</div>'
+                )
+        cards.append(
+            f'<section class="gm-backlog-team" data-team="{escape(team["team"])}">'
+            f'<h4>{escape(team["team"])} '
+            f'<span class="gm-hp-sub">{team["spent"]}/{team["estimated"]} HP</span></h4>'
+            f'{"".join(rows)}</section>'
+        )
+    return f'<div class="gm-backlog">{"".join(cards)}</div>'
 
 
 def _log_html(log):

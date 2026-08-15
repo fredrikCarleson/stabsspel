@@ -13,26 +13,30 @@ from game_management import delete_game, nollstall_regeringsstod, load_game_data
 from orderkort import generate_orderkort_html, get_available_rounds
 from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls, create_time_adjustment_modal
 from gm_console import (
+    add_backlog_spend,
     add_timer_seconds,
     adjust_hp,
+    apply_activity_hp_to_backlog,
     apply_new_round,
     apply_next_phase,
     apply_previous_phase,
     apply_undo,
     auto_submit_unsaved_orders,
+    build_live_state,
     end_game,
     push_undo,
     reset_timer_fields,
     set_regeringsstod,
     transfer_hp,
 )
-from gm_console_ui import create_gm_console_html
+from gm_console_ui import create_gm_console_html, live_html_fragments
 
 admin_bp = Blueprint('admin', __name__)
 
 PUBLIC_ADMIN_ENDPOINTS = {
     "admin.admin_start",
     "admin.admin_panel",
+    "admin.admin_live",
     "admin.upload_game",
 }
 
@@ -61,6 +65,8 @@ def require_admin_session_for_game_routes():
         request.is_json
         or request.path.endswith("/save_checkbox")
         or request.path.endswith("/checklist_status")
+        or request.path.endswith("/live")
+        or request.path.endswith("/backlog_live")
     )
     if wants_json:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
@@ -1394,7 +1400,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=5">
+            <link rel="stylesheet" href="/static/app.css?v=6">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 // Force cache refresh for JavaScript
@@ -1847,6 +1853,53 @@ def admin_test_mode(spel_id):
     data["test_mode"] = bool(payload.get("enabled"))
     save_game_data(spel_id, data)
     return jsonify({"success": True, "test_mode": data["test_mode"]})
+
+
+@admin_bp.route("/admin/<spel_id>/live")
+def admin_live(spel_id):
+    """JSON snapshot for the GM console poller. Same data as the panel."""
+    data = load_game_data(spel_id)
+    if not data:
+        return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+    state = build_live_state(data)
+    return jsonify({
+        "success": True,
+        "state": state,
+        "html": live_html_fragments(spel_id, state),
+    })
+
+
+@admin_bp.route("/admin/<spel_id>/backlog_live", methods=["POST"])
+def admin_backlog_live(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+    payload = request.get_json(silent=True) or {}
+    op = payload.get("op")
+    try:
+        if op == "add":
+            push_undo(data, "Backlog")
+            add_backlog_spend(
+                data,
+                payload.get("team"),
+                payload.get("task_id"),
+                int(payload.get("amount") or 0),
+                payload.get("phase") or None,
+            )
+        elif op == "apply_order":
+            push_undo(data, "Backlog från order")
+            apply_activity_hp_to_backlog(data, payload.get("team"), payload.get("index"))
+        else:
+            return jsonify({"success": False, "error": "Okänd åtgärd"}), 400
+    except (ValueError, TypeError) as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    save_game_data(spel_id, data)
+    state = build_live_state(data)
+    return jsonify({
+        "success": True,
+        "state": state,
+        "html": live_html_fragments(spel_id, state),
+    })
 
 @admin_bp.route("/admin/<spel_id>/adjust_times", methods=["POST"])
 def admin_adjust_times(spel_id):

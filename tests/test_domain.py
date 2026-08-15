@@ -15,12 +15,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from gm_console import (
     UNDO_LIMIT,
+    add_backlog_spend,
     adjust_hp,
+    apply_activity_hp_to_backlog,
     apply_new_round,
     apply_next_phase,
     apply_previous_phase,
     apply_undo,
     build_inbox,
+    build_live_state,
     build_team_strip,
     can_submit_orders,
     effective_hp,
@@ -321,6 +324,105 @@ class TestRosterAndCalendar(unittest.TestCase):
         self.assertFalse(is_declaration_period(2))
         self.assertTrue(is_declaration_period(3))
         self.assertFalse(is_declaration_period(4))
+
+
+class TestBacklogSpend(unittest.TestCase):
+    def test_adding_hp_marks_a_simple_task_complete(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 15)
+        task = data["backlog"]["Alfa"][0]
+        self.assertEqual(task["id"], "alfa_1")
+        self.assertEqual(task["spenderade_hp"], 15)
+        self.assertTrue(task["slutford"])
+
+    def test_spend_never_goes_below_zero(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 5)
+        add_backlog_spend(data, "Alfa", "alfa_1", -20)
+        self.assertEqual(data["backlog"]["Alfa"][0]["spenderade_hp"], 0)
+        self.assertFalse(data["backlog"]["Alfa"][0]["slutford"])
+
+    def test_bravo_phase_completes_only_when_all_phases_are_done(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Bravo", "bravo_1_Krav", 10)
+        uppgift = data["backlog"]["Bravo"][0]
+        self.assertTrue(uppgift["faser"][0]["slutford"])
+        self.assertFalse(uppgift["slutford"])
+        for fas in uppgift["faser"]:
+            need = int(fas["estimaterade_hp"]) - int(fas["spenderade_hp"])
+            if need:
+                add_backlog_spend(data, "Bravo", "bravo_1", need, phase=fas["namn"])
+        self.assertTrue(data["backlog"]["Bravo"][0]["slutford"])
+
+    def test_apply_order_hp_once_to_linked_task(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([
+                    activity(
+                        "Inloggning val",
+                        hp=8,
+                        backlog_selected="alfa_1",
+                        backlog_item="alfa_1",
+                    )
+                ], final=True)
+            }
+        }
+        apply_activity_hp_to_backlog(data, "Alfa", 0)
+        self.assertEqual(data["backlog"]["Alfa"][0]["spenderade_hp"], 8)
+        self.assertTrue(
+            data["team_orders"]["orders_round_1"]["Alfa"]["orders"]["activities"][0]["backlog_applied"]
+        )
+        with self.assertRaises(ValueError):
+            apply_activity_hp_to_backlog(data, "Alfa", 0)
+        inbox = build_inbox(data)
+        self.assertFalse(inbox[0]["can_apply_backlog"])
+        self.assertTrue(inbox[0]["backlog_applied"])
+
+    def test_apply_bravo_phase_from_selected_id(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Bravo": order_record([
+                    activity(
+                        "Grafisk visning valet - Krav",
+                        hp=10,
+                        backlog_selected="bravo_1_Krav",
+                    )
+                ], final=True)
+            }
+        }
+        apply_activity_hp_to_backlog(data, "Bravo", 0)
+        self.assertEqual(data["backlog"]["Bravo"][0]["faser"][0]["spenderade_hp"], 10)
+
+    def test_custom_activity_cannot_be_applied(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([
+                    activity("Hemligt", hp=5, backlog_selected="custom")
+                ], final=True)
+            }
+        }
+        with self.assertRaises(ValueError):
+            apply_activity_hp_to_backlog(data, "Alfa", 0)
+
+    def test_undo_restores_backlog_spend(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 5)
+        push_undo(data, "Backlog")
+        add_backlog_spend(data, "Alfa", "alfa_1", 5)
+        data, label = apply_undo(data)
+        self.assertEqual(label, "Backlog")
+        self.assertEqual(data["backlog"]["Alfa"][0]["spenderade_hp"], 5)
+
+    def test_live_state_includes_backlog_board(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 5)
+        state = build_live_state(data)
+        alfa = next(team for team in state["backlog"] if team["team"] == "Alfa")
+        self.assertEqual(alfa["items"][0]["spent"], 5)
+        self.assertGreater(alfa["estimated"], 0)
 
 
 class TestSessionAndPassword(unittest.TestCase):

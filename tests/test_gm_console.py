@@ -132,6 +132,9 @@ class TestGmConsole(unittest.TestCase):
         self.assertIn("Bravo", state["missing_teams"])
         self.assertIn("STT", state["missing_teams"])
         self.assertNotIn("Alfa", state["missing_teams"])
+        self.assertTrue(any(team["team"] == "Alfa" for team in state["backlog"]))
+        inbox_row = next(row for row in state["inbox"] if row["team"] == "Alfa")
+        self.assertIn("can_apply_backlog", inbox_row)
 
     def test_add_minutes_does_not_restart_elapsed(self):
         data = sample_game()
@@ -141,6 +144,42 @@ class TestGmConsole(unittest.TestCase):
         after = get_phase_timer(data)
         self.assertEqual(after, before + 60)
         self.assertEqual(data["timer_elapsed"], 120)
+
+
+class TestGmConsoleHtml(unittest.TestCase):
+    def test_console_includes_backlog_board_and_live_hooks(self):
+        from gm_console_ui import create_gm_console_html, live_html_fragments
+        from gm_console import add_backlog_spend, build_live_state
+
+        data = sample_game()
+        html = create_gm_console_html("g1", data)
+        self.assertIn('id="gm-inbox-root"', html)
+        self.assertIn('id="gm-backlog-root"', html)
+        self.assertIn("Teamens arbete", html)
+        self.assertIn("Inloggning val", html)
+
+        add_backlog_spend(data, "Alfa", "alfa_1", 5)
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [{
+                            "aktivitet": "Inloggning val",
+                            "syfte": "klar",
+                            "hp": 5,
+                            "typ": "bygga",
+                            "paverkar": [],
+                            "backlog_selected": "alfa_1",
+                        }]
+                    },
+                }
+            }
+        }
+        fragments = live_html_fragments("g1", build_live_state(data))
+        self.assertIn("Lägg +5 HP", fragments["inbox"])
+        self.assertIn("5/15", fragments["backlog"])
 
 
 if __name__ == "__main__":

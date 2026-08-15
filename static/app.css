@@ -1625,6 +1625,67 @@ thead th {
   color: var(--c-muted);
 }
 
+.gm-mini {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: auto;
+}
+.gm-applied {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--note-success-fg);
+}
+.gm-live-error {
+  color: var(--c-danger);
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.gm-backlog {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.gm-backlog-team {
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-8);
+  padding: 12px;
+  background: var(--c-surface);
+}
+.gm-backlog-team h4 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gm-backlog-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13px;
+}
+.gm-backlog-row:last-child { border-bottom: 0; }
+.gm-backlog-name { flex: 1; min-width: 120px; }
+.gm-backlog-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  min-width: 52px;
+}
+.gm-backlog-btns { display: flex; gap: 4px; }
+.gm-backlog-item { margin-bottom: 8px; }
+.gm-backlog-phase { padding-left: 12px; color: var(--c-muted); }
+.gm-backlog-row.is-done .gm-backlog-count,
+.gm-backlog-item.is-done > .gm-backlog-name { color: var(--note-success-fg); }
+.gm-recurring {
+  font-size: 11px;
+  color: var(--c-muted);
+  font-weight: 600;
+}
+
 .gm-test { font-size: 13px; display: flex; gap: 6px; align-items: center; }
 .gm-test.is-on { color: var(--c-warning); font-weight: 700; }
 .gm-test input { width: auto; }
