@@ -157,6 +157,8 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn('id="gm-backlog-root"', html)
         self.assertIn("Teamens arbete", html)
         self.assertIn("Inloggning val", html)
+        self.assertIn("överförbart", html)
+        self.assertIn("Space pausa", html)
 
         add_backlog_spend(data, "Alfa", "alfa_1", 5)
         data["team_orders"] = {
@@ -180,6 +182,30 @@ class TestGmConsoleHtml(unittest.TestCase):
         fragments = live_html_fragments("g1", build_live_state(data))
         self.assertIn("Lägg +5 HP", fragments["inbox"])
         self.assertIn("5/15", fragments["backlog"])
+        self.assertIn("Ändra", fragments["inbox"])
+        self.assertIn("Öppna för laget", fragments["inbox"])
+
+    def test_projector_shows_public_hp_without_gm_controls(self):
+        from gm_console_ui import create_projector_html
+
+        data = sample_game()
+        data["fas"] = "Resultatfas"
+        html = create_projector_html("g1", data)
+        self.assertIn("projector-clock", html)
+        self.assertIn("Alfa", html)
+        self.assertNotIn("Starta", html)
+        self.assertNotIn("Pausa", html)
+        self.assertNotIn("Testläge", html)
+        self.assertNotIn("Orderinkorg", html)
+
+    def test_result_phase_shows_run_of_show(self):
+        from gm_console_ui import create_gm_console_html
+
+        data = sample_game()
+        data["fas"] = "Resultatfas"
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Resultatfas — körschema", html)
+        self.assertIn("Öppna spelarskärm", html)
 
 
 if __name__ == "__main__":

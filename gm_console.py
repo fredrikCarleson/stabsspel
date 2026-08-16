@@ -218,7 +218,10 @@ def transfer_hp(data, from_team, to_team, amount, reason=""):
         raise ValueError("Kan inte föra över till samma lag")
     source = int(data["poang"][from_team].get("aktuell") or 0)
     if amount > source:
-        raise ValueError(f"{from_team} har bara {source} HP")
+        extra = ""
+        if data["poang"][from_team].get("regeringsstod"):
+            extra = " (regeringsstöd +10 kan inte flyttas)"
+        raise ValueError(f"{from_team} har bara {source} överförbar HP{extra}")
     data["poang"][from_team]["aktuell"] = source - amount
     data["poang"][to_team]["aktuell"] = int(data["poang"][to_team].get("aktuell") or 0) + amount
     note = reason.strip() or "Överföring"
@@ -584,6 +587,12 @@ def build_team_strip(data):
             "remaining": current - spent,
             "status": status,
             "status_label": STATUS_LABELS.get(status, status),
+            "transferable": int(entry.get("aktuell") or 0),
+            "can_withdraw": (
+                data.get("fas") == "Orderfas"
+                and not data.get("avslutat")
+                and status in ("submitted", "changed")
+            ),
         })
     return strip
 
@@ -615,3 +624,92 @@ def build_live_state(data):
         "faser": FASER,
         "test_mode": bool(data.get("test_mode")),
     }
+
+
+def build_public_state(data):
+    """Room-safe snapshot: time, phase, public HP. No orders, log, or testläge."""
+    ensure_poang(data)
+    teams = []
+    for lag in data.get("lag") or []:
+        entry = data["poang"].get(lag) or {}
+        teams.append({
+            "team": lag,
+            "hp": effective_hp(entry),
+            "regeringsstod": bool(entry.get("regeringsstod")),
+        })
+    return {
+        "runda": data.get("runda", 1),
+        "max_runda": MAX_RUNDA,
+        "fas": data.get("fas", "Orderfas"),
+        "avslutat": bool(data.get("avslutat")),
+        "timer_status": data.get("timer_status", "stopped"),
+        "remaining": get_phase_timer(data),
+        "teams": teams,
+    }
+
+
+def can_withdraw_orders(data):
+    return data.get("fas") == "Orderfas" and not data.get("avslutat")
+
+
+def withdraw_order(data, team):
+    """Turn a submitted order back into a draft. Orderfas only."""
+    if not can_withdraw_orders(data):
+        raise ValueError("Order kan bara återtas under orderfasen")
+    if team not in (data.get("lag") or []):
+        raise ValueError(f"Okänt lag: {team}")
+    record = _team_order_record(data, team)
+    if not record or not record.get("final"):
+        raise ValueError("Ingen inskickad order att återta")
+    record["final"] = False
+    record["withdrawn_at"] = time.time()
+    record["updated_at"] = time.time()
+    record.pop("edited_by_gm", None)
+    append_gm_log(data, "order", f"{team} återöppnade sin order.")
+    return data
+
+
+def update_activity(data, team, index, fields):
+    """Patch one activity on the current-round order. GM stays on the console."""
+    if data.get("fas") not in ("Orderfas", "Diplomatifas") or data.get("avslutat"):
+        raise ValueError("Kan bara ändra order under order- eller diplomatifas")
+    if team not in (data.get("lag") or []):
+        raise ValueError(f"Okänt lag: {team}")
+    record = _team_order_record(data, team)
+    if not record:
+        raise ValueError("Ingen order för laget")
+    activities = (record.get("orders") or {}).get("activities") or []
+    try:
+        index = int(index)
+    except (TypeError, ValueError):
+        raise ValueError("Okänd aktivitet") from None
+    if index < 0 or index >= len(activities):
+        raise ValueError("Okänd aktivitet")
+    orders = copy.deepcopy(record.get("orders") or {"activities": []})
+    activity = (orders.get("activities") or [])[index]
+    if "hp" in fields and fields["hp"] is not None:
+        try:
+            hp = int(fields["hp"])
+        except (TypeError, ValueError):
+            raise ValueError("Ogiltigt HP") from None
+        if hp < 0:
+            raise ValueError("Negativa HP-värden är inte tillåtna")
+        activity["hp"] = hp
+    if "aktivitet" in fields and fields["aktivitet"] is not None:
+        activity["aktivitet"] = str(fields["aktivitet"]).strip()
+    if "syfte" in fields and fields["syfte"] is not None:
+        activity["syfte"] = str(fields["syfte"]).strip()
+    validation = validate_order_hp(data, team, orders)
+    if not validation["valid"]:
+        raise ValueError(validation["error"])
+    record["orders"] = orders
+    record["updated_at"] = time.time()
+    record["edited_by_gm"] = True
+    label = activity.get("aktivitet") or f"aktivitet {index + 1}"
+    append_gm_log(
+        data,
+        "order",
+        f"GM ändrade {team}: {label} ({activity.get('hp') or 0} HP).",
+        {"team": team, "index": index},
+    )
+    return data

@@ -17,6 +17,7 @@ from gm_console import (
     UNDO_LIMIT,
     add_backlog_spend,
     adjust_hp,
+    append_gm_log,
     apply_activity_hp_to_backlog,
     apply_new_round,
     apply_next_phase,
@@ -24,6 +25,7 @@ from gm_console import (
     apply_undo,
     build_inbox,
     build_live_state,
+    build_public_state,
     build_team_strip,
     can_submit_orders,
     effective_hp,
@@ -34,7 +36,9 @@ from gm_console import (
     spent_hp_for_team,
     team_order_status,
     transfer_hp,
+    update_activity,
     validate_order_hp,
+    withdraw_order,
 )
 from models import (
     MAX_RUNDA,
@@ -139,6 +143,16 @@ class TestActionPoints(unittest.TestCase):
             transfer_hp(data, "Alfa", "Bravo", -5)
         with self.assertRaises(ValueError):
             transfer_hp(data, "Alfa", "Alfa", 5)
+
+    def test_transfer_cannot_move_government_support_bonus(self):
+        data = create_game_state()
+        set_regeringsstod(data, "Alfa", True)
+        self.assertEqual(effective_hp(data["poang"]["Alfa"]), 35)
+        with self.assertRaises(ValueError) as ctx:
+            transfer_hp(data, "Alfa", "Bravo", 30, "stöd")
+        self.assertIn("överförbar", str(ctx.exception))
+        self.assertIn("kan inte flyttas", str(ctx.exception))
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
 
     def test_unknown_team_cannot_receive_points(self):
         data = create_game_state()
@@ -423,6 +437,79 @@ class TestBacklogSpend(unittest.TestCase):
         alfa = next(team for team in state["backlog"] if team["team"] == "Alfa")
         self.assertEqual(alfa["items"][0]["spent"], 5)
         self.assertGreater(alfa["estimated"], 0)
+
+
+class TestOrderWithdrawAndEdit(unittest.TestCase):
+    def test_team_can_withdraw_during_order_phase(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([activity(hp=8)], final=True),
+            }
+        }
+        withdraw_order(data, "Alfa")
+        self.assertFalse(data["team_orders"]["orders_round_1"]["Alfa"]["final"])
+        self.assertEqual(team_order_status(data, "Alfa"), "draft")
+
+    def test_cannot_withdraw_during_diplomacy(self):
+        data = create_game_state(fas="Diplomatifas")
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([activity(hp=8)], final=True),
+            }
+        }
+        with self.assertRaises(ValueError):
+            withdraw_order(data, "Alfa")
+
+    def test_gm_can_edit_activity_without_leaving_budget(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([activity(name="API", hp=8, syfte="bygga")], final=True),
+            }
+        }
+        update_activity(data, "Alfa", 0, {"hp": 12, "aktivitet": "API hårdning", "syfte": "skydd"})
+        row = data["team_orders"]["orders_round_1"]["Alfa"]["orders"]["activities"][0]
+        self.assertEqual(row["hp"], 12)
+        self.assertEqual(row["aktivitet"], "API hårdning")
+        self.assertTrue(data["team_orders"]["orders_round_1"]["Alfa"]["edited_by_gm"])
+
+    def test_gm_edit_rejects_over_budget(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([activity(hp=8)], final=True),
+            }
+        }
+        with self.assertRaises(ValueError):
+            update_activity(data, "Alfa", 0, {"hp": 40})
+        self.assertEqual(
+            data["team_orders"]["orders_round_1"]["Alfa"]["orders"]["activities"][0]["hp"],
+            8,
+        )
+
+
+class TestPublicProjector(unittest.TestCase):
+    def test_public_state_has_hp_but_not_orders_or_log(self):
+        data = create_game_state()
+        set_regeringsstod(data, "Alfa", True)
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([activity(name="Hemlig DDOS", hp=8)], final=True),
+            }
+        }
+        append_gm_log(data, "hp", "hemlig justering")
+        public = build_public_state(data)
+        self.assertEqual(public["fas"], "Orderfas")
+        alfa = next(t for t in public["teams"] if t["team"] == "Alfa")
+        self.assertEqual(alfa["hp"], 35)
+        self.assertTrue(alfa["regeringsstod"])
+        dumped = str(public)
+        self.assertNotIn("Hemlig DDOS", dumped)
+        self.assertNotIn("hemlig justering", dumped)
+        self.assertNotIn("inbox", public)
+        self.assertNotIn("log", public)
+        self.assertNotIn("test_mode", public)
 
 
 class TestSessionAndPassword(unittest.TestCase):

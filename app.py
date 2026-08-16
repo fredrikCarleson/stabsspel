@@ -16,6 +16,9 @@ from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
 from models import suggest_teams, DATA_DIR, check_game_password, list_saved_games
+from game_management import load_game_data
+from gm_console import build_public_state
+from gm_console_ui import create_projector_html
 
 app = Flask(__name__)
 app.register_blueprint(admin_bp)
@@ -938,6 +941,28 @@ def timer_window(spel_id):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
+
+
+@app.route("/spelarskarm/<spel_id>")
+def player_display(spel_id):
+    """Room projector: round, phase, time, public HP. No GM chrome."""
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    response = make_response(create_projector_html(spel_id, data))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
+@app.route("/spelarskarm/<spel_id>/live")
+def player_display_live(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+    return jsonify({"success": True, "state": build_public_state(data)})
+
 
 if __name__ == "__main__":
     # Production configuration

@@ -6,7 +6,7 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
 from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG
 from admin_routes import create_team_overview, check_admin_session
-from gm_console import can_submit_orders, validate_order_hp
+from gm_console import can_submit_orders, can_withdraw_orders, validate_order_hp, withdraw_order
 import json
 import time
 
@@ -232,6 +232,27 @@ def team_submit_order(spel_id, token):
         return jsonify({"success": False, "error": "File temporarily locked, please try again"}), 503
     except Exception as e:
         return jsonify({"success": False, "error": f"Failed to submit order: {str(e)}"}), 500
+
+
+@team_order_bp.route("/team/<spel_id>/<token>/withdraw_order", methods=["POST"])
+def team_withdraw_order(spel_id, token):
+    """Let a team reopen a submitted order during Orderfas."""
+    team_name = get_team_by_token(spel_id, token)
+    if not team_name:
+        return jsonify({"success": False, "error": "Invalid token"}), 403
+    data = load_game_data(spel_id)
+    if not data:
+        return jsonify({"success": False, "error": "Game not found or corrupted"}), 404
+    if not can_withdraw_orders(data):
+        return jsonify({"success": False, "error": "Orders can only be withdrawn during Orderfas"}), 403
+    try:
+        withdraw_order(data, team_name)
+        save_game_data(spel_id, data)
+        return jsonify({"success": True, "message": "Order reopened"})
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except PermissionError:
+        return jsonify({"success": False, "error": "File temporarily locked, please try again"}), 503
 
 @team_order_bp.route("/team/<spel_id>/<token>/timer")
 def team_timer(spel_id, token):
@@ -807,6 +828,11 @@ TEAM_ORDER_TEMPLATE = """
                             📤 Slutför Order
                         {% endif %}
                     </button>
+                    {% if is_submitted and not is_admin_edit and data.fas == "Orderfas" %}
+                    <button type="button" class="secondary withdraw-btn" onclick="withdrawOrder()">
+                        Återta order
+                    </button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -1107,6 +1133,28 @@ TEAM_ORDER_TEMPLATE = """
             }, 1000);
         }
         
+        function withdrawOrder() {
+            if (!confirm('Återta ordern? Du kan ändra och skicka igen under orderfasen.')) {
+                return;
+            }
+            fetch('/team/{{ spel_id }}/{{ token }}/withdraw_order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    showStatus('Fel: ' + (data.error || 'Kunde inte återta ordern'), 'error');
+                }
+            })
+            .catch(() => {
+                showStatus('Fel: Kunde inte återta ordern', 'error');
+            });
+        }
+
         function playAlarmSound() {
             const audio = new Audio('/static/alarm.mp3');
             audio.play().catch(error => {
@@ -1240,6 +1288,7 @@ TEAM_ORDER_TEMPLATE = """
             // Disable buttons
             const buttons = document.querySelectorAll('button');
             buttons.forEach(button => {
+                if (button.classList.contains('withdraw-btn')) return;
                 button.disabled = true;
             });
             

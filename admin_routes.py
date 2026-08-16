@@ -28,6 +28,8 @@ from gm_console import (
     reset_timer_fields,
     set_regeringsstod,
     transfer_hp,
+    update_activity,
+    withdraw_order,
 )
 from gm_console_ui import create_gm_console_html, live_html_fragments
 
@@ -66,7 +68,7 @@ def require_admin_session_for_game_routes():
         or request.path.endswith("/save_checkbox")
         or request.path.endswith("/checklist_status")
         or request.path.endswith("/live")
-        or request.path.endswith("/backlog_live")
+        or request.path.endswith("/order_live")
     )
     if wants_json:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
@@ -1400,7 +1402,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=6">
+            <link rel="stylesheet" href="/static/app.css?v=7">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 // Force cache refresh for JavaScript
@@ -1900,6 +1902,43 @@ def admin_backlog_live(spel_id):
         "state": state,
         "html": live_html_fragments(spel_id, state),
     })
+
+
+@admin_bp.route("/admin/<spel_id>/order_live", methods=["POST"])
+def admin_order_live(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+    payload = request.get_json(silent=True) or {}
+    op = payload.get("op")
+    try:
+        if op == "edit":
+            push_undo(data, "Ändra order")
+            update_activity(
+                data,
+                payload.get("team"),
+                payload.get("index"),
+                {
+                    "hp": payload.get("hp"),
+                    "aktivitet": payload.get("aktivitet"),
+                    "syfte": payload.get("syfte"),
+                },
+            )
+        elif op == "withdraw":
+            push_undo(data, "Återöppna order")
+            withdraw_order(data, payload.get("team"))
+        else:
+            return jsonify({"success": False, "error": "Okänd åtgärd"}), 400
+    except (ValueError, TypeError) as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    save_game_data(spel_id, data)
+    state = build_live_state(data)
+    return jsonify({
+        "success": True,
+        "state": state,
+        "html": live_html_fragments(spel_id, state),
+    })
+
 
 @admin_bp.route("/admin/<spel_id>/adjust_times", methods=["POST"])
 def admin_adjust_times(spel_id):

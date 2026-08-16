@@ -102,7 +102,7 @@ def create_script_references():
     """Skapa referenser till externa JavaScript-filer"""
     return '''
     <script src="/static/admin.js"></script>
-    <script src="/static/gm-console.js?v=2"></script>
+    <script src="/static/gm-console.js?v=3"></script>
     '''
 
 def create_time_adjustment_modal(spel_id, orderfas_min, diplomatifas_min):

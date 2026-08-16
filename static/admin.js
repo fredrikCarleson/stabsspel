@@ -28,28 +28,13 @@ window.onclick = function(event) {
 
 // Timer functionality
 function openTimerWindow(spelId) {
-    // Hämta aktuell tid och status från admin-timern
-    var timerElement = document.getElementById('timer');
-    var statusElement = document.querySelector('.badge');
-    
-    var currentTime = timerElement ? timerElement.textContent : '10:00';
-    var currentStatus = statusElement ? statusElement.textContent.toLowerCase().replace('status: ', '') : 'paused';
-    
-    // Debug: log the status for troubleshooting
-    console.log('Timer element:', timerElement);
-    console.log('Status element:', statusElement);
-    console.log('Current time:', currentTime);
-    console.log('Current status:', currentStatus);
-    
-    // Konvertera tid till sekunder (t.ex. "09:21" -> 561)
-    var timeParts = currentTime.split(':');
-    var minutes = parseInt(timeParts[0]);
-    var seconds = parseInt(timeParts[1]);
-    var totalSeconds = minutes * 60 + seconds;
-    
-    var timerWindow = window.open(`/timer_window/${spelId}?time=${totalSeconds}&status=${currentStatus}`, 'timerWindow', 'width=800,height=600,scrollbars=no,resizable=yes');
-    if (timerWindow) {
-        timerWindow.focus();
+    var win = window.open(
+        "/spelarskarm/" + spelId,
+        "playerDisplay",
+        "width=1100,height=720,scrollbars=yes,resizable=yes"
+    );
+    if (win) {
+        win.focus();
     }
 }
 

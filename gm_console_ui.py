@@ -8,7 +8,7 @@ phase control on one screen.
 
 from markupsafe import escape
 import json
-from gm_console import STATUS_LABELS, build_live_state
+from gm_console import STATUS_LABELS, build_live_state, build_public_state
 from models import MAX_RUNDA
 
 
@@ -122,12 +122,34 @@ def create_gm_console_html(spel_id, data):
 
     result_note = ""
     if fas == "Resultatfas" and not avslutat:
-        result_note = '''
-        <div class="gm-hint">
-            Resultatfas: läs upp nyheterna från studion, visa HP-raden, peka på tidslinjen.
-            Inget av det loggas här — väggen och studion är källan.
+        next_round_hint = (
+            "Avsluta spelet (N eller knappen i listen)."
+            if runda >= MAX_RUNDA
+            else "Starta nästa runda (N eller knappen i listen). Går att ångra."
+        )
+        result_note = f'''
+        <div class="gm-runofshow">
+          <h3>Resultatfas — körschema</h3>
+          <ol>
+            <li>
+              <button type="button" class="primary" onclick="openTimerWindow('{escape(spel_id)}')">Öppna spelarskärm</button>
+              så rummet ser tid och HP. Inga ordrar syns där.
+            </li>
+            <li>Läs nyheterna från studion. Rubrikerna finns på papper, inte i det här verktyget.</li>
+            <li>Peka på HP på spelarskärmen.</li>
+            <li>Peka på kvartalsraden under den här panelen.</li>
+            <li>{escape(next_round_hint)}</li>
+          </ol>
         </div>
         '''
+
+    start_hint = ""
+    if timer_status == "stopped" and not avslutat:
+        start_hint = (
+            f'<p class="gm-start-hint" id="gm-start-hint">'
+            f'Tryck Starta (Space) för att sätta igång {escape(fas)}. '
+            f'Spelarskärm visar tid och publik HP för rummet.</p>'
+        )
 
     test_checked = "checked" if test_mode else ""
     test_class = "is-on" if test_mode else ""
@@ -159,6 +181,7 @@ def create_gm_console_html(spel_id, data):
           <button name="action" value="reset" class="secondary" {timer_disabled}
             onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
           <button type="button" class="secondary" onclick="openTimerWindow('{escape(spel_id)}')">Spelarskärm</button>
+          <span class="gm-keys">Space pausa · N nästa</span>
         </form>
         <div class="gm-bar-phase">
           <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
@@ -197,16 +220,17 @@ def create_gm_console_html(spel_id, data):
         <ul id="gm-attention-list">{attention_html}</ul>
       </div>
 
+      {start_hint}
       {llm_note}
       {result_note}
 
       <h3 class="gm-section-title">Lag och handlingspoäng</h3>
-      <p class="gm-section-help">Aktuell HP syns här. +/− ändrar poäng. Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell.</p>
+      <p class="gm-section-help">Aktuell HP syns här. +/− ändrar poäng. Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell och kan inte flyttas.</p>
       {teams_html}
-      {_transfer_form_html(spel_id, data.get("lag") or [])}
+      {_transfer_form_html(spel_id, state["teams"])}
 
       <h3 class="gm-section-title">Orderinkorg</h3>
-      <p class="gm-section-help">Alla aktiviteter denna runda. Flera lag mot samma mål markeras. Utkast syns utan omladdning. Lägg HP flyttar orderns poäng till backlog.</p>
+      <p class="gm-section-help">Ändra rättar HP/text här. Under orderfasen kan du öppna en inskickad order så laget kan skicka om. Lägg HP flyttar till backlog.</p>
       <div id="gm-inbox-root">{inbox_html}</div>
 
       <h3 class="gm-section-title">Teamens arbete</h3>
@@ -230,6 +254,16 @@ def _team_strip_html(spel_id, teams, test_mode):
         support = "checked" if t["regeringsstod"] else ""
         remaining_class = "gm-hp-over" if t["remaining"] < 0 else ""
         bonus = " +10" if t["regeringsstod"] else ""
+        if t["regeringsstod"]:
+            transferable = f"överförbart {t['aktuell']} · stöd +10 kan inte flyttas"
+        else:
+            transferable = f"överförbart {t['aktuell']}"
+        withdraw = ""
+        if t.get("can_withdraw"):
+            withdraw = (
+                f'<button type="button" class="secondary gm-mini" data-order-withdraw '
+                f'data-team="{escape(t["team"])}">Öppna för laget</button>'
+            )
         cards.append(f'''
         <div class="gm-team" data-team="{escape(t["team"])}">
           <div class="gm-team-head">
@@ -240,6 +274,7 @@ def _team_strip_html(spel_id, teams, test_mode):
             <span class="gm-hp-now">{t["effective"]}</span>
             <span class="gm-hp-sub gm-hp-aktuell">aktuell {t["aktuell"]}{bonus}</span>
             <span class="gm-hp-sub gm-hp-budget">lagt {t["spent"]} · kvar {t["remaining"]}</span>
+            <span class="gm-hp-sub gm-hp-transferable">{escape(transferable)}</span>
           </div>
           <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-actions">
             <input type="hidden" name="team" value="{escape(t["team"])}">
@@ -255,14 +290,19 @@ def _team_strip_html(spel_id, teams, test_mode):
               Stöd +10
             </label>
           </form>
+          {withdraw}
           <a class="gm-edit-order {hidden} cheat-link" href="/admin/{escape(spel_id)}/edit_order/{escape(t["team"])}">Ange order</a>
         </div>
         ''')
     return '<div class="gm-teams">' + "".join(cards) + "</div>"
 
 
-def _transfer_form_html(spel_id, lag):
-    options = "".join(f'<option value="{escape(name)}">{escape(name)}</option>' for name in lag)
+def _transfer_form_html(spel_id, teams):
+    options = "".join(
+        f'<option value="{escape(t["team"])}">{escape(t["team"])} '
+        f'({t.get("transferable", t.get("aktuell", 0))} överförbart)</option>'
+        for t in teams
+    )
     return f'''
     <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-transfer">
       <input type="hidden" name="op" value="transfer">
@@ -271,6 +311,7 @@ def _transfer_form_html(spel_id, lag):
       <label>till <select name="to_team">{options}</select></label>
       <input type="text" name="reason" placeholder="Orsak (spion, regering, förhandling…)" class="gm-reason-wide">
       <button type="submit" class="primary">Överför HP</button>
+      <p class="gm-transfer-help">Bara aktuell HP kan flyttas. Regeringsstöd +10 följer inte med.</p>
     </form>
     '''
 
@@ -279,6 +320,7 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
     if not inbox:
         return '<p class="gm-empty">Inga ordrar ännu. Utkast dyker upp här när ett lag börjar skriva.</p>'
     can_edit = fas in ("Orderfas", "Diplomatifas")
+    seen_withdraw = set()
     rows = []
     for row in inbox:
         conflict = "gm-conflict" if row["conflict"] else ""
@@ -286,7 +328,22 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
         targets = ", ".join(row["paverkar"]) if row["paverkar"] else "—"
         edit = ""
         if can_edit:
-            edit = f'<a href="/admin/{escape(spel_id)}/edit_order/{escape(row["team"])}">Redigera</a>'
+            edit = (
+                f'<button type="button" class="secondary gm-mini" data-order-edit '
+                f'data-team="{escape(row["team"])}" data-index="{row["index"]}" '
+                f'data-aktivitet="{escape(row["aktivitet"])}" data-syfte="{escape(row["syfte"])}" '
+                f'data-hp="{row["hp"]}">Ändra</button>'
+            )
+            if (
+                row.get("status") in ("submitted", "changed")
+                and fas == "Orderfas"
+                and row["team"] not in seen_withdraw
+            ):
+                seen_withdraw.add(row["team"])
+                edit += (
+                    f' <button type="button" class="secondary gm-mini" data-order-withdraw '
+                    f'data-team="{escape(row["team"])}">Öppna för laget</button>'
+                )
         backlog_cell = "—"
         if row.get("can_apply_backlog"):
             backlog_cell = (
@@ -393,3 +450,44 @@ def _log_html(log):
     for entry in log:
         items.append(f'<li><span class="gm-log-kind">{escape(entry.get("kind") or "")}</span> {escape(entry.get("message") or "")}</li>')
     return f'<ul class="gm-log">{"".join(items)}</ul>'
+
+
+def create_projector_html(spel_id, data):
+    """Player-facing display: round, phase, time, public HP. No GM controls."""
+    state = build_public_state(data)
+    team_cards = []
+    for t in state["teams"]:
+        extra = " has-support" if t["regeringsstod"] else ""
+        note = '<div class="projector-team-note">stöd +10</div>' if t["regeringsstod"] else ""
+        team_cards.append(
+            f'<div class="projector-team{extra}">'
+            f'<div class="projector-team-name">{escape(t["team"])}</div>'
+            f'<div class="projector-team-hp">{t["hp"]}</div>'
+            f"{note}</div>"
+        )
+    ended = " Spelet är slut." if state["avslutat"] else ""
+    state_json = json.dumps({"spel_id": spel_id, **state}, ensure_ascii=False)
+    return f'''<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spelarskärm – runda {state["runda"]}</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <link rel="stylesheet" href="/static/app.css?v=7">
+</head>
+<body class="projector-page">
+  <script type="application/json" id="projector-state">{state_json}</script>
+  <div class="projector">
+    <div class="projector-now">
+      <div class="projector-round">Runda {state["runda"]}/{state["max_runda"]}</div>
+      <div class="projector-phase">{escape(state["fas"])}</div>
+      <div class="projector-clock" id="projector-clock">{_fmt_time(state["remaining"])}</div>
+      <div class="projector-status" id="projector-status">{escape(state["timer_status"])}{ended}</div>
+    </div>
+    <div class="projector-hp" id="projector-hp">{"".join(team_cards)}</div>
+  </div>
+  <script src="/static/projector.js?v=1"></script>
+</body>
+</html>
+'''
