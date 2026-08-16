@@ -1,0 +1,361 @@
+# Stabsspel — project architecture
+
+This document describes **what the software is**, **how a live event runs through it**, **how the code is laid out**, and **what each folder and important file is for**.
+
+It is a map of the repository, not the game rules. The exercise itself (teams, rounds, HP, spies, news studio) lives in [Stabsspel Traineeprogrammet.md](Stabsspel%20Traineeprogrammet.md).
+
+---
+
+## 1. Purpose
+
+Stabsspel is a **live staff-exercise (stabsspel) runner** for 20–60 people. A Game Master (GM) runs four quarters of a fictional year. Teams spend **handlingspoäng (HP)** on orders. After each round, orders are copied into an LLM; headlines are written on paper and read in a news studio.
+
+The app’s job is to **keep the room on the clock** and hold **orders, HP, backlog, and phase** as live state. It is not a news CMS, not a chat tool, and not a general admin CRUD product.
+
+**In scope**
+
+- Create / resume a game, password-protect the GM panel
+- Run Order → Diplomacy → Result (four rounds), with timer, undo, and previous phase
+- Collect team orders (draft → submit → optional withdraw in Orderfas)
+- Show one GM console: inbox, HP strip, backlog spend, log
+- Project round, phase, time, and public HP to the room
+- Print activity cards, order cards, team briefs, QR links to order entry
+
+**Out of scope (intentional)**
+
+- In-app news, plot twists, or a “write headline” workflow
+- Player roster / spy seating as first-class state (spy drain is an HP transfer with a reason)
+- Multi-server or database-backed persistence
+
+---
+
+## 2. How a live event uses the app
+
+```
+Create game (/admin)
+        │
+        ▼
+Spelledarpanel  ──────────────►  Spelarskärm  (/spelarskarm/<id>)
+  GM console                       round, phase, clock, public HP
+        │
+        ├── Orderfas     teams type orders via token URL / QR
+        ├── Diplomatifas GM reads inbox, ticks HP/backlog, copies to LLM
+        └── Resultatfas  studio reads paper news; GM follows run-of-show
+                │
+                └── next round (or end after round 4)
+```
+
+News still happen **outside** the app: **Kopiera ordrar till LLM** → paper headlines → studio. The GM log records tool actions (phase, HP, backlog, undo), not journalism.
+
+| Role | Where they look |
+|------|-----------------|
+| Game Master | `/admin/<spel_id>` — live console |
+| Room / projector | `/spelarskarm/<spel_id>` — no orders, no GM buttons |
+| Team | `/team/<spel_id>/<lag>` brief + QR, then `/team/<spel_id>/<token>/enter_order` |
+
+---
+
+## 3. Architecture
+
+The process is a **single Flask app**. There is no database. Each game is one JSON file. HTML is mostly built in Python (f-strings / `render_template_string`), not a `templates/` tree.
+
+```mermaid
+flowchart TB
+  subgraph clients [Browsers]
+    GM[GM spelledarpanel]
+    Proj[Player projector]
+    Team[Team order form]
+  end
+
+  subgraph flask [Flask process]
+    App[app.py]
+    Admin[admin_routes.py]
+    Orders[team_order_routes.py]
+    Teams[team_routes.py]
+    Domain[gm_console.py]
+    Models[models.py]
+  end
+
+  subgraph disk [Disk]
+    JSON["speldata/game_<id>.json"]
+    Briefs[teambeskrivning/]
+  end
+
+  GM --> Admin
+  Proj --> App
+  Team --> Orders
+  Admin --> Domain
+  Orders --> Domain
+  Domain --> Models
+  Admin --> Models
+  Models --> JSON
+  Teams --> Briefs
+```
+
+**Layers**
+
+| Layer | Modules | Responsibility |
+|-------|---------|----------------|
+| HTTP / process | `app.py`, `wsgi.py`, `config.py` | App entry, health, projector, home page |
+| GM HTTP | `admin_routes.py`, `admin_helpers.py` | Auth, panel, live JSON mutations, print/export |
+| Team HTTP | `team_routes.py`, `team_order_routes.py` | Briefs, QR, save/submit/withdraw orders |
+| Live domain | `gm_console.py`, `gm_console_ui.py` | Phases, HP, inbox, backlog, undo, public state, HTML |
+| Persistence and catalogue | `models.py`, `game_management.py` | JSON load/save, teams, backlog templates, passwords |
+| Print extras | `orderkort.py` | Printable order cards |
+
+**Request flow (typical)**
+
+1. GM opens `/admin/<id>`, enters password → Flask session (6 hours, sliding).
+2. Panel HTML is `create_gm_console_html` plus leftover overview/history below.
+3. `static/gm-console.js` polls `GET /admin/<id>/live` every 3s (inbox, HP, backlog).
+4. HP / backlog / inline order edits POST JSON; domain mutates the dict; `save_game_data` writes JSON under a per-game lock.
+5. Projector polls `GET /spelarskarm/<id>/live` — **public** snapshot only (no inbox, log, or testläge).
+
+---
+
+## 4. Runtime and data
+
+- **Python** 3.12 (`runtime.txt`), **Flask** 3.x, **Gunicorn** in production (`Procfile` → `wsgi:app`).
+- **Persistence:** `speldata/game_<spel_id>.json` (gitignored). Atomic write: temp file → `os.replace`, plus `.backup`. Per-`spel_id` threading lock so two GM clicks do not clobber each other.
+- **IDs:** `spel_id` is a timestamp string from create (`YYYYMMDDHHMMSS`).
+- **No ORM.** The game dict *is* the model. `gm_console.py` is the place for live-event rules so they can be unit-tested without rendering HTML.
+
+### Game JSON (important keys)
+
+Created in `skapa_nytt_spel` and grown during play:
+
+| Key | Meaning |
+|-----|---------|
+| `id`, `datum`, `plats`, `antal_spelare` | Event metadata |
+| `lag` | Team names in this game (5 or 9) |
+| `runda` | 1–4 |
+| `fas` | `Orderfas` / `Diplomatifas` / `Resultatfas` |
+| `avslutat` | Game over |
+| `poang.<lag>` | `{ bas, aktuell, regeringsstod }` — spendable HP is `aktuell`, plus +10 if stöd |
+| `backlog` | Dev-team work (Alfa / Bravo / STT). Bravo has phases (Krav, Design, …) |
+| `team_orders.orders_round_N.<lag>` | `{ orders.activities[], final, submitted_at, updated_at, edited_by_gm, … }` |
+| `team_tokens` | Secret URLs for order entry |
+| `password` | PBKDF2 hash, or empty → default password for old games |
+| `timer_*`, `orderfas_min`, … | Clock |
+| `gm_log`, `gm_undo` | Operational log and ~20 undo snapshots |
+| `test_mode` | Shows auto-fill / cheat links |
+| `fashistorik` | Phase history for the panel |
+
+**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable.
+
+---
+
+## 5. Folder structure
+
+```
+stabsspel/
+├── app.py                 Flask app, home, health, projector, legacy timer window
+├── wsgi.py                Production entry (gunicorn)
+├── config.py              Dev / prod / test Flask config
+├── models.py              Persistence, teams, backlog templates, auth helpers
+├── game_management.py     Delete game, checkbox helpers, reset stöd
+├── gm_console.py          Live-event domain (no HTML)
+├── gm_console_ui.py       GM console + projector HTML
+├── admin_routes.py        GM HTTP (panel + leftovers + print)
+├── admin_helpers.py       Shared HTML/JS snippets for admin
+├── team_routes.py         Team briefs + QR
+├── team_order_routes.py   Token order form + save/submit/withdraw
+├── orderkort.py           Printable order cards
+├── static/                CSS and GM/projector JS
+├── teambeskrivning/       Per-team briefs (and optional images)
+├── Docs/                  Human docs (rules + this file)
+├── tests/                 Preferred unit tests
+├── speldata/              Live JSON games (not in git)
+├── requirements.txt
+├── Procfile, runtime.txt, deploy.sh
+└── (root) test_*.py, debug_*.py   Older / ad-hoc scripts
+```
+
+There is **no** `templates/` directory. Most pages are strings in Python.
+
+---
+
+## 6. Files and folders in detail
+
+### 6.1 Process and configuration
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Creates the Flask app, registers blueprints, `/`, `/health`, `/teams/<n>`, `/spelarskarm/<id>` (plus `/live`), leftover `/timer_window/<id>` and `/test_css`. |
+| `wsgi.py` | Loads `config` from `FLASK_ENV` and exposes `app` for Gunicorn. |
+| `config.py` | `SECRET_KEY`, cookie flags, optional rotating log under `logs/` in production. |
+| `requirements.txt` | Flask, Gunicorn, qrcode, Pillow, etc. |
+| `Procfile` | `web: gunicorn wsgi:app --log-file -` |
+| `runtime.txt` | Python version for PaaS. |
+| `deploy.sh` | Deployment helper script. |
+| `.gitignore` | Ignores `venv/`, `speldata/`, logs, env files. |
+
+### 6.2 Domain and persistence
+
+| File | Purpose |
+|------|---------|
+| `models.py` | `DATA_DIR`, `TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, roster size (5 vs 9 teams), STT base HP in large games, declaration period (round 3). |
+| `game_management.py` | `delete_game`, `nollstall_regeringsstod`, checkbox get/set (legacy checklists). Re-exports load/save. |
+| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack, GM log, `build_live_state` vs `build_public_state`. |
+| `gm_console_ui.py` | HTML for the sticky GM bar, attention list, team HP strip, transfer form, inbox, backlog board, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
+
+Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/test_domain.py`, not in route handlers.
+
+### 6.3 HTTP: Game Master
+
+`admin_routes.py` is the largest file. It mixes the **live console** with older admin pages.
+
+**Live console (use these)**
+
+| Route | Role |
+|-------|------|
+| `GET/POST /admin` | Create game, list saved games |
+| `GET/POST /admin/<id>` | Password gate + spelledarpanel |
+| `POST /admin/<id>/timer` | Start/pause, ±1 min, reset, next/prev phase, new round, end |
+| `POST /admin/<id>/hp` | +5/−5, transfer, stöd |
+| `POST /admin/<id>/undo` | Restore last snapshot |
+| `GET /admin/<id>/live` | JSON + HTML snippets for the poller (same data as the panel) |
+| `POST /admin/<id>/backlog_live` | +5/−5 backlog, apply order HP |
+| `POST /admin/<id>/order_live` | Inline edit activity, withdraw to draft |
+| `POST /admin/<id>/test_mode` | Hide/show cheat controls |
+| `POST /admin/<id>/reset` | Full game reset (under Mer, with confirm) |
+
+`GET /admin/<id>/live` is treated as **public like the panel** (the same information is already on the HTML page). Mutations require a valid GM session. Unauthenticated JSON mutations return 401.
+
+**Still useful print/export**
+
+| Route | Role |
+|-------|------|
+| `/admin/<id>/order_summary` | Text dump to paste into an LLM |
+| `/admin/<id>/aktivitetskort` | Print hidden agendas |
+| `/admin/<id>/orderkort` | Printable paper order cards |
+| `/admin/<id>/backlog` | Full backlog table (fallback; spend is on the console) |
+| `/admin/<id>/poang` | Full HP table (fallback; strip is on the console) |
+| `/admin/download_game/<id>`, `/admin/upload_game` | JSON backup |
+
+**Leftover chrome** (old checklists, extra timer widgets, team-overview cards under the console). They still render on the panel; the GM can ignore them. `create_timer_controls` and phase checklists in this file are the previous admin shell.
+
+`admin_helpers.py` — no-cache headers, script tags (`admin.js`, `gm-console.js`), compact header, old timer controls, time-adjustment modal.
+
+### 6.4 HTTP: teams and projector
+
+| File | Purpose |
+|------|---------|
+| `team_routes.py` | `/team/<id>/<lag>` — brief from `teambeskrivning/`, optional photo, QR to order URL. `/teambeskrivning/<file>` for images. |
+| `team_order_routes.py` | Token-gated order form. Auto-save draft, final submit, **withdraw in Orderfas only**. Timer JSON for the team page. GM may open the same form with `?admin_edit=true` (session required) — Testläge “Ange order”. |
+| Projector in `app.py` | `/spelarskarm/<id>` HTML + `/spelarskarm/<id>/live` JSON via `build_public_state`. Safe to project. |
+| `/timer_window/<id>` in `app.py` | **Legacy** GM timer with Start/Pausa. Spelarskärm no longer opens this. |
+
+Order URLs use `team_tokens`, not the team name, so guessing `/team/<id>/Alfa/enter_order` does not work.
+
+### 6.5 Front end (`static/`)
+
+| File | Purpose |
+|------|---------|
+| `app.css` | Design tokens, admin, GM console, projector, print-adjacent layout. Cache-busted with `?v=` on some pages. |
+| `print.css` | Print stylesheet for cards/briefs. |
+| `gm-console.js` | Clock tick, Space pause, **N** next phase (with confirm), 3s live poll, backlog buttons, inline order edit, withdraw, testläge, opens `/spelarskarm/`. |
+| `projector.js` | Clock + 2s poll of public live JSON. No controls. F11 is left to the browser. |
+| `admin.js` | Older admin helpers (modals, `openTimerWindow` now also opens the projector). |
+
+There is no SPA framework. The GM console is server HTML plus a small poller.
+
+### 6.6 Content (`teambeskrivning/`)
+
+Plain-text briefs, one file per team (`alfa.txt`, `bravo.txt`, `stt.txt`, `fm.txt`, `bs.txt`, `media.txt`, `säpo.txt`, `regeringen.txt`, `usa.txt`). Optional matching `.jpg`. Shown on the team page the GM prints or links.
+
+### 6.7 Docs (`Docs/`)
+
+| File | Purpose |
+|------|---------|
+| `Stabsspel Traineeprogrammet.md` | The **game**: rules, teams, HP, rounds, how news work in the room. |
+| `architecture.md` | This file: the **software**. |
+
+Root-level `README.md`, `DEPLOYMENT_GUIDE.md`, `PRODUCTION_CHECKLIST.md`, `ORDERKORT_README.md`, and `CSS_REFACTORING_LOG.md` are older operational notes; prefer this folder for lasting documentation.
+
+### 6.8 Tests
+
+**Prefer `tests/`** (imported as a package, fast, no live server required for domain tests):
+
+| File | Purpose |
+|------|---------|
+| `tests/test_domain.py` | Phases, HP, budgets, undo, timers, roster, session, backlog spend, withdraw, public projector payload. |
+| `tests/test_gm_console.py` | Console helpers + HTML hooks (inbox, backlog, run-of-show, projector has no Start/Pausa). |
+| `tests/test_admin_helpers.py` | Helper HTML/headers. |
+| `tests/test_basic_functionality.py` | Backlog clone, game shape. |
+| `tests/test_css_refactoring.py` | Helpers use CSS classes. |
+| `tests/game_fixtures.py` | Small builders: `create_game_state`, `order_record`, `activity`. |
+
+Typical run:
+
+```bash
+python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers
+```
+
+**Root `test_*.py` / `debug_*.py`** — older Flask-client or manual scripts (`test_admin_routes.py`, `test_team_order_system.py`, and similar). Useful as archaeology; they are not the default suite. HTML files like `test_timer_maximize.html` are local CSS/timer experiments.
+
+There is **no CI** in the repo.
+
+### 6.9 Print: `orderkort.py`
+
+Builds printable HTML order slips per team and round. Used from `/admin/<id>/orderkort`. Separate from the digital order form.
+
+---
+
+## 7. Auth and visibility
+
+| Actor | Mechanism |
+|-------|-----------|
+| GM | Password on `/admin/<id>` → `session["game_session_<id>"]`, 6 hours, refreshed on authenticated admin requests. |
+| Team orders | Unpredictable `team_tokens[lag]` in the path. |
+| Projector | No login. Payload is deliberately **small**: round, phase, remaining time, public HP, stöd flag. |
+
+Do not point a projector at `/admin/<id>` or `/admin/<id>/live` if you care about leaking orders. Use `/spelarskarm/<id>`.
+
+Testläge (default off) reveals auto-fill and “Ange order” (player form). Keep it off with an audience.
+
+---
+
+## 8. Front-of-house vs leftover UI
+
+The **live surface** is the sticky bar + attention + HP strip + inbox + backlog + log in `gm_console_ui.py`.
+
+Below that, `admin_routes.admin_panel` still injects the quarter bar, `create_team_overview`, and phase history. Those are leftovers from the old admin shell. They are not required to run the room.
+
+Keyboard on the console: **Space** pause/resume, **N** next phase (existing confirm).
+
+---
+
+## 9. Deployment
+
+Local: `python app.py` → http://localhost:5000 (debug reload unless `FLASK_ENV` / `FLASK_DEBUG` say otherwise).
+
+Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **writable persistent disk** on the host; it is not in git. See `README.md` / `DEPLOYMENT_GUIDE.md` for Render-oriented notes.
+
+`/health` returns a JSON status for uptime checks.
+
+---
+
+## 10. Conventions for changes
+
+1. **Live rules** (phases, HP, orders, backlog, undo) → `gm_console.py` plus a test in `tests/test_domain.py`.
+2. **GM HTML** → `gm_console_ui.py` plus `static/gm-console.js` / `app.css`. Do not grow new live workflows as another full page if they can sit on the console.
+3. **Room-visible data** → `build_public_state` only. Never send inbox or `gm_log` to the projector.
+4. **News** stay outside the app. LLM export is a copy step, not a CMS.
+5. Prefer Swedish labels in the UI (the room is Swedish); keep code identifiers in the existing mix (`fas`, `runda`, `poang`, `regeringsstod`).
+
+---
+
+## 11. Quick “where do I…?”
+
+| I want to… | Look at |
+|------------|---------|
+| Change when a phase can advance | `gm_console.apply_next_phase` |
+| Change HP math or transfers | `gm_console.effective_hp`, `transfer_hp` |
+| Change what the GM sees | `gm_console_ui.py`, `static/gm-console.js` |
+| Change what the room sees | `build_public_state`, `create_projector_html`, `static/projector.js` |
+| Change team order save/submit | `team_order_routes.py` |
+| Add a team brief | `teambeskrivning/<lag>.txt` |
+| Change backlog templates | `models.BACKLOG` |
+| Change create-game / password | `models.skapa_nytt_spel`, `admin_start` |
+| Understand the exercise | `Docs/Stabsspel Traineeprogrammet.md` |
