@@ -2349,9 +2349,36 @@ thead th {
 .admin-panel-header h1 { font-size: clamp(22px, 3vw, 32px); margin-bottom: 4px; }
 .gm-meta { color: var(--c-muted); font-size: 13px; margin: 0; }
 
+/* Spelledarpanel atmosphere. Dimmed stabsrum only — the photo's fake map/clock
+   must never read as live HP. bg-sverige.png is unused. */
+body.gm-page {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--c-bg);
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--c-bg) 62%, transparent) 0%,
+      color-mix(in srgb, var(--c-bg) 74%, transparent) 100%
+    ),
+    url("/static/backgrounds/bg-stabsrum.png");
+  background-size: cover;
+  background-position: center 40%;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+body.gm-page > .container {
+  position: relative;
+  z-index: 1;
+  background: color-mix(in srgb, var(--c-bg) 94%, transparent);
+  border-radius: 12px;
+}
+
 @media (max-width: 900px) {
   .gm-bar { position: static; }
   .gm-clock { font-size: 22px; }
+  body.gm-page { background-attachment: scroll; }
 }
 
 /* ============================================================================

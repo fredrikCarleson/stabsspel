@@ -228,6 +228,8 @@
           "Lag utan inskickad order: " + missing.join(", ") + ". De får inga ordrar. Fortsätt?"
         );
       };
+    } else if (action === "next_fas") {
+      form.onsubmit = null;
     }
   }
 

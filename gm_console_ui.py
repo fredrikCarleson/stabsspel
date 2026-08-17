@@ -239,11 +239,9 @@ def create_gm_console_html(spel_id, data):
             f"De får inga ordrar. Fortsätt?');\""
         )
     elif next_action == "ny_runda":
-        next_confirm = "onsubmit=\"return confirm('Starta nästa runda? Det går att ångra.');\""
+        next_confirm = "onsubmit=\"return confirm('Starta nästa runda?');\""
     elif next_action == "end_game":
         next_confirm = "onsubmit=\"return confirm('Avsluta spelet?');\""
-    else:
-        next_confirm = "onsubmit=\"return confirm('Gå till nästa fas? Det går att ångra.');\""
 
     back_disabled = "disabled" if not can_back or avslutat else ""
     undo_disabled = "disabled" if not undo_ok or avslutat else ""
@@ -382,6 +380,9 @@ def create_gm_console_html(spel_id, data):
           <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" id="gm-next-form" data-next-action="{next_action}" {next_confirm}>
             <button name="action" value="{next_action}" class="primary" {next_disabled}>{escape(next_label)}</button>
           </form>
+          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
+            <button name="action" value="prev_fas" class="secondary" {back_disabled}>Föregående</button>
+          </form>
           <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
             <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
           </form>
@@ -391,10 +392,6 @@ def create_gm_console_html(spel_id, data):
               <form method="post" action="/admin/{escape(spel_id)}/timer">
                 <button name="action" value="reset" class="secondary" {timer_disabled}
                   onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
-              </form>
-              <form method="post" action="/admin/{escape(spel_id)}/timer">
-                <button name="action" value="prev_fas" class="secondary" {back_disabled}
-                  onclick="return confirm('Gå tillbaka till föregående fas?');">Föregående fas</button>
               </form>
               <form method="post" action="/admin/{escape(spel_id)}/test_mode" id="gm-test-form" class="gm-test-form">
                 <input type="hidden" name="enabled" id="gm-test-enabled" value="{"1" if test_mode else "0"}">

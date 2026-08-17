@@ -15,14 +15,14 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Slice | Status | What |
 | ----- | ------ | ---- |
-| Start screen | **Done** | Launch list, not a marketing landing page. No background images (deferred). |
+| Start screen | **Done** | Launch list, not a marketing landing page. No background image. |
 | 1. Orderfas job | **Done** | Readiness chips, quieter attention, Start/Pause vs Nästa, extra controls under Mer, HP folded. |
 | Projector audio | **Done** | Room warnings at 5 min, 1 min, repeating alarm at 30 s. |
 | 3. Diplomatifas job | **Done** | Inbox + conflicts + LLM copy first. HP / backlog / log folded. |
 | Resultatfas job | **Done** | Körschema first, in-console quarter strip, HP / inbox / backlog / log folded. |
 | 2. Tab shell | **Done** | Sticky bar + four always-available views: Inkorg, Lag, Arbete, Historik. Changing phase lands on the phase job (Order/Diplo → Inkorg, Resultatfas → Lag with körschema above). Clock never lives in a tab. |
 | 4. One console | **Done** | Leftover **Kvartalsförlopp / Team översikt / Spelhistorik** no longer render under the console. Quarters stay in Resultatfas. Phase history sits in **Händelselogg**. Teamens arbete remains the backlog. |
-| Background images | **Deferred** | Assets in `static/backgrounds/`. Do not put `bg-sverige.png` under controls. `bg-stabsrum.png` only as dimmed atmosphere; banners as marks, not 16:9 fills. |
+| Background images | **Trial** | Spelledarpanel: dimmed `bg-stabsrum.png`, no side banners. Startsida, projector and team form stay plain. `bg-sverige.png` unused. |
 
 ## What shipped (so a new session does not redo it)
 
@@ -32,11 +32,11 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Main surface: **Öppna spel** as rows (date/place, round/phase, **Öppna**)
 - Active games first; finished muted
 - **Ladda ner** / **Ta bort** under per-row **Mer** (delete still uses password modal)
-- No hero, no feature cards, no background images
+- No hero, no feature cards, no background image
 
 ### Orderfas (`gm_console_ui.py`)
 
-- Sticky bar: clock, **Starta** XOR **Pausa**, ±1 min, Spelarskärm, **Nästa** as `primary` (not a second green), **Ångra**, **Meny** (button-styled overflow: Nollställ, Föregående fas, Testläge, exports, reset)
+- Sticky bar: clock, **Starta** XOR **Pausa**, ±1 min, Spelarskärm, **Nästa** as `primary` (not a second green), **Föregående** next to it, **Ångra**, **Meny** (Nollställ, Testläge, exports, reset)
 - Readiness chips: Saknas / Utkast / Inne + HP. Completeness notes (saknar HP, inte låst)
 - Yellow **Kräver uppmärksamhet** hidden unless there is a real exception (not a repeat of the missing-team list)
 - **Lag och handlingspoäng** collapsed in `<details class="gm-fold">`
@@ -67,7 +67,8 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 - **Testläge** is saved on the server (form POST + JSON). The checkbox is no longer a client-only lie; Auto-fyll testdata stays behind Testläge.
 - **Redigera order** is always available in Orderfas and Diplomatifas (team cards + inbox). It opens the team form so the GM can revise before LLM. **Ändra** remains the inline HP/text edit.
-- Overflow control is a button-styled **Meny** next to Nästa/Ångra, not a pale triangle under the round label.
+- Overflow control is a button-styled **Meny** next to Nästa/Föregående/Ångra, not a pale triangle under the round label.
+- **Föregående** sits beside **Nästa**. No confirm that claims you cannot go back. Confirm remains for missing orders, next round, and end game.
 
 ### One console (slice 4)
 
@@ -83,10 +84,15 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Readiness chips, attention and LLM copy stay outside the tabs.
 - Phase change reloads the console, so the last tab is not kept.
 
+### Backgrounds (trial)
+
+- Spelledarpanel `body.gm-page`: dimmed `bg-stabsrum.png`. Console column stays almost opaque. No side banners.
+- Startsida, projector and team order form stay plain.
+- `bg-sverige.png` is not used.
+
 ## Still to do (priority)
 
-1. **Backgrounds** — only after the operational layout is stable, and only as chrome (not under live numbers).
-2. Optional later: delete unused checklist / `create_timer_html` builders in `admin_routes.py`.
+1. Optional later: delete unused checklist / `create_timer_html` builders in `admin_routes.py`.
 
 ## Explicit non-goals
 
@@ -95,14 +101,13 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - In-app headlines / news editor
 - Dark C2 restyle of the whole app
 - Separate page per phase
-- Using `bg-sverige.png` as a functional background (fake HP/clock)
+- Using `bg-sverige.png` as a functional background under live HP/clock
 
 ## Files to touch next
 
 | Job | Files |
 | --- | ----- |
-| Backgrounds | `static/app.css`, `gm_console_ui.py` / `app.py` as atmosphere only |
-| Cache-bust | Console CSS is `app.css?v=18`, JS `gm-console.js?v=8`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=21`, JS `gm-console.js?v=9`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 
