@@ -1482,8 +1482,7 @@ thead th {
 }
 
 .gm-bar-time,
-.gm-bar-phase,
-.gm-bar-tools {
+.gm-bar-phase {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1588,6 +1587,53 @@ thead th {
 .gm-fold > summary:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--c-primary) 60%, white);
   outline-offset: 2px;
+}
+
+.gm-tabs {
+  margin: 0 0 16px;
+}
+.gm-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+.gm-console .gm-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin: 0;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--c-muted);
+  font-weight: 700;
+  font-size: 14px;
+  opacity: 1;
+}
+.gm-console .gm-tab:hover,
+.gm-console .gm-tab:active {
+  background: transparent;
+  border-color: transparent;
+  border-bottom-color: color-mix(in srgb, var(--c-primary) 40%, white);
+  color: var(--c-text);
+  box-shadow: none;
+}
+.gm-console .gm-tab[aria-selected="true"] {
+  color: var(--c-text);
+  border-bottom-color: var(--c-primary-strong);
+}
+.gm-console .gm-tab:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--c-primary) 60%, white);
+  outline-offset: 2px;
+}
+.gm-tabpanel[hidden] {
+  display: none !important;
 }
 
 .gm-bar-phase .primary {
@@ -1835,6 +1881,52 @@ thead th {
   font-size: 11px;
   text-transform: uppercase;
   color: var(--c-muted);
+}
+.gm-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--c-border);
+}
+.gm-history-round {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.gm-history-round strong {
+  min-width: 72px;
+  font-size: 13px;
+}
+.gm-history-fas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--c-border);
+  font-size: 12px;
+  background: var(--phase-future-bg);
+  color: var(--phase-future-fg);
+}
+.gm-history-fas.is-done {
+  background: var(--note-success-bg);
+  color: var(--note-success-fg);
+  border-color: var(--phase-done-bd);
+}
+.gm-history-fas.is-now {
+  background: var(--note-warning-bg);
+  color: var(--note-warning-fg);
+  border-color: var(--phase-current-bd);
+  font-weight: 700;
+}
+.gm-history-state {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
 }
 
 .gm-mini {
@@ -2174,32 +2266,68 @@ thead th {
 .gm-test { font-size: 13px; display: flex; gap: 6px; align-items: center; }
 .gm-test.is-on { color: var(--c-warning); font-weight: 700; }
 .gm-test input { width: auto; }
-.cheat-link[hidden],
+.gm-test-form { margin: 0; }
 .gm-autofill[hidden] { display: none !important; }
-
-.gm-danger summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--c-muted);
+.gm-edit-order {
+  margin-top: 8px;
+  width: 100%;
 }
-.gm-danger {
+
+.gm-menu {
   position: relative;
+}
+.gm-menu > summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid var(--c-secondary);
+  border-radius: 6px;
+  background-color: var(--c-secondary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.gm-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.gm-menu > summary::marker {
+  content: "";
+}
+.gm-menu > summary::after {
+  content: "▾";
+  font-size: 12px;
+  line-height: 1;
+}
+.gm-menu[open] > summary {
+  opacity: 1;
+}
+.gm-menu[open] > summary::after {
+  content: "▴";
 }
 .gm-mer-menu {
   display: none;
 }
-.gm-danger[open] > .gm-mer-menu {
+.gm-menu[open] > .gm-mer-menu {
   position: absolute;
   right: 0;
-  top: 28px;
+  top: calc(100% + 6px);
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 200px;
+  min-width: 220px;
   padding: 12px;
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-8);
+  box-shadow: var(--shadow-md);
   z-index: 50;
 }
 .gm-mer-menu form {
@@ -2209,6 +2337,13 @@ thead th {
 .gm-mer-menu :is(a, button) {
   width: 100%;
   justify-content: center;
+}
+
+.gm-inbox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
 .admin-panel-header h1 { font-size: clamp(22px, 3vw, 32px); margin-bottom: 4px; }

@@ -132,6 +132,40 @@ def _fold_html(title, body):
     )
 
 
+CONSOLE_TABS = (
+    ("inkorg", "Inkorg"),
+    ("lag", "Lag"),
+    ("arbete", "Arbete"),
+    ("historik", "Historik"),
+)
+
+
+def _tab_shell_html(default_tab, panels):
+    """Always-available views. Clock stays outside. No new URLs."""
+    if default_tab not in panels:
+        default_tab = "inkorg"
+    buttons = []
+    bodies = []
+    for key, label in CONSOLE_TABS:
+        selected = key == default_tab
+        buttons.append(
+            f'<button type="button" class="gm-tab" role="tab" id="gm-tab-{key}" '
+            f'data-tab="{key}" aria-controls="gm-panel-{key}" '
+            f'aria-selected="{"true" if selected else "false"}">{escape(label)}</button>'
+        )
+        hidden = "" if selected else " hidden"
+        bodies.append(
+            f'<div class="gm-tabpanel" role="tabpanel" id="gm-panel-{key}" '
+            f'aria-labelledby="gm-tab-{key}"{hidden}>{panels[key]}</div>'
+        )
+    return (
+        f'<div class="gm-tabs" data-default="{escape(default_tab)}">'
+        f'<div class="gm-tablist" role="tablist" aria-label="Konsolvyer">'
+        f"{''.join(buttons)}</div>"
+        f"{''.join(bodies)}</div>"
+    )
+
+
 QUARTER_NAMES = ("Okt–Dec", "Jan–Mar", "Apr–Jun", "Jul–Sep")
 
 
@@ -168,7 +202,7 @@ def live_html_fragments(spel_id, state):
         "readiness": _readiness_html(state),
         "inbox": _inbox_html(spel_id, state.get("inbox") or [], state.get("fas"), state.get("test_mode")),
         "backlog": _backlog_html(state.get("backlog") or [], state.get("avslutat")),
-        "log": _log_html(state.get("log") or []),
+        "log": _log_section_html(state.get("history") or [], state.get("log") or []),
     }
 
 
@@ -220,14 +254,14 @@ def create_gm_console_html(spel_id, data):
 
     attention_html = _attention_lis(attention)
     attention_hidden = "" if attention else " hidden"
-    teams_html = _team_strip_html(spel_id, state["teams"], test_mode)
+    teams_html = _team_strip_html(spel_id, state["teams"], fas)
     inbox_html = _inbox_html(spel_id, state["inbox"], fas, test_mode)
     readiness_html = _readiness_html(state)
     start_hidden = "hidden" if timer_status == "running" else ""
     pause_hidden = "hidden" if timer_status != "running" else ""
     clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
-    log_html = _log_html(state["log"])
+    log_html = _log_section_html(state.get("history") or [], state["log"])
     llm_note = ""
     if fas in ("Diplomatifas", "Resultatfas"):
         llm_note = f'''
@@ -277,7 +311,6 @@ def create_gm_console_html(spel_id, data):
         f'{teams_html}'
         f'{_transfer_form_html(spel_id, state["teams"])}'
     )
-    hp_block = _fold_html("Lag och handlingspoäng", hp_body)
 
     if fas == "Orderfas":
         inbox_help = "Utkast syns här. Öppna för laget om de behöver skicka om."
@@ -289,39 +322,30 @@ def create_gm_console_html(spel_id, data):
         f'<p class="gm-section-help">{inbox_help}</p>'
         f'<div id="gm-inbox-root">{inbox_html}</div>'
     )
-    if fas == "Resultatfas":
-        inbox_block = _fold_html("Orderinkorg", inbox_inner)
-    else:
-        inbox_block = (
-            f'<h3 class="gm-section-title">Orderinkorg</h3>'
-            f'{inbox_inner}'
-        )
-
     backlog_body = (
         f'<p class="gm-section-help">Sätt HP per klick i kolumnen, sedan − / + på en roadmap-uppgift. '
         f'Egna aktiviteter (t.ex. CI/CD) ligger i orderinkorgen, inte här.</p>'
         f'<div id="gm-backlog-root">{backlog_html}</div>'
     )
     log_body = (
-        f'<p class="gm-section-help">Fas- och HP-ändringar i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>'
+        f'<p class="gm-section-help">Avklarade faser och GM-åtgärder i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>'
         f'<div id="gm-log-root">{log_html}</div>'
     )
+    tabs = _tab_shell_html(
+        "lag" if fas == "Resultatfas" else "inkorg",
+        {
+            "inkorg": f'<h3 class="gm-section-title">Orderinkorg</h3>{inbox_inner}',
+            "lag": f'<h3 class="gm-section-title">Lag och handlingspoäng</h3>{hp_body}',
+            "arbete": f'<h3 class="gm-section-title">Teamens arbete</h3>{backlog_body}',
+            "historik": f'<h3 class="gm-section-title">Händelselogg</h3>{log_body}',
+        },
+    )
     if fas == "Orderfas":
-        backlog_block = (
-            f'<h3 class="gm-section-title">Teamens arbete</h3>{backlog_body}'
-        )
-        log_block = (
-            f'<h3 class="gm-section-title">Händelselogg</h3>{log_body}'
-        )
-        job_block = f"{hp_block}{inbox_block}{backlog_block}{log_block}"
+        job_block = tabs
     elif fas == "Diplomatifas":
-        backlog_block = _fold_html("Teamens arbete", backlog_body)
-        log_block = _fold_html("Händelselogg", log_body)
-        job_block = f"{llm_note}{inbox_block}{hp_block}{backlog_block}{log_block}"
+        job_block = f"{llm_note}{tabs}"
     else:
-        backlog_block = _fold_html("Teamens arbete", backlog_body)
-        log_block = _fold_html("Händelselogg", log_body)
-        job_block = f"{result_note}{llm_note}{inbox_block}{hp_block}{backlog_block}{log_block}"
+        job_block = f"{result_note}{llm_note}{tabs}"
 
     test_checked = "checked" if test_mode else ""
     test_class = "is-on" if test_mode else ""
@@ -333,6 +357,7 @@ def create_gm_console_html(spel_id, data):
         "fas": fas,
         "runda": runda,
         "avslutat": avslutat,
+        "test_mode": bool(test_mode),
     }, ensure_ascii=False)
 
     return f'''
@@ -360,11 +385,9 @@ def create_gm_console_html(spel_id, data):
           <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
             <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
           </form>
-        </div>
-        <div class="gm-bar-tools">
-          <details class="gm-danger">
-            <summary>Mer</summary>
-            <div class="gm-mer-menu">
+          <details class="gm-menu">
+            <summary aria-haspopup="menu">Meny</summary>
+            <div class="gm-mer-menu" role="menu">
               <form method="post" action="/admin/{escape(spel_id)}/timer">
                 <button name="action" value="reset" class="secondary" {timer_disabled}
                   onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
@@ -373,10 +396,14 @@ def create_gm_console_html(spel_id, data):
                 <button name="action" value="prev_fas" class="secondary" {back_disabled}
                   onclick="return confirm('Gå tillbaka till föregående fas?');">Föregående fas</button>
               </form>
-              <label class="gm-test {test_class}">
-                <input type="checkbox" id="gm-test-mode" {test_checked} onchange="toggleGmTestMode(this.checked)">
-                Testläge
-              </label>
+              <form method="post" action="/admin/{escape(spel_id)}/test_mode" id="gm-test-form" class="gm-test-form">
+                <input type="hidden" name="enabled" id="gm-test-enabled" value="{"1" if test_mode else "0"}">
+                <label class="gm-test {test_class}">
+                  <input type="checkbox" id="gm-test-mode" {test_checked}
+                    onchange="this.form.querySelector('[name=enabled]').value=this.checked?'1':'0'; this.form.submit();">
+                  Testläge
+                </label>
+              </form>
               <a href="/admin/{escape(spel_id)}/poang">HP-tabell</a>
               <a href="/admin/{escape(spel_id)}/backlog">Backlog</a>
               <a href="/admin/{escape(spel_id)}/aktivitetskort" target="_blank">Aktivitetskort</a>
@@ -407,11 +434,11 @@ def create_gm_console_html(spel_id, data):
     '''
 
 
-def _team_strip_html(spel_id, teams, test_mode):
+def _team_strip_html(spel_id, teams, fas):
     if not teams:
         return '<p class="text-muted">Inga lag.</p>'
     cards = []
-    hidden = "" if test_mode else "hidden"
+    can_edit = fas in ("Orderfas", "Diplomatifas")
     for t in teams:
         support = "checked" if t["regeringsstod"] else ""
         remaining_class = "gm-hp-over" if t["remaining"] < 0 else ""
@@ -425,6 +452,12 @@ def _team_strip_html(spel_id, teams, test_mode):
             withdraw = (
                 f'<button type="button" class="secondary gm-mini" data-order-withdraw '
                 f'data-team="{escape(t["team"])}">Öppna för laget</button>'
+            )
+        edit_link = ""
+        if can_edit:
+            edit_link = (
+                f'<a class="gm-edit-order secondary gm-mini" '
+                f'href="/admin/{escape(spel_id)}/edit_order/{escape(t["team"])}">Redigera order</a>'
             )
         cards.append(f'''
         <div class="gm-team" data-team="{escape(t["team"])}">
@@ -457,7 +490,7 @@ def _team_strip_html(spel_id, teams, test_mode):
             </label>
           </form>
           {withdraw}
-          <a class="gm-edit-order {hidden} cheat-link" href="/admin/{escape(spel_id)}/edit_order/{escape(t["team"])}">Ange order</a>
+          {edit_link}
         </div>
         ''')
     return '<div class="gm-teams">' + "".join(cards) + "</div>"
@@ -483,10 +516,23 @@ def _transfer_form_html(spel_id, teams):
 
 
 def _inbox_html(spel_id, inbox, fas, test_mode):
+    hidden_fill = "" if test_mode else "hidden"
+    autofill = (
+        f'<form method="post" action="/admin/{escape(spel_id)}/auto_fill_orders" '
+        f'class="gm-autofill" {hidden_fill} '
+        f'''onsubmit="return confirm('Ersätt alla ordrar med testdata?');">'''
+        f'<button type="submit" class="warning">Auto-fyll testdata</button>'
+        f'</form>'
+    )
     if not inbox:
-        return '<p class="gm-empty">Inga ordrar ännu. Utkast dyker upp här när ett lag börjar skriva.</p>'
+        return (
+            f'<div class="gm-inbox-wrap">'
+            f'<p class="gm-empty">Inga ordrar ännu. Utkast dyker upp här när ett lag börjar skriva.</p>'
+            f'{autofill}</div>'
+        )
     can_edit = fas in ("Orderfas", "Diplomatifas")
     seen_withdraw = set()
+    seen_edit = set()
     rows = []
     for row in inbox:
         conflict = "gm-conflict" if row["conflict"] else ""
@@ -500,6 +546,12 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
                 f'data-aktivitet="{escape(row["aktivitet"])}" data-syfte="{escape(row["syfte"])}" '
                 f'data-hp="{row["hp"]}">Ändra</button>'
             )
+            if row["team"] not in seen_edit:
+                seen_edit.add(row["team"])
+                edit += (
+                    f'<a class="secondary gm-mini" '
+                    f'href="/admin/{escape(spel_id)}/edit_order/{escape(row["team"])}">Redigera order</a>'
+                )
             if (
                 row.get("status") in ("submitted", "changed")
                 and fas == "Orderfas"
@@ -535,7 +587,6 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
           </td>
         </tr>
         ''')
-    hidden_fill = "" if test_mode else "hidden"
     return f'''
     <div class="gm-inbox-wrap">
       <table class="gm-inbox">
@@ -548,10 +599,7 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
           {"".join(rows)}
         </tbody>
       </table>
-      <form method="post" action="/admin/{escape(spel_id)}/auto_fill_orders" class="gm-autofill {hidden_fill}"
-        onsubmit="return confirm('Ersätt alla ordrar med testdata?');">
-        <button type="submit" class="warning">Auto-fyll testdata</button>
-      </form>
+      {autofill}
     </div>
     '''
 
@@ -612,6 +660,43 @@ def _backlog_html(board, avslutat=False):
             f'{"".join(rows)}</section>'
         )
     return f'<div class="gm-backlog">{"".join(cards)}</div>'
+
+
+def _history_html(history):
+    if not history:
+        return ""
+    rounds = {}
+    order = []
+    for entry in history:
+        runda = entry.get("runda")
+        if runda not in rounds:
+            rounds[runda] = []
+            order.append(runda)
+        status = entry.get("status") or ""
+        if status == "pågående":
+            cls = "is-now"
+            label = "pågår"
+        else:
+            cls = "is-done"
+            label = "klar"
+        fas = entry.get("fas") or ""
+        rounds[runda].append(
+            f'<span class="gm-history-fas {cls}">{escape(fas)} '
+            f'<span class="gm-history-state">{label}</span></span>'
+        )
+    blocks = []
+    for runda in order:
+        blocks.append(
+            f'<div class="gm-history-round">'
+            f'<strong>Runda {escape(str(runda))}</strong>'
+            f'{"".join(rounds[runda])}'
+            f"</div>"
+        )
+    return f'<div class="gm-history">{"".join(blocks)}</div>'
+
+
+def _log_section_html(history, log):
+    return _history_html(history) + _log_html(log)
 
 
 def _log_html(log):

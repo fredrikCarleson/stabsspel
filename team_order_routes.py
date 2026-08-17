@@ -43,6 +43,31 @@ def generate_backlog_options():
     return '\n'.join(options)
 
 
+def backlog_choice_meta():
+    """Dropdown value → team, name and estimated HP for order-form prefill."""
+    meta = {}
+    for team_name, tasks in BACKLOG.items():
+        for task in tasks:
+            if "faser" in task:
+                for phase in task["faser"]:
+                    namn = f"{task['namn']} - {phase['namn']}"
+                    meta[f"{task['id']}_{phase['namn']}"] = {
+                        "team": team_name,
+                        "namn": namn,
+                        "hp": int(phase["estimaterade_hp"]),
+                        "syfte": f"Driva {namn} vidare i backlog",
+                    }
+            else:
+                namn = task["namn"]
+                meta[task["id"]] = {
+                    "team": team_name,
+                    "namn": namn,
+                    "hp": int(task["estimaterade_hp"]),
+                    "syfte": f"Driva {namn} vidare i backlog",
+                }
+    return meta
+
+
 @team_order_bp.route("/team/<spel_id>/<token>/enter_order")
 def team_enter_order(spel_id, token):
     """Team order entry page with authorization"""
@@ -101,13 +126,14 @@ def team_enter_order(spel_id, token):
                                          token=token,
                                          data=data,
                                          is_admin_edit=is_admin_edit,
-                                         show_gm_back=is_admin_session,
+                                         show_gm_back=is_admin_edit,
                                          remaining_time=remaining_time,
                                          team_max_hp=team_max_hp,
                                          existing_orders=team_orders,
                                          is_submitted=is_submitted,
                                          format_time=format_time,
                                          backlog_options=generate_backlog_options(),
+                                         backlog_meta=backlog_choice_meta(),
                                          team_overview_html=team_overview_html)
     
     response = make_response(html_content)
@@ -341,7 +367,19 @@ TEAM_ORDER_TEMPLATE = """
             font-weight: bold;
             font-size: 1.2rem;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 0;
+        }
+
+        .order-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 0 0 20px;
+            padding-bottom: 4px;
+            background: #f5f5f5;
         }
         
         .order-form {
@@ -616,7 +654,7 @@ TEAM_ORDER_TEMPLATE = """
             background: #e9ecef;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 0;
             text-align: center;
         }
         
@@ -636,6 +674,16 @@ TEAM_ORDER_TEMPLATE = """
         
         .hp-over {
             color: #dc3545;
+        }
+
+        .hp-summary.is-over {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+        }
+
+        .hp-input.is-over {
+            border-color: #dc3545;
+            background: #fff5f5;
         }
         
         /* Team Overview Styles */
@@ -806,17 +854,19 @@ TEAM_ORDER_TEMPLATE = """
             </div>
         </div>
         
+        <div class="order-sticky">
         <div class="timer" id="timer">
             ⏰ Tid kvar: <span id="timer-display">{{ "00:00" if remaining_time <= 0 else format_time(remaining_time) }}</span>
         </div>
         
-        <div class="hp-summary">
-            <h4>💪 Handlingspoäng</h4>
+        <div class="hp-summary" id="hp-summary">
+            <h4>Handlingspoäng</h4>
             <div class="hp-display">
-                Max: <span id="max-hp">{{ team_max_hp }}</span> | 
-                Använt: <span id="used-hp">0</span> | 
+                Max: <span id="max-hp">{{ team_max_hp }}</span> |
+                Använt: <span id="used-hp">0</span> |
                 Kvar: <span id="remaining-hp" class="hp-remaining">{{ team_max_hp }}</span>
             </div>
+        </div>
         </div>
         
         <div class="order-form">
@@ -878,6 +928,8 @@ TEAM_ORDER_TEMPLATE = """
         let activities = [];
         let autoSaveInterval;
         let timerInterval;
+        const BACKLOG_META = {{ backlog_meta | tojson }};
+        const TEAM_MAX_HP = {{ team_max_hp }};
         
         // Initialize form
         document.addEventListener('DOMContentLoaded', function() {
@@ -976,8 +1028,7 @@ TEAM_ORDER_TEMPLATE = """
                                     id="activity-text-${activity.id}"
                                     placeholder="Beskriv aktiviteten..."
                                     onchange="updateActivity(${activity.id}, 'aktivitet', this.value)"
-                                    style="display: ${activity.backlog_selected === 'custom' || !activity.backlog_selected ? 'block' : 'none'};"
-                                >${activity.aktivitet}</textarea>
+                                >${activity.aktivitet || ""}</textarea>
                             </div>
                             
                             <div class="form-group">
@@ -1045,9 +1096,9 @@ TEAM_ORDER_TEMPLATE = """
                             
                             <div class="form-group">
                                 <label>Handlingspoäng (HP)</label>
-                                <input type="number" min="0" max="{{ team_max_hp }}" 
+                                <input type="number" min="0" class="hp-input"
                                        value="${activity.hp}"
-                                       onchange="updateActivity(${activity.id}, 'hp', parseInt(this.value) || 0)">
+                                       oninput="updateActivity(${activity.id}, 'hp', parseInt(this.value, 10) || 0)">
                             </div>
                         </div>
                     </div>
@@ -1067,11 +1118,9 @@ TEAM_ORDER_TEMPLATE = """
                 });
                 
                 // Restore backlog selection state
-                if (activity.backlog_selected && activity.backlog_selected !== 'custom') {
-                    const select = document.getElementById(`backlog-select-${activity.id}`);
-                    if (select) {
-                        select.value = activity.backlog_selected;
-                    }
+                const select = document.getElementById(`backlog-select-${activity.id}`);
+                if (select && activity.backlog_selected) {
+                    select.value = activity.backlog_selected;
                 }
             });
         }
@@ -1087,31 +1136,30 @@ TEAM_ORDER_TEMPLATE = """
         function handleBacklogSelection(id, value) {
             const activity = activities.find(a => a.id === id);
             if (!activity) return;
-            
-            const textarea = document.getElementById(`activity-text-${id}`);
-            const select = document.getElementById(`backlog-select-${id}`);
-            
-            if (value === 'custom') {
-                // Show textarea for custom input
-                textarea.style.display = 'block';
-                activity.backlog_selected = 'custom';
+
+            if (value === 'custom' || value === '') {
+                activity.backlog_selected = value === 'custom' ? 'custom' : '';
                 activity.backlog_item = '';
-            } else if (value === '') {
-                // No selection
-                textarea.style.display = 'none';
-                textarea.value = '';
-                activity.aktivitet = '';
-                activity.backlog_selected = '';
-                activity.backlog_item = '';
+                if (value === '') {
+                    activity.aktivitet = '';
+                    activity.syfte = '';
+                    activity.hp = 0;
+                    activity.paverkar = [];
+                }
             } else {
-                // Backlog item selected
-                textarea.style.display = 'none';
-                const selectedOption = select.options[select.selectedIndex];
-                const backlogText = selectedOption.text;
-                activity.aktivitet = backlogText;
+                const meta = BACKLOG_META[value];
+                if (!meta) return;
+                activity.aktivitet = meta.namn;
+                activity.syfte = meta.syfte;
+                activity.hp = meta.hp;
+                activity.typ = 'bygga';
+                activity.malomrade = 'eget';
+                activity.paverkar = [meta.team];
                 activity.backlog_selected = value;
                 activity.backlog_item = value;
             }
+            renderActivities();
+            updateHPSummary();
         }
         
         function updatePaverkar(id, team, checked) {
@@ -1126,19 +1174,21 @@ TEAM_ORDER_TEMPLATE = """
         }
         
         function updateHPSummary() {
-            const maxHP = {{ team_max_hp }};
-            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp) || 0), 0);
-            const remainingHP = maxHP - usedHP;
-            
-            document.getElementById('used-hp').textContent = usedHP;
-            document.getElementById('remaining-hp').textContent = remainingHP;
-            
-            const remainingElement = document.getElementById('remaining-hp');
-            if (remainingHP < 0) {
-                remainingElement.className = 'hp-over';
-            } else {
-                remainingElement.className = 'hp-remaining';
-            }
+            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
+            const remainingHP = TEAM_MAX_HP - usedHP;
+            const remainingElement = document.getElementById("remaining-hp");
+            const summary = document.getElementById("hp-summary");
+            document.getElementById("used-hp").textContent = usedHP;
+            remainingElement.textContent = remainingHP;
+            remainingElement.className = remainingHP < 0 ? "hp-over" : "hp-remaining";
+            if (summary) summary.classList.toggle("is-over", remainingHP < 0);
+            document.querySelectorAll(".hp-input").forEach(function (el) {
+                el.classList.toggle("is-over", remainingHP < 0);
+            });
+            const submitBtn = document.getElementById("submitBtn");
+            {% if not is_submitted %}
+            if (submitBtn) submitBtn.disabled = remainingHP < 0;
+            {% endif %}
         }
         
         function startTimer() {
@@ -1192,12 +1242,9 @@ TEAM_ORDER_TEMPLATE = """
         // Auto-save functionality removed
         
         function saveOrder(isFinal = false, retryCount = 0) {
-            // Validate HP before saving
-            const maxHP = {{ team_max_hp }};
-            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp) || 0), 0);
-            
-            if (usedHP > maxHP) {
-                showStatus(`Du har använt ${usedHP} HP men har bara ${maxHP} HP tillgängliga!`, 'error');
+            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
+            if (usedHP > TEAM_MAX_HP) {
+                showStatus(`Du har använt ${usedHP} HP men har bara ${TEAM_MAX_HP} HP tillgängliga!`, 'error');
                 return;
             }
             
@@ -1258,11 +1305,10 @@ TEAM_ORDER_TEMPLATE = """
         }
         
         function submitOrder(isAutoSubmit = false) {
-            const maxHP = {{ team_max_hp }};
-            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp) || 0), 0);
+            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
             
-            if (usedHP > maxHP) {
-                showStatus(`Du har använt ${usedHP} HP men har bara ${maxHP} HP tillgängliga!`, 'error');
+            if (usedHP > TEAM_MAX_HP) {
+                showStatus(`Du har använt ${usedHP} HP men har bara ${TEAM_MAX_HP} HP tillgängliga!`, 'error');
                 return;
             }
             
@@ -1271,9 +1317,12 @@ TEAM_ORDER_TEMPLATE = """
                 return;
             }
             
-            // Only show confirmation dialog if not auto-submitting
             if (!isAutoSubmit) {
-                if (!confirm('Skicka den slutgiltiga ordern nu? Efter det kan ni inte ändra den själva.')) {
+                const remainingHP = TEAM_MAX_HP - usedHP;
+                const leftover = remainingHP > 0
+                    ? `Ni har ${remainingHP} HP kvar. `
+                    : "";
+                if (!confirm(leftover + "Skicka den slutgiltiga ordern nu? Efter det kan ni inte ändra den själva.")) {
                     return;
                 }
             }

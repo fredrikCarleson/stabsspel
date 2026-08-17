@@ -23,6 +23,7 @@
   var lastPaint = "";
   var writeGen = 0;
   var editing = false;
+  var testModePending = false;
 
   function readState() {
     var el = document.getElementById("gm-state");
@@ -98,12 +99,87 @@
     el.textContent = message;
   }
 
-  function syncTestModeDom() {
+  function applyTestModeUi(on) {
     var box = document.getElementById("gm-test-mode");
-    var on = box ? box.checked : false;
-    document.querySelectorAll(".cheat-link, .gm-autofill").forEach(function (el) {
+    if (box) box.checked = !!on;
+    var hidden = document.getElementById("gm-test-enabled");
+    if (hidden) hidden.value = on ? "1" : "0";
+    var label = document.querySelector(".gm-test");
+    if (label) label.classList.toggle("is-on", !!on);
+    document.querySelectorAll(".gm-autofill").forEach(function (el) {
       if (on) el.removeAttribute("hidden");
       else el.setAttribute("hidden", "hidden");
+    });
+  }
+
+  function bindTestMode() {
+    var form = document.getElementById("gm-test-form");
+    var box = document.getElementById("gm-test-mode");
+    if (!form || !box) return;
+    box.removeAttribute("onchange");
+    box.addEventListener("change", function () {
+      var on = box.checked;
+      var spelId = (live || readState() || {}).spel_id;
+      var hidden = document.getElementById("gm-test-enabled");
+      if (hidden) hidden.value = on ? "1" : "0";
+      if (!spelId) {
+        form.submit();
+        return;
+      }
+      testModePending = true;
+      applyTestModeUi(on);
+      fetch("/admin/" + spelId + "/test_mode", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ enabled: !!on }),
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error("test_mode " + res.status);
+          return res.json();
+        })
+        .then(function (payload) {
+          testModePending = false;
+          if (!payload || !payload.success) throw new Error("test_mode");
+          applyTestModeUi(!!payload.test_mode);
+          if (live) live.test_mode = !!payload.test_mode;
+        })
+        .catch(function () {
+          testModePending = false;
+          form.submit();
+        });
+    });
+  }
+
+  function closeOpenMenus(event) {
+    document.querySelectorAll("details.gm-menu[open]").forEach(function (menu) {
+      if (!menu.contains(event.target)) menu.removeAttribute("open");
+    });
+  }
+
+  function showConsoleTab(root, name) {
+    if (!root || !name) return;
+    root.querySelectorAll("[role=tab]").forEach(function (tab) {
+      var on = tab.getAttribute("data-tab") === name;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    root.querySelectorAll("[role=tabpanel]").forEach(function (panel) {
+      var on = panel.id === "gm-panel-" + name;
+      if (on) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "hidden");
+    });
+  }
+
+  function bindTabs() {
+    var root = document.querySelector(".gm-tabs");
+    if (!root) return;
+    root.addEventListener("click", function (event) {
+      var tab = event.target.closest("[role=tab]");
+      if (!tab || !root.contains(tab)) return;
+      showConsoleTab(root, tab.getAttribute("data-tab"));
     });
   }
 
@@ -216,6 +292,7 @@
       log: state.log,
       undo: state.undo_available,
       conflicts: state.conflict_count,
+      test_mode: !!state.test_mode,
     });
     if (sig === lastPaint) return;
     lastPaint = sig;
@@ -241,7 +318,10 @@
     var undo = document.querySelector("[data-gm-undo]");
     if (undo) undo.disabled = !state.undo_available || !!state.avslutat;
 
-    syncTestModeDom();
+    if (!testModePending) {
+      live.test_mode = !!state.test_mode;
+      applyTestModeUi(!!state.test_mode);
+    }
   }
 
   function poll() {
@@ -394,17 +474,11 @@
   }
 
   window.toggleGmTestMode = function (on) {
-    var spelId = (live || readState() || {}).spel_id;
-    if (!spelId) return;
-    fetch("/admin/" + spelId + "/test_mode", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: !!on }),
-    }).then(function () {
-      var label = document.querySelector(".gm-test");
-      if (label) label.classList.toggle("is-on", !!on);
-      syncTestModeDom();
-    });
+    var box = document.getElementById("gm-test-mode");
+    if (box) {
+      box.checked = !!on;
+      box.dispatchEvent(new Event("change"));
+    }
   };
 
   document.addEventListener("keydown", function (event) {
@@ -517,6 +591,9 @@
 
   live = readState();
   if (!live) return;
+  bindTestMode();
+  bindTabs();
+  document.addEventListener("click", closeOpenMenus);
   tickClock();
   setInterval(poll, POLL_MS);
   document.addEventListener("visibilitychange", function () {

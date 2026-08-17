@@ -693,6 +693,7 @@ def build_live_state(data):
         "conflict_count": len({row["conflict_key"] for row in conflicts}),
         "missing_teams": missing,
         "log": log,
+        "history": list(data.get("fashistorik") or []),
         "undo_available": bool(undo_stack),
         "undo_label": (undo_stack[-1].get("action") if undo_stack else None),
         "can_go_back": previous is not None,

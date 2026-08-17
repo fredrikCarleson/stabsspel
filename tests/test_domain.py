@@ -524,6 +524,7 @@ class TestPublicProjector(unittest.TestCase):
         self.assertNotIn("hemlig justering", dumped)
         self.assertNotIn("inbox", public)
         self.assertNotIn("log", public)
+        self.assertNotIn("history", public)
         self.assertNotIn("test_mode", public)
         self.assertIn("progress", public)
         alfa_progress = next(team for team in public["progress"] if team["team"] == "Alfa")

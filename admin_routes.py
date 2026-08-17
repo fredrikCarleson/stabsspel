@@ -74,6 +74,7 @@ def require_admin_session_for_game_routes():
         or request.path.endswith("/checklist_status")
         or request.path.endswith("/live")
         or request.path.endswith("/order_live")
+        or request.path.endswith("/test_mode")
     )
     if wants_json:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
@@ -1355,47 +1356,11 @@ def admin_panel(spel_id):
 </body>
 </html>'''
     
-    # Beräkna timer-värden med centraliserad funktion
-    remaining = get_phase_timer(data)
-    
-    # Hämta spelstatus
-    avslutat = data.get("avslutat", False)
     runda = data.get("runda", 1)
-    fas = data.get("fas", "Orderfas")
-    timer_status = data.get("timer_status", "stopped")
-    
-    # Skapa historik
-    historik = data.get("fashistorik", [])
-    rundor = {}
-    for entry in historik:
-        rundnr = entry["runda"]
-        if rundnr not in rundor:
-            rundor[rundnr] = []
-        rundor[rundnr].append(entry)
-    
-    historik_html = create_historik_html(rundor)
-    
-    # Skapa visuell fas-progress för aktuell runda
-    phase_progress_html = create_phase_progress_html(runda, fas)
-    
-    # Skapa kvartalsvisualisering
-    quarters = [
-        {"name": "Okt-Dec", "active": runda >= 1},
-        {"name": "Jan-Mar", "active": runda >= 2},
-        {"name": "Apr-Jun", "active": runda >= 3},
-        {"name": "Jul-Sep", "active": runda >= 4}
-    ]
-    
-    quarter_bar_html = create_quarter_bar_html(quarters, runda)
-    
-    # Skapa klickbara lagnamn
     lag_html = ', '.join([
         f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
     ])
-    
     console_html = create_gm_console_html(spel_id, data)
-    
-    # Returnera komplett HTML med förbättrad layout
     html_content = f'''
         <!DOCTYPE html>
         <html lang="sv">
@@ -1406,17 +1371,13 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=15">
+            <link rel="stylesheet" href="/static/app.css?v=18">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
-                // Force cache refresh for JavaScript
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
                     window.location.reload();
                 }}
-                
-                // Prevent caching of dynamic content
                 window.addEventListener('load', function() {{
-                    // Clear any cached data
                     if ('caches' in window) {{
                         caches.keys().then(function(names) {{
                             for (let name of names) {{
@@ -1429,188 +1390,17 @@ def admin_panel(spel_id):
         </head>
         <body>
             <div class="container">
-            <!-- Header Section -->
             <div class="admin-panel-header">
                 <h1>Spelledarpanel</h1>
                 <p class="gm-meta">{data["datum"]} · {data["plats"]} · {data["antal_spelare"]} spelare · {lag_html}</p>
             </div>
-            
             {create_declaration_warning(runda)}
-            
             {console_html}
-            
-            {quarter_bar_html}
-            
-            {create_team_overview(data)}
-            
-            {historik_html}
         </div>
-        
-        <!-- Include admin JavaScript -->
         {create_script_references()}
-        
-        <style>
-        /* Team Overview Grid Layout */
-        .team-overview-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }}
-        
-        .team-overview-card {{
-            background: white;
-            border: 1px solid #e8e9ea;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }}
-        
-        .team-overview-card:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-        }}
-        
-        .team-overview-header {{
-            color: white;
-            padding: 16px 20px;
-            position: relative;
-        }}
-        
-        .team-overview-title {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }}
-        
-        .team-overview-title h4 {{
-            margin: 0;
-            font-size: 1.1em;
-            font-weight: 600;
-        }}
-        
-        .team-overview-progress {{
-            text-align: right;
-        }}
-        
-        .team-progress-percent {{
-            display: block;
-            font-size: 1.2em;
-            font-weight: bold;
-        }}
-        
-        .team-progress-hp {{
-            display: block;
-            font-size: 0.9em;
-            opacity: 0.9;
-        }}
-        
-        .team-overview-bar {{
-            height: 6px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 3px;
-            overflow: hidden;
-        }}
-        
-        .team-progress-fill {{
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.3s ease;
-        }}
-        
-        .team-overview-content {{
-            padding: 16px 20px;
-        }}
-        
-        .team-task-item {{
-            margin-bottom: 12px;
-        }}
-        
-        .team-task-item:last-child {{
-            margin-bottom: 0;
-        }}
-        
-        .team-task-info {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }}
-        
-        .team-task-name {{
-            font-size: 0.9em;
-            color: #2c3e50;
-            font-weight: 500;
-        }}
-        
-        .team-task-hp {{
-            font-size: 0.8em;
-            color: #6c757d;
-        }}
-        
-        .team-task-bar {{
-            height: 4px;
-            background: #e9ecef;
-            border-radius: 2px;
-            overflow: hidden;
-        }}
-        
-        .team-task-fill {{
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s ease;
-        }}
-        
-        .team-task-more {{
-            text-align: center;
-            padding: 8px 0;
-            border-top: 1px solid #e9ecef;
-            margin-top: 8px;
-        }}
-        
-        .team-overview-empty {{
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 40px 20px;
-            color: #6c757d;
-        }}
-        
-        /* Reduce overall spacing in admin panel */
-        .admin-content-card {{
-            margin-bottom: 16px;
-        }}
-        
-        .card {{
-            margin-bottom: 16px;
-        }}
-        
-        .section-header {{
-            margin-bottom: 16px;
-        }}
-        
-        .section-header h3 {{
-            margin-bottom: 8px;
-        }}
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {{
-            .team-overview-grid {{
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }}
-            
-            .team-overview-card {{
-                margin-bottom: 0;
-            }}
-        }}
-        </style>
         </body>
         </html>
     '''
-    
-    # Skapa response med anti-caching headers
     response = make_response(html_content)
     return add_no_cache_headers(response)
 
@@ -1868,15 +1658,29 @@ def admin_hp_live(spel_id):
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
 
+def _request_enabled_flag():
+    """Read an on/off flag from JSON or a form checkbox POST."""
+    payload = request.get_json(silent=True)
+    if isinstance(payload, dict) and "enabled" in payload:
+        return bool(payload.get("enabled"))
+    values = request.form.getlist("enabled")
+    if not values:
+        return False
+    return values[-1] in ("1", "on", "true", "True")
+
+
 @admin_bp.route("/admin/<spel_id>/test_mode", methods=["POST"])
 def admin_test_mode(spel_id):
     data = load_game_data(spel_id)
     if not data:
-        return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
-    payload = request.get_json(silent=True) or {}
-    data["test_mode"] = bool(payload.get("enabled"))
+        if request.is_json:
+            return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
+        return "Spelet hittades inte.", 404
+    data["test_mode"] = _request_enabled_flag()
     save_game_data(spel_id, data)
-    return jsonify({"success": True, "test_mode": data["test_mode"]})
+    if request.is_json:
+        return jsonify({"success": True, "test_mode": data["test_mode"]})
+    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
 
 @admin_bp.route("/admin/<spel_id>/live")
@@ -2477,10 +2281,14 @@ def auto_fill_orders(spel_id):
         if not data:
             return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
         if not data.get("test_mode"):
-            error = "Auto-fyll kräver testläge"
+            error = "Auto-fyll kräver testläge. Sätt på Testläge under Meny."
             if request.is_json:
                 return jsonify({"success": False, "error": error}), 403
-            return error, 403
+            return (
+                "<!doctype html><meta charset=utf-8>"
+                f"<p>{error}</p>"
+                f'<p><a href="/admin/{spel_id}">Tillbaka till spelledarpanelen</a></p>'
+            ), 403
         push_undo(data, "Auto-fyll testdata")
         
         orders_key = f"orders_round_{data['runda']}"

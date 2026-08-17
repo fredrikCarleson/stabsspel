@@ -239,7 +239,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `/admin/<id>/poang` | Full HP table (fallback; strip is on the console) |
 | `/admin/download_game/<id>`, `/admin/upload_game` | JSON backup |
 
-**Leftover chrome** (old checklists, extra timer widgets, team-overview cards under the console). They still render on the panel; the GM can ignore them. `create_timer_controls` and phase checklists in this file are the previous admin shell.
+**Leftover chrome** (old checklists and extra timer widgets). They are no longer injected under the live console. `create_timer_controls` and phase checklists in this file are unused previous-admin-shell builders; do not add new GM workflows there.
 
 `admin_helpers.py` — no-cache headers, script tags (`admin.js`, `gm-console.js`), compact header, old timer controls, time-adjustment modal, **delete-game password modal**.
 
@@ -331,7 +331,7 @@ Testläge (default off) reveals auto-fill and “Ange order” (player form). Ke
 
 The **live surface** is the sticky bar + attention + HP strip + inbox + backlog + log in `gm_console_ui.py`.
 
-Below that, `admin_routes.admin_panel` still injects the quarter bar, `create_team_overview`, and phase history. Those are leftovers from the old admin shell. They are not required to run the room.
+`admin_routes.admin_panel` no longer injects the old quarter bar, team-overview cards, or phase-history cards under the console. Named quarters live in Resultatfas. Phase history lives in **Händelselogg**. Unused checklist/timer HTML builders may still exist in `admin_routes.py`; do not grow them.
 
 Keyboard on the console: **Space** pause/resume, **N** next phase (existing confirm).
 

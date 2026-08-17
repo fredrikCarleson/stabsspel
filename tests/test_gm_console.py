@@ -195,10 +195,29 @@ class TestGmConsoleHtml(unittest.TestCase):
         from team_order_routes import TEAM_ORDER_TEMPLATE
 
         self.assertIn("Tillbaka till spelledarpanel", TEAM_ORDER_TEMPLATE)
-        self.assertIn("show_gm_back", TEAM_ORDER_TEMPLATE)
+        self.assertIn("{% if show_gm_back %}", TEAM_ORDER_TEMPLATE)
+        self.assertIn("{% if is_admin_edit %}", TEAM_ORDER_TEMPLATE)
         self.assertIn("Skicka slutgiltig order", TEAM_ORDER_TEMPLATE)
         self.assertIn("Spara utkast", TEAM_ORDER_TEMPLATE)
         self.assertNotIn("Uppdatera Order", TEAM_ORDER_TEMPLATE)
+
+    def test_backlog_choice_meta_matches_dropdown(self):
+        from team_order_routes import TEAM_ORDER_TEMPLATE, backlog_choice_meta, generate_backlog_options
+
+        meta = backlog_choice_meta()
+        self.assertEqual(meta["alfa_1"]["team"], "Alfa")
+        self.assertEqual(meta["alfa_1"]["hp"], 15)
+        self.assertEqual(meta["alfa_1"]["namn"], "Inloggning val")
+        self.assertEqual(meta["alfa_1"]["syfte"], "Driva Inloggning val vidare i backlog")
+        self.assertEqual(meta["bravo_1_Krav"]["team"], "Bravo")
+        self.assertEqual(meta["bravo_1_Krav"]["hp"], 10)
+        html = generate_backlog_options()
+        self.assertIn('value="alfa_1"', html)
+        self.assertIn('value="bravo_1_Krav"', html)
+        self.assertIn("BACKLOG_META", TEAM_ORDER_TEMPLATE)
+        self.assertIn("order-sticky", TEAM_ORDER_TEMPLATE)
+        self.assertIn("Ni har ${remainingHP} HP kvar", TEAM_ORDER_TEMPLATE)
+        self.assertIn("handleBacklogSelection", TEAM_ORDER_TEMPLATE)
 
     def test_projector_shows_public_hp_without_gm_controls(self):
         from gm_console_ui import create_projector_html
@@ -233,9 +252,11 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("gm-quarter is-current", html)
         self.assertIn("Peka på kvartalen här", html)
         self.assertNotIn("under den här panelen", html)
-        self.assertIn("gm-fold", html)
+        self.assertIn("gm-tabs", html)
+        self.assertIn('aria-selected="true">Lag</button>', html)
+        self.assertIn('id="gm-panel-inkorg" aria-labelledby="gm-tab-inkorg" hidden', html)
         self.assertIn("Starta nästa runda", html)
-        self.assertLess(html.find("Resultatfas — körschema"), html.find("Orderinkorg"))
+        self.assertLess(html.find("Resultatfas — körschema"), html.find("gm-tabs"))
         self.assertLess(html.find("Orderinkorg"), html.find("Lag och handlingspoäng"))
 
         data["runda"] = 4
@@ -248,6 +269,27 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Spelet är slut", html)
         self.assertNotIn("Resultatfas — körschema", html)
 
+    def test_console_shows_phase_history_not_leftover_chrome(self):
+        from gm_console_ui import create_gm_console_html, live_html_fragments
+        from gm_console import apply_next_phase, build_live_state
+
+        data = sample_game()
+        html = create_gm_console_html("g1", data)
+        self.assertIn("gm-history", html)
+        self.assertIn("pågår", html)
+        self.assertNotIn("KVARTALSFÖRLOPP", html)
+        self.assertNotIn("Team Översikt", html)
+        self.assertNotIn("Spelhistorik", html)
+        fragments = live_html_fragments("g1", build_live_state(data))
+        self.assertIn("gm-history", fragments["log"])
+        self.assertIn("Orderfas", fragments["log"])
+
+        apply_next_phase(data)
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Diplomatifas", html)
+        self.assertIn("klar", html)
+        self.assertIn("pågår", html)
+
     def test_orderfas_readiness_board(self):
         from gm_console_ui import attention_items, create_gm_console_html, live_html_fragments
         from gm_console import build_live_state
@@ -257,11 +299,23 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn('id="gm-readiness-root"', html)
         self.assertIn("gm-chip", html)
         self.assertIn("Saknas", html)
-        self.assertIn("gm-fold", html)
+        self.assertIn("gm-tabs", html)
+        self.assertIn('data-tab="inkorg"', html)
+        self.assertIn("Inkorg", html)
+        self.assertIn("Arbete", html)
+        self.assertIn("Historik", html)
+        self.assertIn('id="gm-tab-inkorg"', html)
+        self.assertIn('aria-selected="true">Inkorg</button>', html)
         self.assertIn("gm-mer-menu", html)
+        self.assertIn("gm-menu", html)
+        self.assertIn(">Meny</summary>", html)
         self.assertIn("Nollställ timer", html)
         self.assertIn("Föregående fas", html)
         self.assertIn("Testläge", html)
+        self.assertIn("Redigera order", html)
+        self.assertNotIn("Ange order", html)
+        self.assertIn('id="gm-test-form"', html)
+        self.assertIn('class="gm-autofill" hidden', html)
         self.assertIn('id="gm-attention" hidden', html)
         self.assertIn('value="next_fas" class="primary"', html)
         self.assertIn('value="start" class="success"', html)
@@ -276,7 +330,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         data["fas"] = "Diplomatifas"
         dip = create_gm_console_html("g1", data)
         self.assertNotIn("gm-chip", dip)
-        self.assertIn("gm-fold", dip)
+        self.assertIn("gm-tabs", dip)
         items = attention_items(build_live_state(data))
         self.assertTrue(any("utan inskickad order" in item for item in items))
 
@@ -317,7 +371,10 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Kopiera ordrar till LLM", html)
         self.assertIn("Nästa: Resultatfas", html)
         self.assertIn("Orderinkorg", html)
-        self.assertIn("gm-fold", html)
+        self.assertIn("gm-tabs", html)
+        self.assertIn('id="gm-tab-inkorg"', html)
+        self.assertIn('aria-selected="true">Inkorg</button>', html)
+        self.assertLess(html.find("Kopiera ordrar till LLM"), html.find("gm-tabs"))
         self.assertLess(html.find("Kopiera ordrar till LLM"), html.find("Orderinkorg"))
         self.assertLess(html.find("Orderinkorg"), html.find("Lag och handlingspoäng"))
         self.assertLess(html.find("Lag och handlingspoäng"), html.find("Teamens arbete"))
@@ -355,9 +412,56 @@ class TestGmConsoleHtml(unittest.TestCase):
             }
         }
         html = create_gm_console_html("g1", data)
-        self.assertIn("gm-conflict", html)
         self.assertIn("Konflikt", html)
         self.assertIn("DDOS", html)
+
+    def test_gm_can_edit_orders_without_test_mode(self):
+        from gm_console_ui import create_gm_console_html, live_html_fragments
+        from gm_console import build_live_state
+
+        data = sample_game()
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Redigera order", html)
+        self.assertNotIn("Ange order", html)
+        self.assertIn('class="gm-autofill" hidden', html)
+        self.assertNotIn("cheat-link", html)
+
+        data["test_mode"] = True
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Redigera order", html)
+        self.assertNotIn('class="gm-autofill" hidden', html)
+        self.assertIn("Auto-fyll testdata", html)
+
+        data["fas"] = "Diplomatifas"
+        data["test_mode"] = False
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [{
+                            "aktivitet": "API",
+                            "syfte": "snabbare",
+                            "hp": 8,
+                            "typ": "bygga",
+                            "paverkar": ["STT"],
+                        }]
+                    },
+                }
+            }
+        }
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Redigera order", html)
+        self.assertIn("Ändra", html)
+        fragments = live_html_fragments("g1", build_live_state(data))
+        self.assertIn("Redigera order", fragments["inbox"])
+        self.assertIn("Ändra", fragments["inbox"])
+        self.assertIn('class="gm-autofill" hidden', fragments["inbox"])
+
+        data["fas"] = "Resultatfas"
+        html = create_gm_console_html("g1", data)
+        self.assertNotIn("Redigera order", html)
 
 
 if __name__ == "__main__":

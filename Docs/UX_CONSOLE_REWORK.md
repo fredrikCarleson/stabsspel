@@ -20,8 +20,8 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 | Projector audio | **Done** | Room warnings at 5 min, 1 min, repeating alarm at 30 s. |
 | 3. Diplomatifas job | **Done** | Inbox + conflicts + LLM copy first. HP / backlog / log folded. |
 | Resultatfas job | **Done** | Körschema first, in-console quarter strip, HP / inbox / backlog / log folded. |
-| 2. Tab shell | **Not done** | Sticky bar + four always-available views: Inkorg, Lag, Arbete, Historik. Changing phase lands on the phase job, not the last tab. |
-| 4. One console | **Not done** | Fold leftover **Kvartalsförlopp / Team översikt / Spelhistorik** (under the console in `admin_routes.py`) into Arbete / Historik / Resultatfas. Do not add new workflows to that leftover chrome. |
+| 2. Tab shell | **Done** | Sticky bar + four always-available views: Inkorg, Lag, Arbete, Historik. Changing phase lands on the phase job (Order/Diplo → Inkorg, Resultatfas → Lag with körschema above). Clock never lives in a tab. |
+| 4. One console | **Done** | Leftover **Kvartalsförlopp / Team översikt / Spelhistorik** no longer render under the console. Quarters stay in Resultatfas. Phase history sits in **Händelselogg**. Teamens arbete remains the backlog. |
 | Background images | **Deferred** | Assets in `static/backgrounds/`. Do not put `bg-sverige.png` under controls. `bg-stabsrum.png` only as dimmed atmosphere; banners as marks, not 16:9 fills. |
 
 ## What shipped (so a new session does not redo it)
@@ -36,8 +36,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 ### Orderfas (`gm_console_ui.py`)
 
-- Sticky bar: clock, **Starta** XOR **Pausa**, ±1 min, Spelarskärm, **Nästa** as `primary` (not a second green), **Ångra**
-- Under **Mer**: Nollställ timer, Föregående fas, Testläge, exports, reset
+- Sticky bar: clock, **Starta** XOR **Pausa**, ±1 min, Spelarskärm, **Nästa** as `primary` (not a second green), **Ångra**, **Meny** (button-styled overflow: Nollställ, Föregående fas, Testläge, exports, reset)
 - Readiness chips: Saknas / Utkast / Inne + HP. Completeness notes (saknar HP, inte låst)
 - Yellow **Kräver uppmärksamhet** hidden unless there is a real exception (not a repeat of the missing-team list)
 - **Lag och handlingspoäng** collapsed in `<details class="gm-fold">`
@@ -64,11 +63,30 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Browsers often need **one click** on the projector window (`Klicka för ljudvarningar`)
 - Projector still has no GM controls, inbox, log, or Testläge
 
+### Testläge, order edit, Meny (2026-08-17)
+
+- **Testläge** is saved on the server (form POST + JSON). The checkbox is no longer a client-only lie; Auto-fyll testdata stays behind Testläge.
+- **Redigera order** is always available in Orderfas and Diplomatifas (team cards + inbox). It opens the team form so the GM can revise before LLM. **Ändra** remains the inline HP/text edit.
+- Overflow control is a button-styled **Meny** next to Nästa/Ångra, not a pale triangle under the round label.
+
+### One console (slice 4)
+
+- The spelledarpanel is header + declaration warning + live console. No KVARTALSFÖRLOPP / Team översikt / Spelhistorik under it.
+- Resultatfas still has the named quarter strip in the körschema.
+- **Händelselogg** starts with a compact phase timeline (runda + klar/pågår), then GM actions.
+- `create_team_overview` still exists for the team order form. Old checklist/timer HTML builders in `admin_routes.py` are unused on the panel.
+
+### Tab shell (slice 2)
+
+- Under the sticky clock: **Inkorg**, **Lag**, **Arbete**, **Historik**. No new URLs.
+- Orderfas and Diplomatifas open on **Inkorg**. Resultatfas keeps the körschema above the tabs and opens **Lag**.
+- Readiness chips, attention and LLM copy stay outside the tabs.
+- Phase change reloads the console, so the last tab is not kept.
+
 ## Still to do (priority)
 
-1. **Tab shell (slice 2)** — only if unfolding `<details>` is not enough. Four tabs across all phases; clock never lives in a tab. No new URLs, no SPA.
-2. **Retire leftover chrome (slice 4)** — `Kvartalsförlopp`, `Team översikt`, `Spelhistorik` below the console in `admin_routes.py` duplicate live data. Move or delete; do not grow them. Resultatfas no longer depends on that quarter bar.
-3. **Backgrounds** — only after the operational layout is stable, and only as chrome (not under live numbers).
+1. **Backgrounds** — only after the operational layout is stable, and only as chrome (not under live numbers).
+2. Optional later: delete unused checklist / `create_timer_html` builders in `admin_routes.py`.
 
 ## Explicit non-goals
 
@@ -83,9 +101,8 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Tabs | `gm_console_ui.py`, `static/gm-console.js`, `static/app.css` — keep poller ids (`gm-clock`, `gm-inbox-root`, `gm-backlog-root`, `gm-log-root`, `gm-attention`, `gm-readiness-root`) |
-| Leftover chrome | `admin_routes.py` (quarter bar / historik injected **under** `create_gm_console_html`) |
-| Cache-bust | Console CSS is `app.css?v=15` (as of Resultatfas). Bump when CSS/JS changes. |
+| Backgrounds | `static/app.css`, `gm_console_ui.py` / `app.py` as atmosphere only |
+| Cache-bust | Console CSS is `app.css?v=18`, JS `gm-console.js?v=8`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 
