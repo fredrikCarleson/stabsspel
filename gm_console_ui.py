@@ -17,6 +17,17 @@ def _fmt_time(seconds):
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 
+CHIP_LABELS = {
+    "empty": "Saknas",
+    "draft": "Utkast",
+    "submitted": "Inne",
+    "changed": "Ändrad",
+}
+
+GM_CLOCK_WARN_S = 300
+GM_CLOCK_DANGER_S = 60
+
+
 def _status_class(status):
     return {
         "empty": "gm-status-empty",
@@ -26,20 +37,124 @@ def _status_class(status):
     }.get(status, "")
 
 
+def _clock_warn_class(remaining):
+    remaining = int(remaining or 0)
+    if remaining <= GM_CLOCK_DANGER_S:
+        return " is-danger"
+    if remaining <= GM_CLOCK_WARN_S:
+        return " is-warning"
+    return ""
+
+
 def attention_items(state):
     items = []
     fas = state.get("fas")
     missing = state.get("missing_teams") or []
-    if missing and fas in ("Orderfas", "Diplomatifas"):
+    # Orderfas shows missing teams on the readiness chips; do not repeat them here.
+    if missing and fas == "Diplomatifas":
         items.append(f"{len(missing)} lag utan inskickad order: {', '.join(missing)}")
     if state.get("conflict_count"):
         items.append(f"{state['conflict_count']} mål med ordrar från flera lag")
     over = [t for t in state.get("teams") or [] if t.get("remaining", 0) < 0]
     if over:
         items.append("HP över budget: " + ", ".join(t["team"] for t in over))
-    if not items:
-        items.append("Inget som kräver beslut just nu.")
     return items
+
+
+def _chip_issue(team, inbox):
+    status = team.get("status")
+    rows = [row for row in inbox if row.get("team") == team.get("team")]
+    if status == "draft":
+        return "inte låst"
+    if status not in ("submitted", "changed"):
+        return ""
+    if not rows:
+        return "inskickad utan aktiviteter"
+    notes = []
+    if any(not str(row.get("aktivitet") or "").strip() for row in rows):
+        notes.append("saknar aktivitet")
+    if any(int(row.get("hp") or 0) <= 0 for row in rows):
+        notes.append("saknar HP")
+    return ", ".join(notes)
+
+
+def _readiness_html(state):
+    if state.get("fas") != "Orderfas":
+        return ""
+    teams = state.get("teams") or []
+    inbox = state.get("inbox") or []
+    chips = []
+    missing = []
+    drafts = []
+    issues = []
+    for team in teams:
+        status = team.get("status") or "empty"
+        name = team.get("team") or ""
+        issue = _chip_issue(team, inbox)
+        if status in ("empty", "draft"):
+            missing.append(name)
+        if status == "draft":
+            drafts.append(name)
+        if issue and status in ("submitted", "changed"):
+            issues.append(f"{name}: {issue}")
+        note = f'<span class="gm-chip-note">{escape(issue)}</span>' if issue else ""
+        chips.append(
+            f'<div class="gm-chip {_status_class(status)}" data-team="{escape(name)}">'
+            f'<span class="gm-chip-name">{escape(name)}</span>'
+            f'<span class="gm-chip-status">{escape(CHIP_LABELS.get(status, status))}</span>'
+            f'<span class="gm-chip-hp">{int(team.get("effective") or 0)} HP</span>'
+            f"{note}</div>"
+        )
+    if not missing and not issues:
+        summary = "Alla order inne."
+    else:
+        parts = []
+        if missing:
+            parts.append(f"{len(missing)} lag utan inskickad order")
+        if drafts:
+            parts.append(f"{', '.join(drafts)} har utkast (inte låst)")
+        parts.extend(issues)
+        summary = " · ".join(parts)
+    return (
+        f'<div class="gm-readiness">'
+        f'<div class="gm-chips">{"".join(chips)}</div>'
+        f'<p class="gm-readiness-summary">{escape(summary)}</p>'
+        f"</div>"
+    )
+
+
+def _fold_html(title, body):
+    return (
+        f'<details class="gm-fold">'
+        f"<summary>{escape(title)}</summary>"
+        f"{body}"
+        f"</details>"
+    )
+
+
+QUARTER_NAMES = ("Okt–Dec", "Jan–Mar", "Apr–Jun", "Jul–Sep")
+
+
+def _quarter_strip_html(runda):
+    try:
+        runda = int(runda or 1)
+    except (TypeError, ValueError):
+        runda = 1
+    pills = []
+    for i, name in enumerate(QUARTER_NAMES, start=1):
+        if i < runda:
+            cls = "is-done"
+        elif i == runda:
+            cls = "is-current"
+        else:
+            cls = "is-future"
+        pills.append(
+            f'<div class="gm-quarter {cls}">'
+            f'<span class="gm-quarter-round">Runda {i}</span>'
+            f'<span class="gm-quarter-name">{escape(name)}</span>'
+            f"</div>"
+        )
+    return f'<div class="gm-quarters" aria-label="Kvartalsförlopp">{"".join(pills)}</div>'
 
 
 def _attention_lis(items):
@@ -50,6 +165,7 @@ def live_html_fragments(spel_id, state):
     """HTML snippets the console can swap in without a full reload."""
     return {
         "attention": _attention_lis(attention_items(state)),
+        "readiness": _readiness_html(state),
         "inbox": _inbox_html(spel_id, state.get("inbox") or [], state.get("fas"), state.get("test_mode")),
         "backlog": _backlog_html(state.get("backlog") or [], state.get("avslutat")),
         "log": _log_html(state.get("log") or []),
@@ -103,25 +219,28 @@ def create_gm_console_html(spel_id, data):
     attention = attention_items(state)
 
     attention_html = _attention_lis(attention)
+    attention_hidden = "" if attention else " hidden"
     teams_html = _team_strip_html(spel_id, state["teams"], test_mode)
     inbox_html = _inbox_html(spel_id, state["inbox"], fas, test_mode)
+    readiness_html = _readiness_html(state)
+    start_hidden = "hidden" if timer_status == "running" else ""
+    pause_hidden = "hidden" if timer_status != "running" else ""
+    clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_html(state["log"])
     llm_note = ""
     if fas in ("Diplomatifas", "Resultatfas"):
         llm_note = f'''
         <div class="gm-llm">
-            <div>
-                <strong>Nyheter skapas utanför spelet.</strong>
-                Kopiera ordrarna till Grok, Gemini eller ChatGPT, skriv rubriker på papper
-                och läs upp dem i nyhetsstudion.
-            </div>
+            <div>Kopiera ordrar till LLM. Rubriker skrivs på papper, inte här.</div>
             <a href="/admin/{escape(spel_id)}/order_summary" target="_blank" class="primary">Kopiera ordrar till LLM</a>
         </div>
         '''
 
     result_note = ""
-    if fas == "Resultatfas" and not avslutat:
+    if fas == "Resultatfas" and avslutat:
+        result_note = '<div class="gm-runofshow"><h3>Spelet är slut</h3></div>'
+    elif fas == "Resultatfas":
         next_round_hint = (
             "Avsluta spelet (N eller knappen i listen)."
             if runda >= MAX_RUNDA
@@ -130,6 +249,7 @@ def create_gm_console_html(spel_id, data):
         result_note = f'''
         <div class="gm-runofshow">
           <h3>Resultatfas — körschema</h3>
+          {_quarter_strip_html(runda)}
           <ol>
             <li>
               <button type="button" class="primary" onclick="openTimerWindow('{escape(spel_id)}')">Öppna spelarskärm</button>
@@ -137,7 +257,7 @@ def create_gm_console_html(spel_id, data):
             </li>
             <li>Läs nyheterna från studion. Rubrikerna finns på papper, inte i det här verktyget.</li>
             <li>Peka på HP på spelarskärmen.</li>
-            <li>Peka på kvartalsraden under den här panelen.</li>
+            <li>Peka på kvartalen här så rummet ser vilken runda ni är i.</li>
             <li>{escape(next_round_hint)}</li>
           </ol>
         </div>
@@ -150,6 +270,58 @@ def create_gm_console_html(spel_id, data):
             f'Tryck Starta (Space) för att sätta igång {escape(fas)}. '
             f'Spelarskärm visar tid och publik HP för rummet.</p>'
         )
+
+    hp_body = (
+        f'<p class="gm-section-help">Skriv hur många HP, sedan − eller +. '
+        f'Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell och kan inte flyttas.</p>'
+        f'{teams_html}'
+        f'{_transfer_form_html(spel_id, state["teams"])}'
+    )
+    hp_block = _fold_html("Lag och handlingspoäng", hp_body)
+
+    if fas == "Orderfas":
+        inbox_help = "Utkast syns här. Öppna för laget om de behöver skicka om."
+    elif fas == "Diplomatifas":
+        inbox_help = "Gå igenom order och konflikter. Ändra rättar text/HP. Lägg HP flyttar till backlog."
+    else:
+        inbox_help = "Order från rundan. Lägg HP flyttar till backlog vid behov."
+    inbox_inner = (
+        f'<p class="gm-section-help">{inbox_help}</p>'
+        f'<div id="gm-inbox-root">{inbox_html}</div>'
+    )
+    if fas == "Resultatfas":
+        inbox_block = _fold_html("Orderinkorg", inbox_inner)
+    else:
+        inbox_block = (
+            f'<h3 class="gm-section-title">Orderinkorg</h3>'
+            f'{inbox_inner}'
+        )
+
+    backlog_body = (
+        f'<p class="gm-section-help">Sätt HP per klick i kolumnen, sedan − / + på en roadmap-uppgift. '
+        f'Egna aktiviteter (t.ex. CI/CD) ligger i orderinkorgen, inte här.</p>'
+        f'<div id="gm-backlog-root">{backlog_html}</div>'
+    )
+    log_body = (
+        f'<p class="gm-section-help">Fas- och HP-ändringar i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>'
+        f'<div id="gm-log-root">{log_html}</div>'
+    )
+    if fas == "Orderfas":
+        backlog_block = (
+            f'<h3 class="gm-section-title">Teamens arbete</h3>{backlog_body}'
+        )
+        log_block = (
+            f'<h3 class="gm-section-title">Händelselogg</h3>{log_body}'
+        )
+        job_block = f"{hp_block}{inbox_block}{backlog_block}{log_block}"
+    elif fas == "Diplomatifas":
+        backlog_block = _fold_html("Teamens arbete", backlog_body)
+        log_block = _fold_html("Händelselogg", log_body)
+        job_block = f"{llm_note}{inbox_block}{hp_block}{backlog_block}{log_block}"
+    else:
+        backlog_block = _fold_html("Teamens arbete", backlog_body)
+        log_block = _fold_html("Händelselogg", log_body)
+        job_block = f"{result_note}{llm_note}{inbox_block}{hp_block}{backlog_block}{log_block}"
 
     test_checked = "checked" if test_mode else ""
     test_class = "is-on" if test_mode else ""
@@ -170,77 +342,67 @@ def create_gm_console_html(spel_id, data):
         <div class="gm-bar-now">
           <div class="gm-round">Runda {runda}/{MAX_RUNDA}</div>
           <div class="gm-phase" data-fas="{escape(fas)}">{escape(fas)}</div>
-          <div class="gm-clock" id="gm-clock">{_fmt_time(remaining)}</div>
+          <div class="gm-clock{clock_class}" id="gm-clock">{_fmt_time(remaining)}</div>
           <span class="gm-timer-badge" id="gm-timer-badge">{escape(timer_status)}</span>
         </div>
         <form method="post" action="/admin/{escape(spel_id)}/timer" class="gm-bar-time">
-          <button name="action" value="start" class="success" {timer_disabled}>Starta</button>
-          <button name="action" value="pause" class="warning" {timer_disabled}>Pausa</button>
+          <button name="action" value="start" class="success" {timer_disabled} {start_hidden}>Starta</button>
+          <button name="action" value="pause" class="warning" {timer_disabled} {pause_hidden}>Pausa</button>
           <button name="action" value="add_min" class="secondary" {timer_disabled}>+1 min</button>
           <button name="action" value="sub_min" class="secondary" {timer_disabled}>−1 min</button>
-          <button name="action" value="reset" class="secondary" {timer_disabled}
-            onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
           <button type="button" class="secondary" onclick="openTimerWindow('{escape(spel_id)}')">Spelarskärm</button>
-          <span class="gm-keys">Space pausa · N nästa</span>
+          <span class="gm-keys">Space starta/pausa · N nästa</span>
         </form>
         <div class="gm-bar-phase">
-          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
-            <button name="action" value="prev_fas" class="secondary" {back_disabled}
-              onclick="return confirm('Gå tillbaka till föregående fas?');">Föregående fas</button>
-          </form>
           <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" id="gm-next-form" data-next-action="{next_action}" {next_confirm}>
-            <button name="action" value="{next_action}" class="success" {next_disabled}>{escape(next_label)}</button>
+            <button name="action" value="{next_action}" class="primary" {next_disabled}>{escape(next_label)}</button>
           </form>
           <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
             <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
           </form>
         </div>
         <div class="gm-bar-tools">
-          <label class="gm-test {test_class}">
-            <input type="checkbox" id="gm-test-mode" {test_checked} onchange="toggleGmTestMode(this.checked)">
-            Testläge
-          </label>
           <details class="gm-danger">
             <summary>Mer</summary>
-            <a href="/admin/{escape(spel_id)}/poang">HP-tabell</a>
-            <a href="/admin/{escape(spel_id)}/backlog">Backlog</a>
-            <a href="/admin/{escape(spel_id)}/aktivitetskort" target="_blank">Aktivitetskort</a>
-            <a href="/admin/{escape(spel_id)}/order_summary" target="_blank">LLM-export</a>
-            <a href="/admin">Alla spel</a>
-            <form method="post" action="/admin/{escape(spel_id)}/reset"
-              onsubmit="return confirm('Återställ HELA spelet till runda 1? Detta går att ångra en gång, men raderar rundor och ordrar.');">
-              <button type="submit" class="danger">Återställ spel</button>
-            </form>
+            <div class="gm-mer-menu">
+              <form method="post" action="/admin/{escape(spel_id)}/timer">
+                <button name="action" value="reset" class="secondary" {timer_disabled}
+                  onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
+              </form>
+              <form method="post" action="/admin/{escape(spel_id)}/timer">
+                <button name="action" value="prev_fas" class="secondary" {back_disabled}
+                  onclick="return confirm('Gå tillbaka till föregående fas?');">Föregående fas</button>
+              </form>
+              <label class="gm-test {test_class}">
+                <input type="checkbox" id="gm-test-mode" {test_checked} onchange="toggleGmTestMode(this.checked)">
+                Testläge
+              </label>
+              <a href="/admin/{escape(spel_id)}/poang">HP-tabell</a>
+              <a href="/admin/{escape(spel_id)}/backlog">Backlog</a>
+              <a href="/admin/{escape(spel_id)}/aktivitetskort" target="_blank">Aktivitetskort</a>
+              <a href="/admin/{escape(spel_id)}/order_summary" target="_blank">LLM-export</a>
+              <a href="/admin">Alla spel</a>
+              <form method="post" action="/admin/{escape(spel_id)}/reset"
+                onsubmit="return confirm('Återställ HELA spelet till runda 1? Detta går att ångra en gång, men raderar rundor och ordrar.');">
+                <button type="submit" class="danger">Återställ spel</button>
+              </form>
+            </div>
           </details>
         </div>
       </div>
 
-      <div class="gm-attention">
+      <p class="gm-clock-hint" id="gm-clock-hint" hidden></p>
+      {start_hint}
+
+      <div class="gm-attention" id="gm-attention"{attention_hidden}>
         <h3>Kräver uppmärksamhet</h3>
         <ul id="gm-attention-list">{attention_html}</ul>
       </div>
 
-      {start_hint}
-      {llm_note}
-      {result_note}
-
-      <h3 class="gm-section-title">Lag och handlingspoäng</h3>
-      <p class="gm-section-help">Skriv hur många HP, sedan − eller +. Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell och kan inte flyttas.</p>
-      {teams_html}
-      {_transfer_form_html(spel_id, state["teams"])}
-
-      <h3 class="gm-section-title">Orderinkorg</h3>
-      <p class="gm-section-help">Ändra rättar HP/text här. Under orderfasen kan du öppna en inskickad order så laget kan skicka om. Lägg HP flyttar till backlog.</p>
-      <div id="gm-inbox-root">{inbox_html}</div>
-
-      <h3 class="gm-section-title">Teamens arbete</h3>
-      <p class="gm-section-help">Sätt HP per klick i kolumnen, sedan − / + på en roadmap-uppgift. Egna aktiviteter (t.ex. CI/CD) ligger i orderinkorgen, inte här.</p>
+      <div id="gm-readiness-root">{readiness_html}</div>
       <p class="gm-live-error" id="gm-live-error" hidden></p>
-      <div id="gm-backlog-root">{backlog_html}</div>
 
-      <h3 class="gm-section-title">Händelselogg</h3>
-      <p class="gm-section-help">Fas- och HP-ändringar i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>
-      <div id="gm-log-root">{log_html}</div>
+      {job_block}
     </div>
     '''
 
@@ -365,6 +527,7 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
             <div class="gm-inbox-activity">{escape(row["aktivitet"])}</div>
             <div class="gm-inbox-purpose">{escape(row["syfte"]) or "—"}</div>
             <div class="gm-inbox-meta">{escape(typ)} · {escape(targets)}</div>
+            {f'<span class="gm-conflict-tag">Konflikt</span>' if row["conflict"] else ""}
           </td>
           <td class="gm-inbox-hp">{row["hp"]} HP</td>
           <td>
@@ -522,12 +685,24 @@ def _projector_progress_html(progress):
     )
 
 
+def _projector_clock_class(remaining):
+    remaining = int(remaining or 0)
+    if remaining <= 30:
+        return " is-danger is-critical"
+    if remaining <= 60:
+        return " is-danger"
+    if remaining <= 300:
+        return " is-warning"
+    return ""
+
+
 def create_projector_html(spel_id, data):
     """Player-facing display: round, phase, time, public HP. No GM controls."""
     state = build_public_state(data)
     team_cards = _projector_hp_html(state["teams"])
     progress_html = _projector_progress_html(state.get("progress") or [])
     ended = " Spelet är slut." if state["avslutat"] else ""
+    clock_class = _projector_clock_class(state["remaining"])
     state_json = json.dumps({"spel_id": spel_id, **state}, ensure_ascii=False)
     return f'''<!DOCTYPE html>
 <html lang="sv">
@@ -536,7 +711,7 @@ def create_projector_html(spel_id, data):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spelarskärm – runda {state["runda"]}</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="/static/app.css?v=9">
+  <link rel="stylesheet" href="/static/app.css?v=13">
 </head>
 <body class="projector-page">
   <script type="application/json" id="projector-state">{state_json}</script>
@@ -544,13 +719,16 @@ def create_projector_html(spel_id, data):
     <div class="projector-now">
       <div class="projector-round">Runda {state["runda"]}/{state["max_runda"]}</div>
       <div class="projector-phase">{escape(state["fas"])}</div>
-      <div class="projector-clock" id="projector-clock">{_fmt_time(state["remaining"])}</div>
+      <div class="projector-clock{clock_class}" id="projector-clock">{_fmt_time(state["remaining"])}</div>
       <div class="projector-status" id="projector-status">{escape(state["timer_status"])}{ended}</div>
     </div>
     <div class="projector-hp" id="projector-hp">{team_cards}</div>
     <div class="projector-progress" id="projector-progress">{progress_html}</div>
   </div>
-  <script src="/static/projector.js?v=2"></script>
+  <button type="button" class="projector-audio-hint" id="projector-audio-hint" hidden>
+    Klicka för ljudvarningar
+  </button>
+  <script src="/static/projector.js?v=3"></script>
 </body>
 </html>
 '''

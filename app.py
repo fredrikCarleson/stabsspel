@@ -12,6 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 from flask import Flask, send_from_directory, make_response, jsonify, request, session
+from markupsafe import escape
 from admin_routes import admin_bp
 from team_routes import team_bp
 from team_order_routes import team_order_bp
@@ -279,44 +280,51 @@ def test_css():
 </html>
     '''
 
+def _home_game_row(game_data):
+    spel_id = str(game_data.get("id", "") or "")
+    datum = str(game_data.get("datum", "") or "")
+    plats = str(game_data.get("plats", "") or "")
+    label = f"{datum} – {plats}".strip(" –")
+    runda = game_data.get("runda", 1)
+    fas = str(game_data.get("fas", "Orderfas") or "Orderfas")
+    avslutat = bool(game_data.get("avslutat", False))
+    teams = [str(name) for name in game_data.get("lag", []) if name]
+    status = "Avslutat" if avslutat else f"Runda {escape(str(runda))} · {escape(fas)}"
+    finished_class = " is-finished" if avslutat else ""
+    teams_html = ""
+    if teams:
+        teams_html = (
+            f'<p class="home-game-teams">{escape(", ".join(teams))}</p>'
+        )
+    return f'''
+        <article class="home-game{finished_class}" data-game-card-id="{escape(spel_id)}">
+            <div class="home-game-info">
+                <h3 class="home-game-title">{escape(label)}</h3>
+                {teams_html}
+            </div>
+            <p class="home-game-status">{status}</p>
+            <div class="home-game-actions">
+                <a href="/admin/{escape(spel_id)}" class="primary">Öppna</a>
+                <details class="home-mer">
+                    <summary aria-label="Fler åtgärder för {escape(label)}">Mer</summary>
+                    <div class="home-mer-menu">
+                        <a href="/admin/download_game/{escape(spel_id)}" class="secondary sm">Ladda ner</a>
+                        {create_delete_game_button(spel_id, label, "danger sm")}
+                    </div>
+                </details>
+            </div>
+        </article>
+        '''
+
+
 @app.route("/")
 def startsida():
-    spel_html = ''
-    for game_data in list_saved_games():
-        runda = game_data.get("runda", 1)
-        fas = game_data.get("fas", "Orderfas")
-        avslutat = game_data.get("avslutat", False)
+    games = list(list_saved_games())
+    games.sort(key=lambda g: 1 if g.get("avslutat") else 0)
+    spel_html = "".join(_home_game_row(game) for game in games)
+    empty_hidden = " hidden" if spel_html else ""
+    list_hidden = "" if spel_html else " hidden"
 
-        if avslutat:
-            status = "Avslutat"
-            status_class = "status-finished"
-        else:
-            status = f"Runda {runda} – {fas}"
-            status_class = "status-active"
-
-        team_indicators = ""
-        for team_name in game_data.get("lag", [])[:4]:
-            slug = str(team_name).lower()
-            team_indicators += f'<span class="team-indicator team-{slug}"></span>'
-
-        spel_html += f'''
-        <div class="game-card" data-game-card-id="{game_data.get("id", "")}">
-            <div class="game-info">
-                <h3>{game_data.get("datum", "")} – {game_data.get("plats", "")}</h3>
-                <p class="game-id">ID: {game_data.get("id", "")}</p>
-                <div class="game-status">
-                    <span class="status-badge {status_class}">{status}</span>
-                    <div class="team-indicators">{team_indicators}</div>
-                </div>
-            </div>
-            <div class="game-actions">
-                <a href="/admin/{game_data.get("id", "")}" class="primary">Öppna</a>
-                <a href="/admin/download_game/{game_data.get("id", "")}" class="secondary">Ladda ner</a>
-                {create_delete_game_button(game_data.get("id", ""), f'{game_data.get("datum", "")} – {game_data.get("plats", "")}', "danger")}
-            </div>
-        </div>
-        '''
-    
     return f'''
     <!DOCTYPE html>
     <html lang="sv">
@@ -325,404 +333,25 @@ def startsida():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Stabsspelet - Krisledningssimulation</title>
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css?v=10">
+        <link rel="stylesheet" href="/static/app.css?v=11">
         <link rel="stylesheet" href="/static/print.css" media="print">
-        <style>
-            /* Hero section with enhanced background */
-            .hero-section {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 100px 20px;
-                text-align: center;
-                position: relative;
-                overflow: hidden;
-                min-height: 60vh;
-                display: flex;
-                align-items: center;
-            }}
-            
-            /* Subtle background illustration */
-            .hero-section::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/><rect width="100" height="100" fill="url(%23dots)"/></svg>');
-                opacity: 0.4;
-            }}
-            
-            /* Game pieces illustration */
-            .hero-section::after {{
-                content: '';
-                position: absolute;
-                top: 20%;
-                right: 10%;
-                width: 200px;
-                height: 200px;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/><circle cx="50" cy="50" r="25" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/><circle cx="50" cy="50" r="10" fill="rgba(255,255,255,0.1)"/></svg>');
-                opacity: 0.6;
-                animation: float 6s ease-in-out infinite;
-            }}
-            
-            @keyframes float {{
-                0%, 100% {{ transform: translateY(0px) rotate(0deg); }}
-                50% {{ transform: translateY(-20px) rotate(180deg); }}
-            }}
-            
-            .hero-content {{
-                position: relative;
-                z-index: 2;
-                max-width: 800px;
-                margin: 0 auto;
-            }}
-            
-            .hero-title {{
-                font-size: 4rem;
-                font-weight: 700;
-                margin-bottom: 20px;
-                text-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                letter-spacing: -1px;
-            }}
-            
-            .hero-subtitle {{
-                font-size: 1.4rem;
-                font-weight: 300;
-                margin-bottom: 50px;
-                opacity: 0.9;
-                line-height: 1.6;
-            }}
-            
-            
-            .description-section {{
-                padding: 80px 20px;
-                background: #f8f9fa;
-            }}
-            
-            .container {{
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 0 20px;
-            }}
-            
-            .features-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 30px;
-                margin: 60px 0;
-            }}
-            
-            .feature-card {{
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-                transition: transform 0.3s ease;
-                border-left: 4px solid #667eea;
-            }}
-            
-            .feature-card:hover {{
-                transform: translateY(-5px);
-                box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            }}
-            
-            .feature-icon {{
-                font-size: 3rem;
-                margin-bottom: 20px;
-                color: #667eea;
-            }}
-            
-            .feature-title {{
-                font-size: 1.4rem;
-                font-weight: 600;
-                margin-bottom: 15px;
-                color: #2c3e50;
-            }}
-            
-            .feature-description {{
-                color: #6c757d;
-                line-height: 1.6;
-            }}
-            
-            .games-section {{
-                padding: 80px 20px;
-                background: white;
-            }}
-            
-            .section-title {{
-                text-align: center;
-                font-size: 2.5rem;
-                font-weight: 600;
-                margin-bottom: 50px;
-                color: #2c3e50;
-            }}
-            
-            .games-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-                gap: 25px;
-                margin-top: 40px;
-            }}
-            
-            /* Enhanced game cards with team colors */
-            .game-card {{
-                background: white;
-                border: 2px solid #e9ecef;
-                border-radius: 15px;
-                padding: 25px;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .game-card::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c, #f39c12);
-                opacity: 0.8;
-            }}
-            
-            .game-card:hover {{
-                border-color: #667eea;
-                box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
-                transform: translateY(-3px);
-            }}
-            
-            .game-info h3 {{
-                margin: 0 0 10px 0;
-                color: #2c3e50;
-                font-size: 1.3rem;
-                font-weight: 600;
-            }}
-            
-            .game-id {{
-                color: #4a5568;
-                font-size: 0.9rem;
-                margin: 0 0 15px 0;
-                font-family: 'Courier New', monospace;
-                background: #f1f3f5;
-                padding: 5px 10px;
-                border-radius: 5px;
-                display: inline-block;
-            }}
-            
-            .game-actions {{
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
-                gap: 8px;
-                margin-top: 20px;
-                align-items: stretch;
-            }}
-            .game-actions form {{
-                display: flex;
-                margin: 0;
-            }}
-            .game-actions :is(a, button) {{
-                width: 100%;
-                justify-content: center;
-            }}
-            
-            .btn {{
-                padding: 10px 20px;
-                border-radius: 8px;
-                text-decoration: none;
-                font-weight: 500;
-                transition: all 0.3s ease;
-                border: none;
-                cursor: pointer;
-                font-size: 0.9rem;
-            }}
-            
-            .btn-primary {{
-                background: #667eea;
-                color: white;
-            }}
-            
-            .btn-primary:hover {{
-                background: #5a6fd8;
-                transform: translateY(-1px);
-            }}
-            
-            .btn-danger {{
-                background: #e74c3c;
-                color: white;
-            }}
-            
-            .btn-danger:hover {{
-                background: #c0392b;
-                transform: translateY(-1px);
-            }}
-            
-            .no-games {{
-                text-align: center;
-                padding: 60px 20px;
-                color: #6c757d;
-                font-size: 1.1rem;
-                background: #f8f9fa;
-                border-radius: 15px;
-                border: 2px dashed #dee2e6;
-            }}
-            
-            /* Game status and team indicators */
-            .game-status {{
-                margin-top: 15px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                flex-wrap: wrap;
-                gap: 10px;
-            }}
-            
-            .status-badge {{
-                display: inline-block;
-                padding: 4px 12px;
-                border-radius: 20px;
-                font-size: 0.8rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }}
-            
-            .status-active {{
-                background: #27ae60;
-                color: white;
-            }}
-            
-            .status-finished {{
-                background: #6c757d;
-                color: white;
-            }}
-            
-            .team-indicators {{
-                display: flex;
-                gap: 6px;
-                align-items: center;
-            }}
-            
-            .team-indicator {{
-                display: inline-block;
-                width: 12px;
-                height: 12px;
-                border-radius: 50%;
-                border: 2px solid white;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            }}
-            
-            /* Team color indicators */
-            .team-alfa {{ background: #3498db; }}
-            .team-bravo {{ background: #2ecc71; }}
-            .team-charlie {{ background: #e74c3c; }}
-            .team-delta {{ background: #f39c12; }}
-            .team-echo {{ background: #9b59b6; }}
-            .team-foxtrot {{ background: #1abc9c; }}
-            .team-golf {{ background: #34495e; }}
-            .team-hotel {{ background: #e67e22; }}
-            .team-india {{ background: #16a085; }}
-            .team-juliett {{ background: #8e44ad; }}
-            .team-kilo {{ background: #27ae60; }}
-            .team-lima {{ background: #d35400; }}
-            .team-mike {{ background: #c0392b; }}
-            .team-november {{ background: #2980b9; }}
-            .team-oscar {{ background: #f1c40f; }}
-            .team-papa {{ background: #e91e63; }}
-            .team-quebec {{ background: #00bcd4; }}
-            .team-romeo {{ background: #795548; }}
-            .team-sierra {{ background: #607d8b; }}
-            .team-tango {{ background: #ff9800; }}
-            .team-uniform {{ background: #4caf50; }}
-            .team-victor {{ background: #2196f3; }}
-            .team-whiskey {{ background: #ff5722; }}
-            .team-xray {{ background: #9c27b0; }}
-            .team-yankee {{ background: #00bcd4; }}
-            .team-zulu {{ background: #ffc107; }}
-            
-            @media (max-width: 768px) {{
-                .hero-title {{
-                    font-size: 2.5rem;
-                }}
-                
-                .hero-subtitle {{
-                    font-size: 1.1rem;
-                }}
-                
-                
-                .features-grid {{
-                    grid-template-columns: 1fr;
-                }}
-                
-                .games-grid {{
-                    grid-template-columns: 1fr;
-                }}
-                
-                .hero-section::after {{
-                    display: none;
-                }}
-            }}
-        </style>
     </head>
-    <body>
-        <div class="hero-section">
-            <div class="hero-content">
-                <h1 class="hero-title">Stabsspelet v1</h1>
-                <p class="hero-subtitle">En avancerad krisledningssimulation för att träna beslutsfattande under press</p>
-                <a href="/admin" class="primary lg">🎮 Starta nytt spel</a>
+    <body class="home-page">
+        <header class="home-bar">
+            <h1>Stabsspelet</h1>
+            <div class="home-bar-actions">
+                <a href="/admin/upload_game" class="secondary">Ladda upp</a>
+                <a href="/admin" class="primary">Starta nytt spel</a>
             </div>
-        </div>
-        
-        <div class="description-section">
-            <div class="container">
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">⚡</div>
-                        <h3 class="feature-title">Snabb beslutsfattande</h3>
-                        <p class="feature-description">Träna dig på att fatta kritiska beslut under tidspress och med begränsad information. Varje runda representerar en kvartal med nya utmaningar.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">👥</div>
-                        <h3 class="feature-title">Team-samarbete</h3>
-                        <p class="feature-description">Spela som olika team med unika roller och ansvarsområden. Koordinera era insatser för att hantera krisen effektivt.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">📊</div>
-                        <h3 class="feature-title">Handlingspoäng-system</h3>
-                        <p class="feature-description">Hantera era handlingspoäng strategiskt. Varje beslut kostar poäng - välj klokt för att maximera er påverkan.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">⏰</div>
-                        <h3 class="feature-title">Tidsbegränsade faser</h3>
-                        <p class="feature-description">Arbeta under press med tidsbegränsade faser: Orderfas, Diplomatifas och Resultatfas. Varje fas har sina egna utmaningar.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🎯</div>
-                        <h3 class="feature-title">Målbaserat spel</h3>
-                        <p class="feature-description">Varje team har specifika mål och uppgifter att slutföra. Samarbeta eller konkurrera för att uppnå era objektiv.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">📈</div>
-                        <h3 class="feature-title">Progressiv svårighet</h3>
-                        <p class="feature-description">Spelet blir allt mer utmanande över fyra rundor. Hantera ökande komplexitet och oförutsägbara händelser.</p>
-                    </div>
-                </div>
+        </header>
+        <main class="home-main">
+            <h2 class="home-heading">Öppna spel</h2>
+            <div class="home-game-list"{list_hidden}>{spel_html}</div>
+            <div class="home-empty"{empty_hidden}>
+                <p>Inga sparade spel.</p>
+                <a href="/admin" class="primary">Starta nytt spel</a>
             </div>
-        </div>
-        
-        <div class="games-section">
-            <div class="container">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title">Befintliga spel</h2>
-                    <a href="/admin/upload_game" class="secondary" style="padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px;">
-                        📤 Ladda upp spel
-                    </a>
-                </div>
-                {f'<div class="games-grid">{spel_html}</div>' if spel_html else '<div class="no-games">Inga aktiva spel hittades. Skapa ditt första spel för att komma igång!</div>'}
-            </div>
-        </div>
+        </main>
         {create_delete_game_modal()}
     </body>
     </html>

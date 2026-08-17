@@ -99,14 +99,14 @@ class TestAdminHelpers(unittest.TestCase):
         
         # Check that it contains expected script reference
         self.assertIn('<script src="/static/admin.js"></script>', script_refs)
-        self.assertIn('<script src="/static/gm-console.js?v=5"></script>', script_refs)
+        self.assertIn('<script src="/static/gm-console.js?v=6"></script>', script_refs)
 
     def test_create_delete_game_modal(self):
         html = create_delete_game_modal()
         self.assertIn('id="deleteGameModal"', html)
         self.assertIn('class="modal"', html)
         self.assertIn('name="password"', html)
-        self.assertIn('/static/admin.js?v=4', html)
+        self.assertIn('/static/admin.js?v=5', html)
         self.assertIn('name="next"', html)
         self.assertIn('value="/"', html)
 

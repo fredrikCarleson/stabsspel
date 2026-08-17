@@ -37,6 +37,14 @@ function removeDeletedGameCard(spelId) {
     if (card) {
         card.remove();
     }
+    const list = document.querySelector('.home-game-list');
+    if (list && !list.querySelector('.home-game')) {
+        list.hidden = true;
+        const empty = document.querySelector('.home-empty');
+        if (empty) {
+            empty.hidden = false;
+        }
+    }
 }
 
 function openDeleteGameModal(spelId, label) {
@@ -76,11 +84,21 @@ document.addEventListener('click', function(event) {
     if (deleteBtn) {
         event.preventDefault();
         event.stopPropagation();
+        const mer = deleteBtn.closest('.home-mer');
+        if (mer) {
+            mer.removeAttribute('open');
+        }
         openDeleteGameModal(
             deleteBtn.getAttribute('data-delete-game-id'),
             deleteBtn.getAttribute('data-delete-game-label') || ''
         );
+        return;
     }
+    document.querySelectorAll('.home-mer[open]').forEach(function(details) {
+        if (!details.contains(event.target)) {
+            details.removeAttribute('open');
+        }
+    });
 });
 
 function closeDeleteGameModal() {

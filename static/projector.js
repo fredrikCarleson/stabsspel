@@ -1,10 +1,18 @@
 /**
  * Player projector: round, phase, remaining time, public HP.
  * Polls a room-safe endpoint — no orders, log, or GM controls.
+ * Audio: one chime at 5 min, one at 1 min, repeating alarm at 30s.
  */
 (function () {
   var POLL_MS = 2000;
+  var WARN_S = 300;
+  var DANGER_S = 60;
+  var CRITICAL_S = 30;
   var state = null;
+  var audioCtx = null;
+  var stressfulTimer = null;
+  var alertsReady = false;
+  var fired = { five: false, one: false };
 
   function readState() {
     var el = document.getElementById("projector-state");
@@ -23,13 +31,125 @@
     return (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec;
   }
 
+  function remainingNow() {
+    return state ? Math.max(0, state.remaining || 0) : 0;
+  }
+
+  function isRunning() {
+    return !!(state && state.timer_status === "running" && !state.avslutat);
+  }
+
   function paintClock() {
     var clock = document.getElementById("projector-clock");
     if (!clock || !state) return;
-    clock.textContent = formatTime(state.remaining || 0);
-    clock.classList.remove("is-warning", "is-danger");
-    if ((state.remaining || 0) <= 30) clock.classList.add("is-danger");
-    else if ((state.remaining || 0) <= 60) clock.classList.add("is-warning");
+    var remaining = remainingNow();
+    clock.textContent = formatTime(remaining);
+    clock.classList.remove("is-warning", "is-danger", "is-critical");
+    if (remaining <= CRITICAL_S) {
+      clock.classList.add("is-danger", "is-critical");
+    } else if (remaining <= DANGER_S) {
+      clock.classList.add("is-danger");
+    } else if (remaining <= WARN_S) {
+      clock.classList.add("is-warning");
+    }
+  }
+
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(function () {});
+    }
+    updateAudioHint();
+    return audioCtx;
+  }
+
+  function updateAudioHint() {
+    var hint = document.getElementById("projector-audio-hint");
+    if (!hint) return;
+    var locked = !audioCtx || audioCtx.state === "suspended";
+    hint.hidden = !locked;
+  }
+
+  function beepAt(when, freq, duration, volume) {
+    if (!audioCtx || audioCtx.state !== "running") return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(volume, when + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(when);
+    osc.stop(when + duration + 0.03);
+  }
+
+  function playFiveMin() {
+    ensureAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    var t = audioCtx.currentTime;
+    beepAt(t, 660, 0.32, 0.22);
+    beepAt(t + 0.42, 660, 0.32, 0.22);
+  }
+
+  function playOneMin() {
+    ensureAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    var t = audioCtx.currentTime;
+    beepAt(t, 880, 0.16, 0.28);
+    beepAt(t + 0.22, 880, 0.16, 0.28);
+    beepAt(t + 0.44, 988, 0.28, 0.3);
+  }
+
+  function playThirtyTick() {
+    ensureAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    var t = audioCtx.currentTime;
+    beepAt(t, 1046, 0.1, 0.34);
+    beepAt(t + 0.12, 1397, 0.16, 0.38);
+  }
+
+  function setStressful(on) {
+    if (on) {
+      if (stressfulTimer) return;
+      playThirtyTick();
+      stressfulTimer = setInterval(playThirtyTick, 900);
+      return;
+    }
+    if (stressfulTimer) {
+      clearInterval(stressfulTimer);
+      stressfulTimer = null;
+    }
+  }
+
+  function initAlertMemory() {
+    var remaining = remainingNow();
+    fired.five = remaining <= WARN_S;
+    fired.one = remaining <= DANGER_S;
+    alertsReady = true;
+  }
+
+  function syncAlerts() {
+    if (!alertsReady || !state) return;
+    var remaining = remainingNow();
+    var running = isRunning();
+
+    if (remaining > WARN_S) fired.five = false;
+    if (remaining > DANGER_S) fired.one = false;
+
+    if (running && remaining <= WARN_S && remaining > DANGER_S && !fired.five) {
+      fired.five = true;
+      playFiveMin();
+    }
+    if (running && remaining <= DANGER_S && remaining > CRITICAL_S && !fired.one) {
+      fired.one = true;
+      playOneMin();
+    }
+    setStressful(running && remaining <= CRITICAL_S && remaining > 0);
+    if (running && remaining === 0) setStressful(false);
   }
 
   function barHtml(percent, extraClass) {
@@ -156,6 +276,7 @@
     state.runda = next.runda;
     state.avslutat = next.avslutat;
     paintClock();
+    syncAlerts();
     paintHp(next.teams);
     paintProgress(next.progress);
   }
@@ -173,17 +294,30 @@
       .catch(function () {});
   }
 
+  function unlockAudio() {
+    ensureAudio();
+  }
+
   state = readState();
   if (!state) return;
+  initAlertMemory();
   paintClock();
+  ensureAudio();
   setInterval(function () {
     if (state.timer_status === "running" && state.remaining > 0) {
       state.remaining -= 1;
       paintClock();
+      syncAlerts();
+    } else {
+      setStressful(false);
     }
   }, 1000);
   setInterval(poll, POLL_MS);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) poll();
+    if (document.hidden) setStressful(false);
+    else poll();
   });
+  document.addEventListener("click", unlockAudio);
+  document.addEventListener("keydown", unlockAudio);
+  document.addEventListener("touchstart", unlockAudio, { passive: true });
 })();

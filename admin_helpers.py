@@ -102,7 +102,7 @@ def create_script_references():
     """Skapa referenser till externa JavaScript-filer"""
     return '''
     <script src="/static/admin.js"></script>
-    <script src="/static/gm-console.js?v=5"></script>
+    <script src="/static/gm-console.js?v=6"></script>
     '''
 
 def create_delete_game_button(spel_id, label, css_class="danger sm"):
@@ -146,7 +146,7 @@ def create_delete_game_modal():
             </div>
         </div>
     </div>
-    <script src="/static/admin.js?v=4"></script>
+    <script src="/static/admin.js?v=5"></script>
     '''
 
 def create_time_adjustment_modal(spel_id, orderfas_min, diplomatifas_min):

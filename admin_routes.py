@@ -1406,7 +1406,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=9">
+            <link rel="stylesheet" href="/static/app.css?v=15">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 // Force cache refresh for JavaScript

@@ -158,7 +158,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Teamens arbete", html)
         self.assertIn("Inloggning val", html)
         self.assertIn("överförbart", html)
-        self.assertIn("Space pausa", html)
+        self.assertIn("Space starta/pausa", html)
         self.assertIn('data-hp-delta', html)
         self.assertIn("gm-backlog-amount", html)
         self.assertIn("HP per klick", html)
@@ -211,6 +211,9 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Teamens arbete", html)
         self.assertIn("Inloggning val", html)
         self.assertIn("projector-progress", html)
+        self.assertIn("projector-audio-hint", html)
+        self.assertIn("Klicka för ljudvarningar", html)
+        self.assertIn("projector.js?v=3", html)
         self.assertNotIn("Starta", html)
         self.assertNotIn("Pausa", html)
         self.assertNotIn("Testläge", html)
@@ -225,6 +228,136 @@ class TestGmConsoleHtml(unittest.TestCase):
         html = create_gm_console_html("g1", data)
         self.assertIn("Resultatfas — körschema", html)
         self.assertIn("Öppna spelarskärm", html)
+        self.assertIn("gm-quarters", html)
+        self.assertIn("Okt–Dec", html)
+        self.assertIn("gm-quarter is-current", html)
+        self.assertIn("Peka på kvartalen här", html)
+        self.assertNotIn("under den här panelen", html)
+        self.assertIn("gm-fold", html)
+        self.assertIn("Starta nästa runda", html)
+        self.assertLess(html.find("Resultatfas — körschema"), html.find("Orderinkorg"))
+        self.assertLess(html.find("Orderinkorg"), html.find("Lag och handlingspoäng"))
+
+        data["runda"] = 4
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Avsluta spelet", html)
+        self.assertNotIn("Starta nästa runda", html)
+
+        data["avslutat"] = True
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Spelet är slut", html)
+        self.assertNotIn("Resultatfas — körschema", html)
+
+    def test_orderfas_readiness_board(self):
+        from gm_console_ui import attention_items, create_gm_console_html, live_html_fragments
+        from gm_console import build_live_state
+
+        data = sample_game()
+        html = create_gm_console_html("g1", data)
+        self.assertIn('id="gm-readiness-root"', html)
+        self.assertIn("gm-chip", html)
+        self.assertIn("Saknas", html)
+        self.assertIn("gm-fold", html)
+        self.assertIn("gm-mer-menu", html)
+        self.assertIn("Nollställ timer", html)
+        self.assertIn("Föregående fas", html)
+        self.assertIn("Testläge", html)
+        self.assertIn('id="gm-attention" hidden', html)
+        self.assertIn('value="next_fas" class="primary"', html)
+        self.assertIn('value="start" class="success"', html)
+        self.assertNotIn('value="next_fas" class="success"', html)
+        self.assertIn('value="pause" class="warning"', html)
+        self.assertIn("lag utan inskickad order", html)
+        self.assertEqual(attention_items(build_live_state(data)), [])
+        fragments = live_html_fragments("g1", build_live_state(data))
+        self.assertIn("gm-chip", fragments["readiness"])
+        self.assertEqual(fragments["attention"], "")
+
+        data["fas"] = "Diplomatifas"
+        dip = create_gm_console_html("g1", data)
+        self.assertNotIn("gm-chip", dip)
+        self.assertIn("gm-fold", dip)
+        items = attention_items(build_live_state(data))
+        self.assertTrue(any("utan inskickad order" in item for item in items))
+
+    def test_orderfas_chip_flags_missing_hp(self):
+        from gm_console_ui import create_gm_console_html
+
+        data = sample_game()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [{
+                            "aktivitet": "DDOS",
+                            "syfte": "ner",
+                            "hp": 0,
+                            "typ": "forstora",
+                            "paverkar": ["STT"],
+                        }]
+                    },
+                }
+            }
+        }
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Inne", html)
+        self.assertIn("saknar HP", html)
+        self.assertIn("Saknas", html)
+
+
+    def test_diplomatifas_job_is_inbox(self):
+        from gm_console_ui import attention_items, create_gm_console_html
+        from gm_console import build_live_state
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Kopiera ordrar till LLM", html)
+        self.assertIn("Nästa: Resultatfas", html)
+        self.assertIn("Orderinkorg", html)
+        self.assertIn("gm-fold", html)
+        self.assertLess(html.find("Kopiera ordrar till LLM"), html.find("Orderinkorg"))
+        self.assertLess(html.find("Orderinkorg"), html.find("Lag och handlingspoäng"))
+        self.assertLess(html.find("Lag och handlingspoäng"), html.find("Teamens arbete"))
+        items = attention_items(build_live_state(data))
+        self.assertTrue(any("utan inskickad order" in item for item in items))
+
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [{
+                            "aktivitet": "DDOS",
+                            "syfte": "ner",
+                            "hp": 8,
+                            "typ": "forstora",
+                            "paverkar": ["STT"],
+                        }]
+                    },
+                },
+                "Bravo": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [{
+                            "aktivitet": "Hårdning",
+                            "syfte": "skydd",
+                            "hp": 10,
+                            "typ": "bygga",
+                            "paverkar": ["STT"],
+                        }]
+                    },
+                },
+            }
+        }
+        html = create_gm_console_html("g1", data)
+        self.assertIn("gm-conflict", html)
+        self.assertIn("Konflikt", html)
+        self.assertIn("DDOS", html)
 
 
 if __name__ == "__main__":

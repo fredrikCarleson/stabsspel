@@ -4,7 +4,14 @@
  */
 
 (function () {
-  var POLL_MS = 3000;
+  var GM_WARN_S = 300;
+  var GM_DANGER_S = 60;
+  var CHIP_LABELS = {
+    empty: "Saknas",
+    draft: "Utkast",
+    submitted: "Inne",
+    changed: "Ändrad",
+  };
   var STATUS_CLASS = {
     empty: "gm-status-empty",
     draft: "gm-status-draft",
@@ -40,10 +47,33 @@
     var remaining = live.remaining || 0;
     clock.textContent = formatTime(remaining);
     clock.classList.remove("is-warning", "is-danger");
-    if (remaining <= 30) clock.classList.add("is-danger");
-    else if (remaining <= 60) clock.classList.add("is-warning");
+    if (remaining <= GM_DANGER_S) clock.classList.add("is-danger");
+    else if (remaining <= GM_WARN_S) clock.classList.add("is-warning");
     var badge = document.getElementById("gm-timer-badge");
     if (badge && live.timer_status) badge.textContent = live.timer_status;
+    var hint = document.getElementById("gm-clock-hint");
+    if (hint) {
+      hint.classList.remove("is-warning", "is-danger");
+      if (live.timer_status === "running" && remaining <= GM_DANGER_S) {
+        hint.hidden = false;
+        hint.textContent = "1 minut kvar.";
+        hint.classList.add("is-danger");
+      } else if (live.timer_status === "running" && remaining <= GM_WARN_S) {
+        hint.hidden = false;
+        hint.textContent = "5 minuter kvar.";
+        hint.classList.add("is-warning");
+      } else {
+        hint.hidden = true;
+        hint.textContent = "";
+      }
+    }
+    var startBtn = document.querySelector('.gm-bar-time [value="start"]');
+    var pauseBtn = document.querySelector('.gm-bar-time [value="pause"]');
+    if (startBtn && pauseBtn) {
+      var running = live.timer_status === "running";
+      startBtn.hidden = running;
+      pauseBtn.hidden = !running;
+    }
   }
 
   function tickClock() {
@@ -79,6 +109,14 @@
 
   function paintTeams(teams) {
     (teams || []).forEach(function (t) {
+      var chip = document.querySelector('.gm-chip[data-team="' + t.team + '"]');
+      if (chip) {
+        chip.className = "gm-chip " + (STATUS_CLASS[t.status] || "");
+        var chipStatus = chip.querySelector(".gm-chip-status");
+        if (chipStatus) chipStatus.textContent = CHIP_LABELS[t.status] || t.status_label || t.status || "";
+        var chipHp = chip.querySelector(".gm-chip-hp");
+        if (chipHp) chipHp.textContent = t.effective + " HP";
+      }
       var card = document.querySelector('.gm-team[data-team="' + t.team + '"]');
       if (!card) return;
       var status = card.querySelector(".gm-status");
@@ -186,6 +224,12 @@
     paintNextConfirm(state);
 
     setHtml("gm-attention-list", html.attention);
+    var attentionBox = document.getElementById("gm-attention");
+    var attentionList = document.getElementById("gm-attention-list");
+    if (attentionBox) {
+      attentionBox.hidden = !attentionList || !attentionList.children.length;
+    }
+    if (html.readiness != null) setHtml("gm-readiness-root", html.readiness);
     setHtml("gm-inbox-root", html.inbox);
     var backlogAmounts = readBacklogAmounts();
     if (!backlogAmountFocused()) {
