@@ -189,6 +189,39 @@ def ensure_poang(data):
     return data
 
 
+def hp_delta_from_fields(op, amount=None, direction=None):
+    """Turn a console HP action into a non-zero integer delta."""
+    if op == "plus5":
+        return 5
+    if op == "minus5":
+        return -5
+    if op != "adjust":
+        return None
+    if direction in ("minus", "-", "plus", "+"):
+        n = parse_positive_amount(amount, default=1)
+        return -n if direction in ("minus", "-") else n
+    try:
+        n = int(amount)
+    except (TypeError, ValueError):
+        raise ValueError("Beloppet måste vara ett heltal")
+    if n == 0:
+        raise ValueError("Beloppet får inte vara 0")
+    return n
+
+
+def parse_positive_amount(raw, default=1):
+    """Read a GM amount field. Blank uses default; must be at least 1."""
+    if raw in (None, ""):
+        return int(default)
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError("Beloppet måste vara ett heltal")
+    if n < 1:
+        raise ValueError("Beloppet måste vara minst 1")
+    return n
+
+
 def adjust_hp(data, team, amount, reason=""):
     ensure_poang(data)
     if team not in data["poang"]:
@@ -569,6 +602,49 @@ def build_backlog_board(data):
     return board
 
 
+def _progress_percent(spent, estimated):
+    if estimated <= 0:
+        return 0
+    return min(100, int(round(100.0 * spent / estimated)))
+
+
+def build_public_progress(data):
+    """Roadmap snapshot for the room: names and HP bars, no orders or GM controls."""
+    progress = []
+    for team in build_backlog_board(data):
+        items = []
+        spent = 0
+        estimated = 0
+        for item in team.get("items") or []:
+            if item.get("recurring"):
+                continue
+            spent += int(item.get("spent") or 0)
+            estimated += int(item.get("estimated") or 0)
+            entry = {
+                "name": item.get("name") or "",
+                "spent": int(item.get("spent") or 0),
+                "estimated": int(item.get("estimated") or 0),
+                "percent": _progress_percent(item.get("spent") or 0, item.get("estimated") or 0),
+                "done": bool(item.get("done")),
+            }
+            if item.get("kind") == "phased":
+                entry["phases"] = [
+                    {"name": phase.get("name") or "", "done": bool(phase.get("done"))}
+                    for phase in item.get("phases") or []
+                ]
+            items.append(entry)
+        if not items:
+            continue
+        progress.append({
+            "team": team["team"],
+            "spent": spent,
+            "estimated": estimated,
+            "percent": _progress_percent(spent, estimated),
+            "items": items,
+        })
+    return progress
+
+
 def build_team_strip(data):
     ensure_poang(data)
     strip = []
@@ -645,6 +721,7 @@ def build_public_state(data):
         "timer_status": data.get("timer_status", "stopped"),
         "remaining": get_phase_timer(data),
         "teams": teams,
+        "progress": build_public_progress(data),
     }
 
 

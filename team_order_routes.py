@@ -75,7 +75,8 @@ def team_enter_order(spel_id, token):
     # Orders loading logic (debug removed)
     
     # Check if this is admin edit mode
-    is_admin_edit = request.args.get('admin_edit') == 'true' and check_admin_session(spel_id)
+    is_admin_session = check_admin_session(spel_id)
+    is_admin_edit = request.args.get('admin_edit') == 'true' and is_admin_session
     
     # Check if order is already submitted (final) - but allow admin editing
     is_submitted = team_orders and team_orders.get("final", False) and not is_admin_edit
@@ -100,6 +101,7 @@ def team_enter_order(spel_id, token):
                                          token=token,
                                          data=data,
                                          is_admin_edit=is_admin_edit,
+                                         show_gm_back=is_admin_session,
                                          remaining_time=remaining_time,
                                          team_max_hp=team_max_hp,
                                          existing_orders=team_orders,
@@ -479,35 +481,62 @@ TEAM_ORDER_TEMPLATE = """
         }
         
         .add-activity {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             background: #28a745;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 18px;
+            min-height: 44px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
             margin-bottom: 20px;
+            white-space: nowrap;
         }
         
         .submit-section {
-            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e9ecef;
         }
         
+        .submit-help {
+            flex: 1 0 100%;
+            margin: 0 0 4px;
+            color: #6c757d;
+            font-size: 0.95rem;
+            text-align: left;
+            line-height: 1.4;
+        }
+        
+        .save-btn,
+        .submit-btn,
+        .withdraw-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            padding: 12px 20px;
+            min-height: 44px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
         .save-btn {
             background: #6c757d;
             color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-right: 15px;
         }
         
         .save-btn:hover {
@@ -522,13 +551,6 @@ TEAM_ORDER_TEMPLATE = """
         .submit-btn {
             background: #28a745;
             color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
         }
         
         .submit-btn:hover {
@@ -767,9 +789,14 @@ TEAM_ORDER_TEMPLATE = """
     <div class="container">
         <div class="header">
             <h1>📋 Ange Order - {{ team_name }}</h1>
+            {% if show_gm_back %}
+            <p class="no-print" style="margin: 0 0 12px;">
+                <a href="/admin/{{ spel_id }}" style="display:inline-block; background:#e9ecef; color:#1a1a1a; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:600;">← Tillbaka till spelledarpanel</a>
+            </p>
+            {% endif %}
             {% if is_admin_edit %}
             <div style="background: #ffc107; color: #000; padding: 8px 16px; border-radius: 6px; margin: 10px 0; font-weight: bold; font-size: 0.9rem;">
-                🔓 ADMIN EDIT MODE - Editing order during Diplomacy phase
+                🔓 ADMIN — du redigerar {{ team_name }}s order. Gå tillbaka till spelledarpanelen när du är klar.
             </div>
             {% endif %}
             <div class="game-info">
@@ -797,7 +824,8 @@ TEAM_ORDER_TEMPLATE = """
                 <div class="form-section">
                     <h3>📝 Orderformulär</h3>
                     <p class="text-muted mb-2">
-                        Fyll i dina order för denna runda. Du kan lägga till upp till 6 aktiviteter.
+                        Fyll i orderna för denna runda (upp till 6 aktiviteter). Spara utkast när ni vill.
+                        Skicka den slutgiltiga ordern innan tiden tar slut — därefter kan ni inte ändra den själva.
                     </p>
                     
                     <div id="activities-container">
@@ -810,22 +838,21 @@ TEAM_ORDER_TEMPLATE = """
                 </div>
                 
                 <div class="submit-section">
+                    <p class="submit-help">
+                        Utkast syns hos spelledaren men räknas inte. Den gröna knappen skickar den slutgiltiga ordern.
+                    </p>
                     <button type="button" class="save-btn" onclick="saveOrder(false)" {% if is_submitted %}disabled{% endif %}>
-                        {% if is_admin_edit %}
-                            💾 Spara Ändringar
-                        {% elif is_submitted %}
-                            ✅ Order Skickad
+                        {% if is_submitted and not is_admin_edit %}
+                            Order skickad
                         {% else %}
-                            💾 Spara Order
+                            Spara utkast
                         {% endif %}
                     </button>
                     <button type="submit" class="submit-btn" id="submitBtn" {% if is_submitted %}disabled{% endif %}>
-                        {% if is_admin_edit %}
-                            📤 Uppdatera Order
-                        {% elif is_submitted %}
-                            ✅ Order Skickad
+                        {% if is_submitted and not is_admin_edit %}
+                            Order skickad
                         {% else %}
-                            📤 Slutför Order
+                            Skicka slutgiltig order
                         {% endif %}
                     </button>
                     {% if is_submitted and not is_admin_edit and data.fas == "Orderfas" %}
@@ -1194,11 +1221,11 @@ TEAM_ORDER_TEMPLATE = """
                 if (data.success) {
                     if (isFinal) {
                         {% if is_admin_edit %}
-                        showStatus('Order uppdaterad framgångsrikt!', 'success');
+                        showStatus('Slutgiltig order skickad. Du kan gå tillbaka till spelledarpanelen.', 'success');
                         {% else %}
-                        showStatus('Order skickad framgångsrikt!', 'success');
+                        showStatus('Slutgiltig order skickad.', 'success');
                         document.getElementById('submitBtn').disabled = true;
-                        document.getElementById('submitBtn').textContent = '✅ Order Skickad';
+                        document.getElementById('submitBtn').textContent = 'Order skickad';
                         // Hide save button when order is submitted
                         const saveBtn = document.querySelector('.save-btn');
                         if (saveBtn) {
@@ -1207,9 +1234,9 @@ TEAM_ORDER_TEMPLATE = """
                         {% endif %}
                     } else {
                         {% if is_admin_edit %}
-                        showStatus('Ändringar sparade framgångsrikt!', 'success');
+                        showStatus('Utkast sparat.', 'success');
                         {% else %}
-                        showStatus('Order sparad framgångsrikt!', 'success');
+                        showStatus('Utkast sparat.', 'success');
                         {% endif %}
                     }
                 } else {
@@ -1246,7 +1273,7 @@ TEAM_ORDER_TEMPLATE = """
             
             // Only show confirmation dialog if not auto-submitting
             if (!isAutoSubmit) {
-                if (!confirm('Är du säker på att du vill skicka ordern? Du kan inte ändra den efter skickning.')) {
+                if (!confirm('Skicka den slutgiltiga ordern nu? Efter det kan ni inte ändra den själva.')) {
                     return;
                 }
             }

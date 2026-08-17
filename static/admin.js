@@ -18,13 +18,160 @@ function closeTimeAdjustmentModal() {
     }
 }
 
-// Close modal when clicking outside of it
-window.onclick = function(event) {
-    const modal = document.getElementById('timeAdjustmentModal');
-    if (event.target === modal) {
-        closeTimeAdjustmentModal();
+function showDeleteGameSuccess() {
+    const successEl = document.getElementById('deleteGameSuccess');
+    if (!successEl) {
+        return;
+    }
+    successEl.style.display = 'block';
+    setTimeout(function() {
+        successEl.style.display = 'none';
+    }, 4000);
+}
+
+function removeDeletedGameCard(spelId) {
+    if (!spelId) {
+        return;
+    }
+    const card = document.querySelector('[data-game-card-id="' + spelId + '"]');
+    if (card) {
+        card.remove();
     }
 }
+
+function openDeleteGameModal(spelId, label) {
+    const modal = document.getElementById('deleteGameModal');
+    const form = document.getElementById('deleteGameForm');
+    const labelEl = document.getElementById('deleteGameLabel');
+    const password = document.getElementById('deleteGamePassword');
+    const errorEl = document.getElementById('deleteGameError');
+    if (!modal || !form) {
+        return;
+    }
+    form.action = '/admin/delete_game/' + encodeURIComponent(spelId);
+    form.setAttribute('data-spel-id', spelId);
+    const nextField = document.getElementById('deleteGameNext');
+    if (nextField) {
+        const path = window.location.pathname;
+        nextField.value = (path === '/admin') ? '/admin' : '/';
+    }
+    if (labelEl) {
+        labelEl.textContent = label
+            ? 'Ange lösenordet för "' + label + '" för att ta bort spelet permanent.'
+            : 'Ange spellösenordet för att ta bort spelet permanent.';
+    }
+    if (password) {
+        password.value = '';
+        password.focus();
+    }
+    if (errorEl) {
+        errorEl.style.display = 'none';
+    }
+    modal.classList.add('is-open');
+    modal.style.display = 'block';
+}
+
+document.addEventListener('click', function(event) {
+    const deleteBtn = event.target.closest('[data-delete-game-id]');
+    if (deleteBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        openDeleteGameModal(
+            deleteBtn.getAttribute('data-delete-game-id'),
+            deleteBtn.getAttribute('data-delete-game-label') || ''
+        );
+    }
+});
+
+function closeDeleteGameModal() {
+    const modal = document.getElementById('deleteGameModal');
+    const password = document.getElementById('deleteGamePassword');
+    if (modal) {
+        modal.classList.remove('is-open');
+        modal.style.display = 'none';
+    }
+    if (password) {
+        password.value = '';
+    }
+}
+
+window.addEventListener('click', function(event) {
+    if (event.target && event.target.id === 'timeAdjustmentModal') {
+        closeTimeAdjustmentModal();
+    }
+    if (event.target && event.target.id === 'deleteGameModal') {
+        closeDeleteGameModal();
+    }
+});
+
+document.addEventListener('submit', function(event) {
+    const form = event.target;
+    if (!form || form.id !== 'deleteGameForm') {
+        return;
+    }
+    event.preventDefault();
+    const password = document.getElementById('deleteGamePassword');
+    const errorEl = document.getElementById('deleteGameError');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+    }
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams(new FormData(form)),
+        credentials: 'same-origin'
+    })
+        .then(function(response) {
+            return response.json().then(function(data) {
+                return { ok: response.ok, data: data };
+            });
+        })
+        .then(function(result) {
+            if (result.data && result.data.success) {
+                const spelId = form.getAttribute('data-spel-id') || '';
+                closeDeleteGameModal();
+                removeDeletedGameCard(spelId);
+                showDeleteGameSuccess();
+                return;
+            }
+            if (errorEl) {
+                errorEl.style.display = 'block';
+            }
+            if (password) {
+                password.value = '';
+                password.focus();
+            }
+        })
+        .catch(function() {
+            if (errorEl) {
+                errorEl.style.display = 'block';
+            }
+        })
+        .finally(function() {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+        });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('deleted') === '1') {
+        showDeleteGameSuccess();
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (params.get('delete_error') === '1') {
+        const errorEl = document.getElementById('deleteGameError');
+        if (errorEl) {
+            errorEl.style.display = 'block';
+        }
+        openDeleteGameModal(params.get('delete_id') || '', '');
+    }
+});
 
 // Timer functionality
 function openTimerWindow(spelId) {

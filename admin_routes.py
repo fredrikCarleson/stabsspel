@@ -11,7 +11,7 @@ from models import (
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
-from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls, create_time_adjustment_modal
+from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls, create_time_adjustment_modal, create_delete_game_modal, create_delete_game_button
 from gm_console import (
     add_backlog_spend,
     add_timer_seconds,
@@ -24,6 +24,7 @@ from gm_console import (
     auto_submit_unsaved_orders,
     build_live_state,
     end_game,
+    hp_delta_from_fields,
     push_undo,
     reset_timer_fields,
     set_regeringsstod,
@@ -48,10 +49,14 @@ def check_admin_session(spel_id):
     return is_game_session_valid(spel_id, session.get(session_key))
 
 
+PASSWORD_PROTECTED_ENDPOINTS = {
+    "admin.delete_game_route",
+}
+
 @admin_bp.before_request
 def require_admin_session_for_game_routes():
     """Block unauthenticated mutations and data leaks for a specific game."""
-    if request.endpoint in PUBLIC_ADMIN_ENDPOINTS or request.endpoint is None:
+    if request.endpoint in PUBLIC_ADMIN_ENDPOINTS or request.endpoint in PASSWORD_PROTECTED_ENDPOINTS or request.endpoint is None:
         return None
     spel_id = (request.view_args or {}).get("spel_id")
     if not spel_id:
@@ -1085,7 +1090,7 @@ def admin_start():
     
     return f'''
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css?v=5">
+        <link rel="stylesheet" href="/static/app.css?v=10">
         <link rel="stylesheet" href="/static/print.css" media="print">
         <div class="container">
             <!-- Header Section -->
@@ -1174,7 +1179,7 @@ def admin_start():
                     {f'''
                     <div class="scroll-y-400">
                         {''.join([f'''
-                        <div class="list-card border-left-success">
+                        <div class="list-card border-left-success" data-game-card-id="{s["id"]}">
                             <div class="flex-between">
                                 <div class="flex-1">
                                     <h3 class="h3-compact">{s["datum"]}</h3>
@@ -1184,9 +1189,7 @@ def admin_start():
                                 <div class="flex gap-2">
                                     <a href="/admin/{s["id"]}" class="primary sm link-light">▶️ Öppna</a>
                                     <a href="/admin/download_game/{s["id"]}" class="secondary sm link-light">💾 Ladda ner</a>
-                                    <form method="post" action="/admin/delete_game/{s["id"]}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort spelet {s["datum"]} – {s["plats"]}? Detta går inte att ångra.')">
-                                        <button type="submit" class="danger sm">🗑️ Ta bort</button>
-                                    </form>
+                                    {create_delete_game_button(s["id"], f'{s["datum"]} – {s["plats"]}')}
                                 </div>
                             </div>
                         </div>
@@ -1233,6 +1236,7 @@ def admin_start():
             </div>
             
             {team_info_js}
+            {create_delete_game_modal()}
         </div>
         
         <style>
@@ -1402,7 +1406,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=7">
+            <link rel="stylesheet" href="/static/app.css?v=9">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 // Force cache refresh for JavaScript
@@ -1807,42 +1811,60 @@ def admin_undo(spel_id):
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
 
+def _hp_live_response(spel_id, data):
+    state = build_live_state(data)
+    return jsonify({
+        "success": True,
+        "state": state,
+        "html": live_html_fragments(spel_id, state),
+    })
+
+
 @admin_bp.route("/admin/<spel_id>/hp", methods=["POST"])
 def admin_hp_live(spel_id):
     data = load_game_data(spel_id)
     if not data:
+        if request.is_json:
+            return jsonify({"success": False, "error": "Spelet hittades inte"}), 404
         return "Spelet hittades inte.", 404
-    op = request.form.get("op")
-    reason = request.form.get("reason", "")
+    payload = request.get_json(silent=True) if request.is_json else None
+    source = payload if isinstance(payload, dict) else request.form
+    op = source.get("op")
+    reason = source.get("reason") or ""
     try:
-        if op == "plus5":
-            push_undo(data, "HP +5")
-            adjust_hp(data, request.form.get("team"), 5, reason)
-        elif op == "minus5":
-            push_undo(data, "HP -5")
-            adjust_hp(data, request.form.get("team"), -5, reason)
+        delta = hp_delta_from_fields(op, source.get("amount"), source.get("direction"))
+        if delta is not None:
+            sign = "+" if delta >= 0 else ""
+            push_undo(data, f"HP {sign}{delta}")
+            adjust_hp(data, source.get("team"), delta, reason)
         elif op == "transfer":
             push_undo(data, "HP-överföring")
             transfer_hp(
                 data,
-                request.form.get("from_team"),
-                request.form.get("to_team"),
-                int(request.form.get("amount") or 0),
+                source.get("from_team"),
+                source.get("to_team"),
+                int(source.get("amount") or 0),
                 reason,
             )
         elif op == "support":
             push_undo(data, "Regeringsstöd")
             set_regeringsstod(
                 data,
-                request.form.get("team"),
-                request.form.get("regeringsstod") == "on",
+                source.get("team"),
+                source.get("regeringsstod") == "on",
                 reason,
             )
         else:
+            if request.is_json:
+                return jsonify({"success": False, "error": "Okänd HP-åtgärd"}), 400
             return "Okänd HP-åtgärd", 400
     except (ValueError, TypeError) as exc:
+        if request.is_json:
+            return jsonify({"success": False, "error": str(exc)}), 400
         return str(exc), 400
     save_game_data(spel_id, data)
+    if request.is_json:
+        return _hp_live_response(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 
 
@@ -3010,17 +3032,43 @@ def admin_backlog(spel_id):
 
 @admin_bp.route("/admin/delete_game/<spel_id>", methods=["POST"])
 def delete_game_route(spel_id):
-    """Route handler for deleting a game - delegates to game_management.delete_game"""
+    """Delete a game after verifying the game password from the delete modal."""
+    from urllib.parse import urlsplit, urlencode
+
+    wants_json = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    def redirect_back(deleted=False, error=False):
+        next_path = (request.form.get("next") or "").strip()
+        if next_path not in ("/", "/admin"):
+            referrer_path = urlsplit(request.referrer or "").path
+            next_path = referrer_path if referrer_path in ("/", "/admin") else "/"
+        query = {}
+        if deleted:
+            query["deleted"] = "1"
+        if error:
+            query["delete_error"] = "1"
+            query["delete_id"] = spel_id
+        return redirect(next_path + (("?" + urlencode(query)) if query else ""))
+
     try:
-        result = delete_game(spel_id)
-        # If delete_game returns a redirect, follow it
-        if hasattr(result, 'status_code') and result.status_code == 302:
-            return result
-        # Otherwise, redirect to admin start page
-        return redirect(url_for("admin.admin_start"))
+        if load_game_data(spel_id) is None:
+            if wants_json:
+                return jsonify({"success": True, "already_gone": True})
+            return redirect_back(deleted=True)
+        provided_password = request.form.get("password", "").strip()
+        if not check_game_password(spel_id, provided_password):
+            if wants_json:
+                return jsonify({"success": False, "error": "wrong_password"}), 403
+            return redirect_back(error=True)
+        delete_game(spel_id)
+        if wants_json:
+            return jsonify({"success": True})
+        return redirect_back(deleted=True)
     except Exception as e:
         print(f"Error deleting game {spel_id}: {e}")
-        return redirect(url_for("admin.admin_start"))
+        if wants_json:
+            return jsonify({"success": False, "error": "server"}), 500
+        return redirect_back(error=True)
 
 @admin_bp.route("/admin/download_game/<spel_id>")
 def download_game(spel_id):

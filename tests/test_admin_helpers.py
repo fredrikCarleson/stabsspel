@@ -8,7 +8,7 @@ import os
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls
+from admin_helpers import add_no_cache_headers, create_team_info_js, create_compact_header, create_action_buttons, create_script_references, create_timer_controls, create_delete_game_modal, create_delete_game_button
 
 class TestAdminHelpers(unittest.TestCase):
     """Test cases for admin_helpers functionality"""
@@ -99,7 +99,22 @@ class TestAdminHelpers(unittest.TestCase):
         
         # Check that it contains expected script reference
         self.assertIn('<script src="/static/admin.js"></script>', script_refs)
-        self.assertIn('<script src="/static/gm-console.js?v=3"></script>', script_refs)
+        self.assertIn('<script src="/static/gm-console.js?v=5"></script>', script_refs)
+
+    def test_create_delete_game_modal(self):
+        html = create_delete_game_modal()
+        self.assertIn('id="deleteGameModal"', html)
+        self.assertIn('class="modal"', html)
+        self.assertIn('name="password"', html)
+        self.assertIn('/static/admin.js?v=4', html)
+        self.assertIn('name="next"', html)
+        self.assertIn('value="/"', html)
+
+    def test_create_delete_game_button(self):
+        html = create_delete_game_button("abc123", "2026-01-01 – Test")
+        self.assertIn("data-delete-game-id", html)
+        self.assertIn("abc123", html)
+        self.assertIn("Ta bort", html)
     
     def test_create_timer_controls(self):
         """Test create_timer_controls function"""

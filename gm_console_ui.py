@@ -225,7 +225,7 @@ def create_gm_console_html(spel_id, data):
       {result_note}
 
       <h3 class="gm-section-title">Lag och handlingspoäng</h3>
-      <p class="gm-section-help">Aktuell HP syns här. +/− ändrar poäng. Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell och kan inte flyttas.</p>
+      <p class="gm-section-help">Skriv hur många HP, sedan − eller +. Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell och kan inte flyttas.</p>
       {teams_html}
       {_transfer_form_html(spel_id, state["teams"])}
 
@@ -234,7 +234,7 @@ def create_gm_console_html(spel_id, data):
       <div id="gm-inbox-root">{inbox_html}</div>
 
       <h3 class="gm-section-title">Teamens arbete</h3>
-      <p class="gm-section-help">Bocka av spenderad HP här under diplomati. Du behöver inte öppna backlog-sidan. Fullständig tabell finns under Mer.</p>
+      <p class="gm-section-help">Sätt HP per klick i kolumnen, sedan − / + på en roadmap-uppgift. Egna aktiviteter (t.ex. CI/CD) ligger i orderinkorgen, inte här.</p>
       <p class="gm-live-error" id="gm-live-error" hidden></p>
       <div id="gm-backlog-root">{backlog_html}</div>
 
@@ -278,9 +278,13 @@ def _team_strip_html(spel_id, teams, test_mode):
           </div>
           <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-actions">
             <input type="hidden" name="team" value="{escape(t["team"])}">
+            <input type="hidden" name="op" value="adjust">
+            <div class="gm-stepper">
+              <button type="submit" name="direction" value="minus" class="secondary gm-mini" data-hp-delta="-1">−</button>
+              <input type="number" name="amount" min="1" value="1" class="gm-amount" inputmode="numeric" aria-label="HP-belopp">
+              <button type="submit" name="direction" value="plus" class="secondary gm-mini" data-hp-delta="1">+</button>
+            </div>
             <input type="text" name="reason" placeholder="Orsak" class="gm-reason">
-            <button name="op" value="minus5" class="secondary">−5</button>
-            <button name="op" value="plus5" class="secondary">+5</button>
           </form>
           <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-support">
             <input type="hidden" name="team" value="{escape(t["team"])}">
@@ -341,7 +345,7 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
             ):
                 seen_withdraw.add(row["team"])
                 edit += (
-                    f' <button type="button" class="secondary gm-mini" data-order-withdraw '
+                    f'<button type="button" class="secondary gm-mini" data-order-withdraw '
                     f'data-team="{escape(row["team"])}">Öppna för laget</button>'
                 )
         backlog_cell = "—"
@@ -357,16 +361,15 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
         <tr class="{conflict}">
           <td>{escape(row["team"])}</td>
           <td><span class="gm-status {_status_class(row["status"])}">{escape(STATUS_LABELS.get(row["status"], row["status"]))}</span></td>
-          <td>{escape(row["aktivitet"])}</td>
-          <td>{row["hp"]}</td>
-          <td>{escape(typ)}</td>
-          <td>{escape(targets)}</td>
-          <td>{backlog_cell}</td>
-          <td>{edit}</td>
-        </tr>
-        <tr class="gm-purpose {conflict}">
-          <td></td>
-          <td colspan="7">{escape(row["syfte"])}</td>
+          <td>
+            <div class="gm-inbox-activity">{escape(row["aktivitet"])}</div>
+            <div class="gm-inbox-purpose">{escape(row["syfte"]) or "—"}</div>
+            <div class="gm-inbox-meta">{escape(typ)} · {escape(targets)}</div>
+          </td>
+          <td class="gm-inbox-hp">{row["hp"]} HP</td>
+          <td>
+            <div class="gm-inbox-actions">{backlog_cell}{edit}</div>
+          </td>
         </tr>
         ''')
     hidden_fill = "" if test_mode else "hidden"
@@ -375,7 +378,7 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
       <table class="gm-inbox">
         <thead>
           <tr>
-            <th>Lag</th><th>Status</th><th>Aktivitet</th><th>HP</th><th>Typ</th><th>Påverkar</th><th>Backlog</th><th></th>
+            <th>Lag</th><th>Status</th><th>Aktivitet</th><th>HP</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -393,10 +396,10 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
 def _spend_buttons(team, task_id, phase="", disabled=""):
     phase_attr = f' data-phase="{escape(phase)}"' if phase else ""
     return (
-        f'<button type="button" class="secondary gm-mini" data-backlog-delta="-5" '
-        f'data-team="{escape(team)}" data-task="{escape(task_id)}"{phase_attr} {disabled}>−5</button>'
-        f'<button type="button" class="secondary gm-mini" data-backlog-delta="5" '
-        f'data-team="{escape(team)}" data-task="{escape(task_id)}"{phase_attr} {disabled}>+5</button>'
+        f'<button type="button" class="secondary gm-mini" data-backlog-delta="-1" '
+        f'data-team="{escape(team)}" data-task="{escape(task_id)}"{phase_attr} {disabled}>−</button>'
+        f'<button type="button" class="secondary gm-mini" data-backlog-delta="1" '
+        f'data-team="{escape(team)}" data-task="{escape(task_id)}"{phase_attr} {disabled}>+</button>'
     )
 
 
@@ -413,14 +416,15 @@ def _backlog_html(board, avslutat=False):
             if item.get("kind") == "phased":
                 rows.append(
                     f'<div class="gm-backlog-item{done_class}">'
-                    f'<div class="gm-backlog-name"><strong>{escape(item["name"])}</strong>'
-                    f' <span class="gm-hp-sub">{item["spent"]}/{item["estimated"]}</span></div>'
+                    f'<div class="gm-backlog-parent"><span class="gm-backlog-name">'
+                    f'<strong>{escape(item["name"])}</strong></span>'
+                    f'<span class="gm-backlog-count">{item["spent"]}/{item["estimated"]}</span></div>'
                 )
                 for phase in item.get("phases") or []:
                     phase_done = " is-done" if phase.get("done") else ""
                     rows.append(
                         f'<div class="gm-backlog-row gm-backlog-phase{phase_done}">'
-                        f'<span>{escape(phase["name"])}</span>'
+                        f'<span class="gm-backlog-name">{escape(phase["name"])}</span>'
                         f'<span class="gm-backlog-count">{phase["spent"]}/{phase["estimated"]}</span>'
                         f'<span class="gm-backlog-btns">{_spend_buttons(team["team"], item["id"], phase["name"], disabled)}</span>'
                         f'</div>'
@@ -438,6 +442,10 @@ def _backlog_html(board, avslutat=False):
             f'<section class="gm-backlog-team" data-team="{escape(team["team"])}">'
             f'<h4>{escape(team["team"])} '
             f'<span class="gm-hp-sub">{team["spent"]}/{team["estimated"]} HP</span></h4>'
+            f'<label class="gm-backlog-stepper">HP per klick '
+            f'<input type="number" min="1" value="1" class="gm-amount gm-backlog-amount" '
+            f'data-team="{escape(team["team"])}" {disabled} aria-label="HP per klick {escape(team["team"])}">'
+            f'</label>'
             f'{"".join(rows)}</section>'
         )
     return f'<div class="gm-backlog">{"".join(cards)}</div>'
@@ -452,19 +460,73 @@ def _log_html(log):
     return f'<ul class="gm-log">{"".join(items)}</ul>'
 
 
-def create_projector_html(spel_id, data):
-    """Player-facing display: round, phase, time, public HP. No GM controls."""
-    state = build_public_state(data)
-    team_cards = []
-    for t in state["teams"]:
-        extra = " has-support" if t["regeringsstod"] else ""
-        note = '<div class="projector-team-note">stöd +10</div>' if t["regeringsstod"] else ""
-        team_cards.append(
+def _projector_hp_html(teams):
+    cards = []
+    for t in teams or []:
+        extra = " has-support" if t.get("regeringsstod") else ""
+        note = '<div class="projector-team-note">stöd +10</div>' if t.get("regeringsstod") else ""
+        cards.append(
             f'<div class="projector-team{extra}">'
             f'<div class="projector-team-name">{escape(t["team"])}</div>'
             f'<div class="projector-team-hp">{t["hp"]}</div>'
             f"{note}</div>"
         )
+    return "".join(cards)
+
+
+def _projector_bar(percent, extra_class=""):
+    width = max(0, min(100, int(percent or 0)))
+    done = " is-done" if width >= 100 else ""
+    return (
+        f'<div class="projector-bar{done} {extra_class}">'
+        f'<span style="width:{width}%"></span></div>'
+    )
+
+
+def _projector_progress_html(progress):
+    if not progress:
+        return ""
+    cards = []
+    for team in progress:
+        rows = []
+        for item in team.get("items") or []:
+            phases = ""
+            if item.get("phases"):
+                ticks = "".join(
+                    f'<span class="{"is-done" if phase.get("done") else ""}">'
+                    f'{escape(phase.get("name") or "")}</span>'
+                    for phase in item["phases"]
+                )
+                phases = f'<div class="projector-phases">{ticks}</div>'
+            done_class = " is-done" if item.get("done") else ""
+            rows.append(
+                f'<div class="projector-task{done_class}">'
+                f'<span class="projector-task-name">{escape(item.get("name") or "")}</span>'
+                f'<span class="projector-task-hp">{item.get("spent", 0)}/{item.get("estimated", 0)}</span>'
+                f'{_projector_bar(item.get("percent"))}'
+                f"{phases}</div>"
+            )
+        cards.append(
+            f'<section class="projector-progress-card">'
+            f'<div class="projector-progress-head">'
+            f'<div class="projector-progress-team">{escape(team["team"])}</div>'
+            f'<div class="projector-progress-total">{team.get("percent", 0)}% · '
+            f'{team.get("spent", 0)}/{team.get("estimated", 0)} HP</div>'
+            f"</div>"
+            f'{_projector_bar(team.get("percent"), "is-team")}'
+            f'{"".join(rows)}</section>'
+        )
+    return (
+        '<h2 class="projector-progress-title">Teamens arbete</h2>'
+        f'<div class="projector-progress-grid">{"".join(cards)}</div>'
+    )
+
+
+def create_projector_html(spel_id, data):
+    """Player-facing display: round, phase, time, public HP. No GM controls."""
+    state = build_public_state(data)
+    team_cards = _projector_hp_html(state["teams"])
+    progress_html = _projector_progress_html(state.get("progress") or [])
     ended = " Spelet är slut." if state["avslutat"] else ""
     state_json = json.dumps({"spel_id": spel_id, **state}, ensure_ascii=False)
     return f'''<!DOCTYPE html>
@@ -474,7 +536,7 @@ def create_projector_html(spel_id, data):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spelarskärm – runda {state["runda"]}</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="/static/app.css?v=7">
+  <link rel="stylesheet" href="/static/app.css?v=9">
 </head>
 <body class="projector-page">
   <script type="application/json" id="projector-state">{state_json}</script>
@@ -485,9 +547,10 @@ def create_projector_html(spel_id, data):
       <div class="projector-clock" id="projector-clock">{_fmt_time(state["remaining"])}</div>
       <div class="projector-status" id="projector-status">{escape(state["timer_status"])}{ended}</div>
     </div>
-    <div class="projector-hp" id="projector-hp">{"".join(team_cards)}</div>
+    <div class="projector-hp" id="projector-hp">{team_cards}</div>
+    <div class="projector-progress" id="projector-progress">{progress_html}</div>
   </div>
-  <script src="/static/projector.js?v=1"></script>
+  <script src="/static/projector.js?v=2"></script>
 </body>
 </html>
 '''

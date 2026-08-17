@@ -159,6 +159,11 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Inloggning val", html)
         self.assertIn("överförbart", html)
         self.assertIn("Space pausa", html)
+        self.assertIn('data-hp-delta', html)
+        self.assertIn("gm-backlog-amount", html)
+        self.assertIn("HP per klick", html)
+        self.assertNotIn("−5</button>", html)
+        self.assertNotIn("+5</button>", html)
 
         add_backlog_spend(data, "Alfa", "alfa_1", 5)
         data["team_orders"] = {
@@ -181,9 +186,19 @@ class TestGmConsoleHtml(unittest.TestCase):
         }
         fragments = live_html_fragments("g1", build_live_state(data))
         self.assertIn("Lägg +5 HP", fragments["inbox"])
+        self.assertIn("gm-inbox-activity", fragments["inbox"])
         self.assertIn("5/15", fragments["backlog"])
         self.assertIn("Ändra", fragments["inbox"])
         self.assertIn("Öppna för laget", fragments["inbox"])
+
+    def test_admin_order_form_has_back_to_console(self):
+        from team_order_routes import TEAM_ORDER_TEMPLATE
+
+        self.assertIn("Tillbaka till spelledarpanel", TEAM_ORDER_TEMPLATE)
+        self.assertIn("show_gm_back", TEAM_ORDER_TEMPLATE)
+        self.assertIn("Skicka slutgiltig order", TEAM_ORDER_TEMPLATE)
+        self.assertIn("Spara utkast", TEAM_ORDER_TEMPLATE)
+        self.assertNotIn("Uppdatera Order", TEAM_ORDER_TEMPLATE)
 
     def test_projector_shows_public_hp_without_gm_controls(self):
         from gm_console_ui import create_projector_html
@@ -193,10 +208,14 @@ class TestGmConsoleHtml(unittest.TestCase):
         html = create_projector_html("g1", data)
         self.assertIn("projector-clock", html)
         self.assertIn("Alfa", html)
+        self.assertIn("Teamens arbete", html)
+        self.assertIn("Inloggning val", html)
+        self.assertIn("projector-progress", html)
         self.assertNotIn("Starta", html)
         self.assertNotIn("Pausa", html)
         self.assertNotIn("Testläge", html)
         self.assertNotIn("Orderinkorg", html)
+        self.assertNotIn("HP per klick", html)
 
     def test_result_phase_shows_run_of_show(self):
         from gm_console_ui import create_gm_console_html

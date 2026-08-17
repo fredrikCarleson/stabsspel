@@ -6,6 +6,7 @@ import io
 import base64
 from models import DATA_DIR, load_game_data, get_team_by_token
 from orderkort import generate_team_orderkort_html
+from admin_routes import check_admin_session
 
 team_bp = Blueprint('team', __name__)
 
@@ -65,6 +66,10 @@ def team_beskrivning(spel_id, lag_namn):
             </div>
             '''
     
+    back_html = ""
+    if data and check_admin_session(spel_id):
+        back_html = f'<a href="/admin/{spel_id}" class="secondary">← Tillbaka till spelledarpanel</a>'
+
     # Läs beskrivningstext
     if os.path.exists(txt_path):
         with open(txt_path, encoding="utf-8") as f:
@@ -104,7 +109,8 @@ def team_beskrivning(spel_id, lag_namn):
         </head>
         <body>
         <div class="container">
-        <div class="flex gap-2 mb-2">
+        <div class="flex gap-2 mb-2 no-print">
+            {back_html}
             <button onclick="window.print()" class="secondary">Skriv ut</button>
             <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="info">
                 Skriv ut orderkort

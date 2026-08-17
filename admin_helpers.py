@@ -102,7 +102,51 @@ def create_script_references():
     """Skapa referenser till externa JavaScript-filer"""
     return '''
     <script src="/static/admin.js"></script>
-    <script src="/static/gm-console.js?v=3"></script>
+    <script src="/static/gm-console.js?v=5"></script>
+    '''
+
+def create_delete_game_button(spel_id, label, css_class="danger sm"):
+    """Button that opens the shared delete-password modal."""
+    import html
+    return (
+        f'<button type="button" class="{css_class}" '
+        f'data-delete-game-id="{html.escape(str(spel_id), quote=True)}" '
+        f'data-delete-game-label="{html.escape(str(label), quote=True)}">'
+        f'Ta bort</button>'
+    )
+
+def create_delete_game_modal():
+    """Password modal for deleting a game. Uses existing .modal styles."""
+    return '''
+    <div id="deleteGameSuccess" class="notification success" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2000; max-width: 480px;">
+        Spelet har tagits bort.
+    </div>
+    <div id="deleteGameModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ta bort spel</h3>
+                <span class="close" onclick="closeDeleteGameModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="deleteGameLabel" class="mb-3"></p>
+                <div id="deleteGameError" class="notification error" style="display: none;">
+                    Felaktigt lösenord. Spelet togs inte bort.
+                </div>
+                <form id="deleteGameForm" method="post" action="/admin/delete_game/" autocomplete="off">
+                    <input type="hidden" name="next" id="deleteGameNext" value="/">
+                    <div class="form-group">
+                        <label for="deleteGamePassword">Spellösenord</label>
+                        <input type="password" id="deleteGamePassword" name="password" required placeholder="Ange lösenord" autocomplete="new-password">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" onclick="closeDeleteGameModal()" class="secondary">Avbryt</button>
+                        <button type="submit" class="danger">Ta bort spelet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="/static/admin.js?v=4"></script>
     '''
 
 def create_time_adjustment_modal(spel_id, orderfas_min, diplomatifas_min):

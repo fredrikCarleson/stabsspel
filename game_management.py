@@ -5,7 +5,6 @@ This module contains functions for managing game data and operations.
 
 import os
 import json
-from flask import redirect, url_for
 from models import DATA_DIR, save_game_data, load_game_data
 
 
@@ -53,19 +52,19 @@ def delete_game(spel_id):
         spel_id (str): The ID of the game to delete
 
     Returns:
-        Flask redirect: Redirects to admin start page
+        bool: True if a file was removed, False if it was already missing
     """
     try:
         filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
         if os.path.exists(filnamn):
             os.remove(filnamn)
             print(f"Successfully deleted game file: {filnamn}")
-        else:
-            print(f"Game file not found: {filnamn}")
-        return redirect(url_for("admin.admin_start"))
+            return True
+        print(f"Game file not found: {filnamn}")
+        return False
     except Exception as e:
         print(f"Error deleting game {spel_id}: {e}")
-        return redirect(url_for("admin.admin_start"))
+        raise
 
 
 def nollstall_regeringsstod(data):

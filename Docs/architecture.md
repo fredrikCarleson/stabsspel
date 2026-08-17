@@ -14,7 +14,7 @@ The app’s job is to **keep the room on the clock** and hold **orders, HP, back
 
 **In scope**
 
-- Create / resume a game, password-protect the GM panel
+- Create / resume a game, password-protect the GM panel, delete a game (password in a modal)
 - Run Order → Diplomacy → Result (four rounds), with timer, undo, and previous phase
 - Collect team orders (draft → submit → optional withdraw in Orderfas)
 - Show one GM console: inbox, HP strip, backlog spend, log
@@ -32,7 +32,8 @@ The app’s job is to **keep the room on the clock** and hold **orders, HP, back
 ## 2. How a live event uses the app
 
 ```
-Create game (/admin)
+Home (/) lists saved games
+Create / upload (/admin)
         │
         ▼
 Spelledarpanel  ──────────────►  Spelarskärm  (/spelarskarm/<id>)
@@ -49,7 +50,7 @@ News still happen **outside** the app: **Kopiera ordrar till LLM** → paper hea
 
 | Role | Where they look |
 |------|-----------------|
-| Game Master | `/admin/<spel_id>` — live console |
+| Game Master | `/` or `/admin` to pick a game, then `/admin/<spel_id>` — live console |
 | Room / projector | `/spelarskarm/<spel_id>` — no orders, no GM buttons |
 | Team | `/team/<spel_id>/<lag>` brief + QR, then `/team/<spel_id>/<token>/enter_order` |
 
@@ -161,9 +162,10 @@ stabsspel/
 ├── team_routes.py         Team briefs + QR
 ├── team_order_routes.py   Token order form + save/submit/withdraw
 ├── orderkort.py           Printable order cards
-├── static/                CSS and GM/projector JS
+├── static/                CSS, JS, and images
+│   └── backgrounds/       Page background images (`/static/backgrounds/...`)
 ├── teambeskrivning/       Per-team briefs (and optional images)
-├── Docs/                  Human docs (rules + this file)
+├── Docs/                  Human docs (rules, architecture, ops notes)
 ├── tests/                 Preferred unit tests
 ├── speldata/              Live JSON games (not in git)
 ├── requirements.txt
@@ -203,13 +205,15 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 
 ### 6.3 HTTP: Game Master
 
-`admin_routes.py` is the largest file. It mixes the **live console** with older admin pages.
+`admin_routes.py` is the largest file. It mixes the **live console** with older admin pages. The home page (`GET /`) lives in `app.py`.
 
 **Live console (use these)**
 
 | Route | Role |
 |-------|------|
-| `GET/POST /admin` | Create game, list saved games |
+| `GET /` | Home page: list saved games, open / download / delete |
+| `GET/POST /admin` | Create game, upload JSON, also lists saved games |
+| `POST /admin/delete_game/<id>` | Delete after game password (JSON if `X-Requested-With: XMLHttpRequest`) |
 | `GET/POST /admin/<id>` | Password gate + spelledarpanel |
 | `POST /admin/<id>/timer` | Start/pause, ±1 min, reset, next/prev phase, new round, end |
 | `POST /admin/<id>/hp` | +5/−5, transfer, stöd |
@@ -228,14 +232,16 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 |-------|------|
 | `/admin/<id>/order_summary` | Text dump to paste into an LLM |
 | `/admin/<id>/aktivitetskort` | Print hidden agendas |
-| `/admin/<id>/orderkort` | Printable paper order cards |
+| `/admin/<id>/orderkort` | Pick a round, then printable paper order cards for all teams |
+| `/admin/<id>/orderkort/<runda>` | HTML for that round |
+| `/team/<id>/<lag>/orderkort` | Paper cards for one team (link on the team brief page) |
 | `/admin/<id>/backlog` | Full backlog table (fallback; spend is on the console) |
 | `/admin/<id>/poang` | Full HP table (fallback; strip is on the console) |
 | `/admin/download_game/<id>`, `/admin/upload_game` | JSON backup |
 
 **Leftover chrome** (old checklists, extra timer widgets, team-overview cards under the console). They still render on the panel; the GM can ignore them. `create_timer_controls` and phase checklists in this file are the previous admin shell.
 
-`admin_helpers.py` — no-cache headers, script tags (`admin.js`, `gm-console.js`), compact header, old timer controls, time-adjustment modal.
+`admin_helpers.py` — no-cache headers, script tags (`admin.js`, `gm-console.js`), compact header, old timer controls, time-adjustment modal, **delete-game password modal**.
 
 ### 6.4 HTTP: teams and projector
 
@@ -252,11 +258,12 @@ Order URLs use `team_tokens`, not the team name, so guessing `/team/<id>/Alfa/en
 
 | File | Purpose |
 |------|---------|
-| `app.css` | Design tokens, admin, GM console, projector, print-adjacent layout. Cache-busted with `?v=` on some pages. |
+| `app.css` | Design tokens, admin, GM console, projector, homepage. Buttons are `primary` / `danger` / `sm` (not BEM `btn--primary`). Cache-busted with `?v=` on some pages. |
 | `print.css` | Print stylesheet for cards/briefs. |
 | `gm-console.js` | Clock tick, Space pause, **N** next phase (with confirm), 3s live poll, backlog buttons, inline order edit, withdraw, testläge, opens `/spelarskarm/`. |
 | `projector.js` | Clock + 2s poll of public live JSON. No controls. F11 is left to the browser. |
-| `admin.js` | Older admin helpers (modals, `openTimerWindow` now also opens the projector). |
+| `admin.js` | Delete-game password modal (AJAX, stays on the same page), time-adjustment modal, `openTimerWindow` (opens the projector). |
+| `backgrounds/` | Background images. Put files here; they are served at `/static/backgrounds/<filename>`. |
 
 There is no SPA framework. The GM console is server HTML plus a small poller.
 
@@ -270,8 +277,12 @@ Plain-text briefs, one file per team (`alfa.txt`, `bravo.txt`, `stt.txt`, `fm.tx
 |------|---------|
 | `Stabsspel Traineeprogrammet.md` | The **game**: rules, teams, HP, rounds, how news work in the room. |
 | `architecture.md` | This file: the **software**. |
+| `DEPLOYMENT_GUIDE.md` | Render-oriented deploy notes. |
+| `PRODUCTION_CHECKLIST.md` | Production go-live checklist. |
+| `ORDERKORT_README.md` | Printable order-card notes. |
+| `CSS_REFACTORING_LOG.md` | Historical note: old CSS files were merged; not a current style guide. |
 
-Root-level `README.md`, `DEPLOYMENT_GUIDE.md`, `PRODUCTION_CHECKLIST.md`, `ORDERKORT_README.md`, and `CSS_REFACTORING_LOG.md` are older operational notes; prefer this folder for lasting documentation.
+Root-level `README.md` stays at the repository root (quick start).
 
 ### 6.8 Tests
 
@@ -292,7 +303,7 @@ Typical run:
 python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers
 ```
 
-**Root `test_*.py` / `debug_*.py`** — older Flask-client or manual scripts (`test_admin_routes.py`, `test_team_order_system.py`, and similar). Useful as archaeology; they are not the default suite. HTML files like `test_timer_maximize.html` are local CSS/timer experiments.
+**Root `test_*.py` / `debug_*.py`** — older Flask-client or manual scripts. `test_admin_routes.py` still covers delete-game HTTP. Others (`test_team_order_system.py`, `test_deployment.py`, and similar) are archaeology; they are not the default suite. HTML files like `test_timer_maximize.html` are local CSS/timer experiments. `test_deployment.py` still expects `static/alarm.mp3`, which is **not** in the repo.
 
 There is **no CI** in the repo.
 
@@ -330,9 +341,9 @@ Keyboard on the console: **Space** pause/resume, **N** next phase (existing conf
 
 Local: `python app.py` → http://localhost:5000 (debug reload unless `FLASK_ENV` / `FLASK_DEBUG` say otherwise).
 
-Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **writable persistent disk** on the host; it is not in git. See `README.md` / `DEPLOYMENT_GUIDE.md` for Render-oriented notes.
+Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **writable persistent disk** on the host; it is not in git. See `README.md` / `Docs/DEPLOYMENT_GUIDE.md` for Render-oriented notes.
 
-`/health` returns a JSON status for uptime checks.
+`GET /health` returns JSON (`status`, `service`, `version` currently `"1.1"`, `timestamp`) for uptime checks.
 
 ---
 
@@ -358,4 +369,5 @@ Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **wri
 | Add a team brief | `teambeskrivning/<lag>.txt` |
 | Change backlog templates | `models.BACKLOG` |
 | Change create-game / password | `models.skapa_nytt_spel`, `admin_start` |
+| Delete a saved game | Homepage `/` or `/admin` → Ta bort (game password) |
 | Understand the exercise | `Docs/Stabsspel Traineeprogrammet.md` |

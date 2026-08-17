@@ -352,12 +352,44 @@ class TestAdminRoutes(unittest.TestCase):
                     self.assertTrue(os.path.exists(game_file))
                     self.login_admin()
                     
-                    # Test POST request to delete game
-                    response = self.app.post(f'/admin/delete_game/{self.test_spel_id}', follow_redirects=True)
+                    response = self.app.post(
+                        f'/admin/delete_game/{self.test_spel_id}',
+                        data={'password': 'apa123', 'next': '/'},
+                        follow_redirects=True
+                    )
                     self.assertEqual(response.status_code, 200)
-                    
-                    # Verify game file was deleted
+                    self.assertIn(b'Spelet har tagits bort', response.data)
+                    self.assertNotIn(b'Stabsspel Admin', response.data)
                     self.assertFalse(os.path.exists(game_file))
+
+    def test_delete_game_json_stays_on_page(self):
+        """AJAX delete returns JSON and does not redirect to /admin."""
+        with patch('admin_routes.DATA_DIR', self.test_data_dir):
+            with patch('game_management.DATA_DIR', self.test_data_dir):
+                with patch('models.DATA_DIR', self.test_data_dir):
+                    game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
+                    response = self.app.post(
+                        f'/admin/delete_game/{self.test_spel_id}',
+                        data={'password': 'apa123', 'next': '/'},
+                        headers={'X-Requested-With': 'XMLHttpRequest'}
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.get_json(), {"success": True})
+                    self.assertFalse(os.path.exists(game_file))
+
+    def test_delete_game_wrong_password_keeps_file(self):
+        """Wrong password must not delete the game."""
+        with patch('admin_routes.DATA_DIR', self.test_data_dir):
+            with patch('game_management.DATA_DIR', self.test_data_dir):
+                with patch('models.DATA_DIR', self.test_data_dir):
+                    game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
+                    self.assertTrue(os.path.exists(game_file))
+                    response = self.app.post(
+                        f'/admin/delete_game/{self.test_spel_id}',
+                        data={'password': 'fel-losen'}
+                    )
+                    self.assertEqual(response.status_code, 302)
+                    self.assertTrue(os.path.exists(game_file))
     
     def test_delete_game_nonexistent(self):
         """Test delete_game with non-existent game ID"""
@@ -368,8 +400,7 @@ class TestAdminRoutes(unittest.TestCase):
             response = self.app.post(f'/admin/delete_game/{nonexistent_id}', follow_redirects=True)
             self.assertEqual(response.status_code, 200)
             
-            # Should redirect to admin start page without error
-            self.assertIn(b'Stabsspel Admin', response.data)
+            self.assertIn(b'Spelet har tagits bort', response.data)
     
     def test_delete_game_route_accessible(self):
         """Test that delete game route is accessible"""
@@ -378,12 +409,17 @@ class TestAdminRoutes(unittest.TestCase):
                 with patch('game_management.DATA_DIR', self.test_data_dir):
                     self.login_admin()
                     # Test that the route exists and responds
-                    response = self.app.post(f'/admin/delete_game/{self.test_spel_id}')
-            self.assertEqual(response.status_code, 302)  # Redirect status
-            
-            # Test with non-existent game
-            response = self.app.post('/admin/delete_game/nonexistent')
-            self.assertEqual(response.status_code, 302)  # Should still redirect
+                    response = self.app.post(
+                        f'/admin/delete_game/{self.test_spel_id}',
+                        data={'password': 'apa123'}
+                    )
+                    self.assertEqual(response.status_code, 302)  # Redirect status
+                    self.assertTrue(response.headers['Location'].startswith('/?deleted=1'))
+                    
+                    # Test with non-existent game
+                    response = self.app.post('/admin/delete_game/nonexistent')
+                    self.assertEqual(response.status_code, 302)  # Should still redirect
+                    self.assertTrue(response.headers['Location'].startswith('/?deleted=1'))
 
     def test_nollstall_regeringsstod_functionality(self):
         """Test the nollstall_regeringsstod function"""

@@ -117,6 +117,33 @@
     }
   }
 
+  function parseAmount(el) {
+    var n = parseInt(el && el.value, 10);
+    if (!n || n < 1) return 1;
+    return n;
+  }
+
+  function readBacklogAmounts() {
+    var amounts = {};
+    document.querySelectorAll(".gm-backlog-amount").forEach(function (el) {
+      var team = el.getAttribute("data-team");
+      if (team) amounts[team] = el.value;
+    });
+    return amounts;
+  }
+
+  function restoreBacklogAmounts(amounts) {
+    Object.keys(amounts || {}).forEach(function (team) {
+      var el = document.querySelector('.gm-backlog-amount[data-team="' + team + '"]');
+      if (el && amounts[team]) el.value = amounts[team];
+    });
+  }
+
+  function backlogAmountFocused() {
+    var active = document.activeElement;
+    return !!(active && active.classList && active.classList.contains("gm-backlog-amount"));
+  }
+
   function setHtml(id, html) {
     var el = document.getElementById(id);
     if (!el || html == null) return;
@@ -160,7 +187,11 @@
 
     setHtml("gm-attention-list", html.attention);
     setHtml("gm-inbox-root", html.inbox);
-    setHtml("gm-backlog-root", html.backlog);
+    var backlogAmounts = readBacklogAmounts();
+    if (!backlogAmountFocused()) {
+      setHtml("gm-backlog-root", html.backlog);
+      restoreBacklogAmounts(backlogAmounts);
+    }
     setHtml("gm-log-root", html.log);
 
     var undo = document.querySelector("[data-gm-undo]");
@@ -183,6 +214,37 @@
         if (payload && payload.success) paintLive(payload);
       })
       .catch(function () {})
+      .then(function () {
+        inflight = false;
+      });
+  }
+
+  function postHp(body) {
+    if (!live || !live.spel_id || inflight) return;
+    showError("");
+    writeGen += 1;
+    inflight = true;
+    fetch("/admin/" + live.spel_id + "/hp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then(function (res) {
+        return res.json().then(function (payload) {
+          payload._http = res.status;
+          return payload;
+        });
+      })
+      .then(function (payload) {
+        if (payload && payload.success) {
+          paintLive(payload);
+          return;
+        }
+        showError((payload && payload.error) || "Kunde inte uppdatera HP.");
+      })
+      .catch(function () {
+        showError("Kunde inte uppdatera HP.");
+      })
       .then(function () {
         inflight = false;
       });
@@ -253,12 +315,13 @@
 
   function beginOrderEdit(btn) {
     var row = btn.closest("tr");
-    var purpose = row && row.nextElementSibling;
-    if (!purpose) return;
+    var cell = row && row.querySelector(".gm-inbox-activity");
+    if (!cell) return;
+    cell = cell.parentNode;
     editing = true;
     var team = btn.getAttribute("data-team");
     var index = btn.getAttribute("data-index");
-    purpose.cells[1].innerHTML =
+    cell.innerHTML =
       '<form class="gm-inline-edit">' +
       '<input type="text" name="aktivitet" value="' +
       (btn.getAttribute("data-aktivitet") || "").replace(/"/g, "&quot;") +
@@ -272,7 +335,7 @@
       '<button type="submit" class="primary gm-mini">Spara</button>' +
       '<button type="button" class="secondary gm-mini" data-order-cancel>Avbryt</button>' +
       "</form>";
-    var form = purpose.querySelector(".gm-inline-edit");
+    var form = cell.querySelector(".gm-inline-edit");
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       postOrder({
@@ -356,6 +419,23 @@
       poll();
       return;
     }
+    var hpDelta = target.closest("[data-hp-delta]");
+    if (hpDelta) {
+      event.preventDefault();
+      var form = hpDelta.closest(".gm-hp-actions");
+      if (!form) return;
+      var amountEl = form.querySelector("[name=amount]");
+      var reasonEl = form.querySelector("[name=reason]");
+      var teamEl = form.querySelector("[name=team]");
+      var sign = parseInt(hpDelta.getAttribute("data-hp-delta"), 10) < 0 ? -1 : 1;
+      postHp({
+        op: "adjust",
+        team: teamEl ? teamEl.value : "",
+        amount: sign * parseAmount(amountEl),
+        reason: reasonEl ? reasonEl.value : "",
+      });
+      return;
+    }
     var apply = target.closest("[data-backlog-apply]");
     if (apply) {
       event.preventDefault();
@@ -369,12 +449,15 @@
     var delta = target.closest("[data-backlog-delta]");
     if (delta) {
       event.preventDefault();
+      var team = delta.getAttribute("data-team");
+      var amountEl = document.querySelector('.gm-backlog-amount[data-team="' + team + '"]');
+      var sign = parseInt(delta.getAttribute("data-backlog-delta"), 10) < 0 ? -1 : 1;
       postBacklog({
         op: "add",
-        team: delta.getAttribute("data-team"),
+        team: team,
         task_id: delta.getAttribute("data-task"),
         phase: delta.getAttribute("data-phase") || "",
-        amount: parseInt(delta.getAttribute("data-backlog-delta"), 10),
+        amount: sign * parseAmount(amountEl),
       });
     }
   });

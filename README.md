@@ -1,108 +1,65 @@
-# Stabsspelet - Krisledningssimulation
+# Stabsspelet — krisledningssimulation
 
-En avancerad krisledningssimulation för att träna beslutsfattande under press.
+Digital spelledarhjälp för **Stabsspel Traineeprogrammet**: fyra rundor med Orderfas → Diplomatifas → Resultatfas, lag, handlingspoäng och en projektor till salen.
 
-## Funktioner
-
-- ⚡ Snabb beslutsfattande under tidspress
-- 👥 Team-samarbete med olika roller
-- 📊 Handlingspoäng-system
-- ⏰ Tidsbegränsade faser
-- 🎯 Målbaserat spel
-- 📈 Progressiv svårighet
+Nyheter skrivs fortfarande utanför appen (kopiera ordrar till en LLM, papper, nyhetsstudio). Appens jobb är klocka, ordrar, HP och backlog.
 
 ## Lokal utveckling
 
-1. Skapa en virtuell miljö:
+Kräver **Python 3.12**. Kör inte `flask app.py` — det är inte ett Flask-kommando.
+
 ```bash
 python -m venv venv
-source venv/bin/activate  # På Windows: venv\Scripts\activate
-```
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
 
-2. Installera beroenden:
-```bash
 pip install -r requirements.txt
-```
-
-3. Kör applikationen:
-```bash
 python app.py
 ```
 
-4. Öppna http://localhost:5000 i din webbläsare
+Öppna http://localhost:5000
 
-## Deployment på Render
+- **`/`** — befintliga spel (öppna, ladda ner, ta bort)
+- **`/admin`** — skapa nytt spel eller ladda upp en JSON-backup
+- **`/admin/<spel_id>`** — spelledarpanel (lösenord)
+- **`/spelarskarm/<spel_id>`** — projektor till salen (ingen inloggning)
 
-### Steg 1: Förbered din kod
-Se till att du har följande filer i din repository:
-- `requirements.txt`
-- `Procfile`
-- `runtime.txt`
-- `app.py`
+Lämna spellösenordet tomt vid skapande för att använda standardlösenordet (`models.get_default_password()`). **Ta bort** frågar efter samma lösenord och stannar på sidan när spelet är borta.
 
-### Steg 2: Skapa en Render-konto
-1. Gå till [render.com](https://render.com)
-2. Skapa ett konto eller logga in
-3. Koppla ditt GitHub-konto
+## Dokumentation
 
-### Steg 3: Skapa en ny Web Service
-1. Klicka på "New +" i Render dashboard
-2. Välj "Web Service"
-3. Koppla till din GitHub repository
-4. Konfigurera följande inställningar:
+| Fil | Innehåll |
+|-----|----------|
+| [Docs/Stabsspel Traineeprogrammet.md](Docs/Stabsspel%20Traineeprogrammet.md) | Spelet: regler, lag, HP, rundor |
+| [Docs/architecture.md](Docs/architecture.md) | Koden: mappar, routes, live-event |
+| [Docs/DEPLOYMENT_GUIDE.md](Docs/DEPLOYMENT_GUIDE.md) | Render / produktion |
+| [Docs/PRODUCTION_CHECKLIST.md](Docs/PRODUCTION_CHECKLIST.md) | Go-live-checklista |
+| [Docs/ORDERKORT_README.md](Docs/ORDERKORT_README.md) | Utskrivbara pappersorderkort |
 
-**Grundläggande inställningar:**
-- **Name:** stabsspelet (eller valfritt namn)
-- **Environment:** Python 3
-- **Region:** Välj närmaste region
-- **Branch:** main (eller din huvudbranch)
+## Produktion (kort)
 
-**Build & Deploy inställningar:**
-- **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `gunicorn app:app`
+Startkommando (står redan i `Procfile`):
 
-**Environment Variables:**
-- `SECRET_KEY`: En säker slumpmässig sträng (t.ex. genererad med Python: `import secrets; secrets.token_hex(16)`)
-
-### Steg 4: Deploy
-1. Klicka på "Create Web Service"
-2. Render kommer automatiskt att bygga och deploya din app
-3. Vänta tills deployment är klar (grön status)
-
-### Steg 5: Testa din app
-1. Klicka på den genererade URL:en
-2. Din app ska nu vara live!
-
-## Miljövariabler
-
-För produktion, sätt följande miljövariabler i Render:
-
-- `SECRET_KEY`: En säker slumpmässig sträng för Flask sessions
-- `FLASK_ENV`: Sätt till `production` för produktion
-
-## Filstruktur
-
-```
-Stabsspel/
-├── app.py                 # Huvudapplikation
-├── admin_routes.py        # Admin-routes
-├── team_routes.py         # Team-routes
-├── models.py              # Spellogik och data
-├── game_management.py     # Spelhantering
-├── requirements.txt       # Python-beroenden
-├── Procfile              # Render deployment
-├── runtime.txt           # Python-version
-├── static/               # Statiska filer
-│   ├── app.css
-│   └── alarm.mp3
-├── teambeskrivning/      # Team-beskrivningar
-└── speldata/             # Speldata (skapas automatiskt)
+```text
+gunicorn wsgi:app --log-file -
 ```
 
-## Support
+Sätt `SECRET_KEY` och `FLASK_ENV=production`. **`speldata/` måste vara skrivbar persistent disk** — den ligger inte i git, så utan disk försvinner spelen vid varje deploy. Detaljer i [Docs/DEPLOYMENT_GUIDE.md](Docs/DEPLOYMENT_GUIDE.md).
 
-För frågor eller problem med deployment, kontakta utvecklaren eller skapa en issue i repository.
+Health check: `GET /health` (version i svaret är `1.1`).
+
+## Tester
+
+```bash
+python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers
+```
+
+## Bakgrundsbilder
+
+Lägg bilder i `static/backgrounds/`. De serveras som `/static/backgrounds/<filnamn>`.
 
 ## Licens
 
-Se LICENSE-filen för mer information.
+[GNU GPL v3](LICENSE)

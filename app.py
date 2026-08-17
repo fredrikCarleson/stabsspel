@@ -18,6 +18,7 @@ from team_order_routes import team_order_bp
 from models import suggest_teams, DATA_DIR, check_game_password, list_saved_games
 from game_management import load_game_data
 from gm_console import build_public_state
+from admin_helpers import create_delete_game_modal, create_delete_game_button
 from gm_console_ui import create_projector_html
 
 app = Flask(__name__)
@@ -299,7 +300,7 @@ def startsida():
             team_indicators += f'<span class="team-indicator team-{slug}"></span>'
 
         spel_html += f'''
-        <div class="game-card">
+        <div class="game-card" data-game-card-id="{game_data.get("id", "")}">
             <div class="game-info">
                 <h3>{game_data.get("datum", "")} – {game_data.get("plats", "")}</h3>
                 <p class="game-id">ID: {game_data.get("id", "")}</p>
@@ -309,11 +310,9 @@ def startsida():
                 </div>
             </div>
             <div class="game-actions">
-                <a href="/admin/{game_data.get("id", "")}" class="primary">Öppna (kräver lösenord)</a>
-                <a href="/admin/download_game/{game_data.get("id", "")}" class="secondary">💾 Ladda ner</a>
-                <form method="post" action="/admin/delete_game/{game_data.get("id", "")}" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort detta spel permanent?');">
-                    <button type="submit" class="danger">Ta bort</button>
-                </form>
+                <a href="/admin/{game_data.get("id", "")}" class="primary">Öppna</a>
+                <a href="/admin/download_game/{game_data.get("id", "")}" class="secondary">Ladda ner</a>
+                {create_delete_game_button(game_data.get("id", ""), f'{game_data.get("datum", "")} – {game_data.get("plats", "")}', "danger")}
             </div>
         </div>
         '''
@@ -326,7 +325,7 @@ def startsida():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Stabsspelet - Krisledningssimulation</title>
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css">
+        <link rel="stylesheet" href="/static/app.css?v=10">
         <link rel="stylesheet" href="/static/print.css" media="print">
         <style>
             /* Hero section with enhanced background */
@@ -503,20 +502,30 @@ def startsida():
             }}
             
             .game-id {{
-                color: #6c757d;
+                color: #4a5568;
                 font-size: 0.9rem;
                 margin: 0 0 15px 0;
                 font-family: 'Courier New', monospace;
-                background: #f8f9fa;
+                background: #f1f3f5;
                 padding: 5px 10px;
                 border-radius: 5px;
                 display: inline-block;
             }}
             
             .game-actions {{
-                display: flex;
-                gap: 10px;
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 8px;
                 margin-top: 20px;
+                align-items: stretch;
+            }}
+            .game-actions form {{
+                display: flex;
+                margin: 0;
+            }}
+            .game-actions :is(a, button) {{
+                width: 100%;
+                justify-content: center;
             }}
             
             .btn {{
@@ -714,6 +723,7 @@ def startsida():
                 {f'<div class="games-grid">{spel_html}</div>' if spel_html else '<div class="no-games">Inga aktiva spel hittades. Skapa ditt första spel för att komma igång!</div>'}
             </div>
         </div>
+        {create_delete_game_modal()}
     </body>
     </html>
     '''

@@ -30,7 +30,9 @@ from gm_console import (
     can_submit_orders,
     effective_hp,
     end_game,
+    hp_delta_from_fields,
     missing_order_teams,
+    parse_positive_amount,
     push_undo,
     set_regeringsstod,
     spent_hp_for_team,
@@ -121,6 +123,19 @@ class TestActionPoints(unittest.TestCase):
         data = create_game_state()
         adjust_hp(data, "Alfa", 5, "bonus")
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 30)
+
+    def test_hp_delta_from_fields_accepts_any_integer(self):
+        self.assertEqual(hp_delta_from_fields("plus5"), 5)
+        self.assertEqual(hp_delta_from_fields("minus5"), -5)
+        self.assertEqual(hp_delta_from_fields("adjust", 7, "minus"), -7)
+        self.assertEqual(hp_delta_from_fields("adjust", 3, "plus"), 3)
+        self.assertEqual(hp_delta_from_fields("adjust", -8), -8)
+        self.assertEqual(hp_delta_from_fields("adjust", "", "minus"), -1)
+        self.assertIsNone(hp_delta_from_fields("transfer", 5))
+        with self.assertRaises(ValueError):
+            hp_delta_from_fields("adjust", 0)
+        self.assertEqual(parse_positive_amount(""), 1)
+        self.assertEqual(parse_positive_amount("4"), 4)
 
     def test_transfer_moves_points_between_teams(self):
         data = create_game_state()
@@ -510,6 +525,22 @@ class TestPublicProjector(unittest.TestCase):
         self.assertNotIn("inbox", public)
         self.assertNotIn("log", public)
         self.assertNotIn("test_mode", public)
+        self.assertIn("progress", public)
+        alfa_progress = next(team for team in public["progress"] if team["team"] == "Alfa")
+        self.assertIn("Inloggning val", [item["name"] for item in alfa_progress["items"]])
+        self.assertNotIn("id", alfa_progress["items"][0])
+
+    def test_public_progress_tracks_spent_hp_without_orders(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 8)
+        public = build_public_state(data)
+        alfa = next(team for team in public["progress"] if team["team"] == "Alfa")
+        login = next(item for item in alfa["items"] if item["name"] == "Inloggning val")
+        self.assertEqual(login["spent"], 8)
+        self.assertEqual(login["estimated"], 15)
+        self.assertGreater(login["percent"], 0)
+        dumped = str(public)
+        self.assertNotIn("HP per klick", dumped)
 
 
 class TestSessionAndPassword(unittest.TestCase):

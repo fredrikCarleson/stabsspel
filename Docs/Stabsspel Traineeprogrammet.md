@@ -1,6 +1,8 @@
 # **Stabsspel Traineeprogrammet**
 
-Stabspelet Traineprogrammet är ett spel där olika lag spelar med eller mot varandra för att uppnå sina egna eller gemensamma mål. Spelarna delas upp i lag som var och en har olika antal spelare, handlingspoäng och mål. Spelet sker i realtid och består huvudsakligen av följande faser
+Det här är **spelreglerna** (lag, HP, rundor, nyhetsstudio). Den digitala spelledarhjälpen — klocka, ordrar, projektor — beskrivs i [architecture.md](architecture.md). Starta appen med `python app.py` och öppna http://localhost:5000 (inte `flask app.py`).
+
+Stabsspel Traineeprogrammet är ett spel där olika lag spelar med eller mot varandra för att uppnå sina egna eller gemensamma mål. Spelarna delas upp i lag som var och en har olika antal spelare, handlingspoäng och mål. Spelet sker i realtid och består huvudsakligen av följande faser
 
 1) Orderfas  
 2) Diplomatifas  

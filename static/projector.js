@@ -32,6 +32,88 @@
     else if ((state.remaining || 0) <= 60) clock.classList.add("is-warning");
   }
 
+  function barHtml(percent, extraClass) {
+    var width = Math.max(0, Math.min(100, Math.round(percent || 0)));
+    var done = width >= 100 ? " is-done" : "";
+    extraClass = extraClass ? " " + extraClass : "";
+    return (
+      '<div class="projector-bar' + done + extraClass + '">' +
+      '<span style="width:' + width + '%"></span></div>'
+    );
+  }
+
+  function paintProgress(progress) {
+    var root = document.getElementById("projector-progress");
+    if (!root) return;
+    if (!progress || !progress.length) {
+      root.innerHTML = "";
+      return;
+    }
+    var cards = progress
+      .map(function (team) {
+        var rows = (team.items || [])
+          .map(function (item) {
+            var phases = "";
+            if (item.phases && item.phases.length) {
+              phases =
+                '<div class="projector-phases">' +
+                item.phases
+                  .map(function (phase) {
+                    return (
+                      '<span class="' +
+                      (phase.done ? "is-done" : "") +
+                      '">' +
+                      escapeHtml(phase.name || "") +
+                      "</span>"
+                    );
+                  })
+                  .join("") +
+                "</div>";
+            }
+            return (
+              '<div class="projector-task' +
+              (item.done ? " is-done" : "") +
+              '">' +
+              '<span class="projector-task-name">' +
+              escapeHtml(item.name || "") +
+              "</span>" +
+              '<span class="projector-task-hp">' +
+              (item.spent || 0) +
+              "/" +
+              (item.estimated || 0) +
+              "</span>" +
+              barHtml(item.percent) +
+              phases +
+              "</div>"
+            );
+          })
+          .join("");
+        return (
+          '<section class="projector-progress-card">' +
+          '<div class="projector-progress-head">' +
+          '<div class="projector-progress-team">' +
+          escapeHtml(team.team) +
+          "</div>" +
+          '<div class="projector-progress-total">' +
+          (team.percent || 0) +
+          "% · " +
+          (team.spent || 0) +
+          "/" +
+          (team.estimated || 0) +
+          " HP</div></div>" +
+          barHtml(team.percent, "is-team") +
+          rows +
+          "</section>"
+        );
+      })
+      .join("");
+    root.innerHTML =
+      '<h2 class="projector-progress-title">Teamens arbete</h2>' +
+      '<div class="projector-progress-grid">' +
+      cards +
+      "</div>";
+  }
+
   function paintHp(teams) {
     var root = document.getElementById("projector-hp");
     if (!root) return;
@@ -75,6 +157,7 @@
     state.avslutat = next.avslutat;
     paintClock();
     paintHp(next.teams);
+    paintProgress(next.progress);
   }
 
   function poll() {
