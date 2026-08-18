@@ -204,7 +204,7 @@ There is **no** `templates/` directory. Most pages are strings in Python.
 |------|---------|
 | `models.py` | `DATA_DIR`, `TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, roster size (5 vs 9 teams), STT base HP in large games, declaration period (round 3). |
 | `game_management.py` | `delete_game`, `nollstall_regeringsstod`, checkbox get/set (legacy checklists). Re-exports load/save. |
-| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` validation), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
+| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` validation, `format_json_error` for JSON syntax), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
 | `gm_console_ui.py` | HTML for the sticky GM bar, attention list, team HP strip, transfer form, inbox, backlog board, LLM copy/import + **Utfall och sannolikhet**, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
 
 Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/test_domain.py`, not in route handlers.
@@ -229,7 +229,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `POST /admin/<id>/order_live` | Inline edit activity, withdraw to draft |
 | `POST /admin/<id>/test_mode` | Hide/show cheat controls |
 | `POST /admin/<id>/auto_fill_orders` | Testläge: fill this round from `testdata/testdataroundN.json` |
-| `POST /admin/<id>/llm_import` | Paste/upload LLM JSON (`utfall`, news, HP, milestones) |
+| `POST /admin/<id>/llm_import` | Paste/upload LLM JSON (`utfall`, news, HP, milestones). Invalid JSON re-renders the console with line/column, snippet and hint; the pasted text is kept. |
 | `POST /admin/<id>/llm_apply` | Confirm apply of suggested HP or milestones (undoable) |
 | `POST /admin/<id>/reset` | Full game reset (under Mer, with confirm) |
 

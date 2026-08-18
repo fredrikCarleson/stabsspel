@@ -150,9 +150,52 @@ def _utfall_card_html(item):
     )
 
 
-def _llm_block_html(spel_id, state):
+def _llm_import_error_html(llm_import):
+    info = llm_import or {}
+    json_error = info.get("json_error")
+    domain_error = info.get("domain_error")
+    if json_error:
+        snippet = escape(json_error.get("snippet") or "")
+        pointer = escape(json_error.get("pointer") or "")
+        copy_text = escape(json_error.get("copy_text") or "")
+        copy_btn = ""
+        if json_error.get("copy_text"):
+            copy_btn = (
+                f'<textarea id="gm-json-error-copy" class="gm-news-copy" readonly hidden>'
+                f"{copy_text}</textarea>"
+                f'<button type="button" class="secondary sm" '
+                f"onclick=\"navigator.clipboard.writeText(document.getElementById('gm-json-error-copy').value)\">"
+                f"Kopiera fel</button>"
+            )
+        return (
+            f'<div class="notification error gm-json-error" id="gm-llm-json-error" role="alert">'
+            f"<strong>Ogiltig JSON</strong>"
+            f'<p>{escape(json_error.get("message") or "")}</p>'
+            f'<p class="gm-json-error-detail">{escape(json_error.get("detail") or "")}</p>'
+            f'<pre class="gm-json-error-snippet">{snippet}\n{pointer}</pre>'
+            f'<p class="gm-json-error-hint">{escape(json_error.get("hint") or "")}</p>'
+            f"{copy_btn}"
+            f"</div>"
+        )
+    if domain_error:
+        return (
+            f'<div class="notification error gm-json-error" id="gm-llm-json-error" role="alert">'
+            f"<strong>Kunde inte importera</strong>"
+            f"<p>{escape(domain_error)}</p>"
+            f"</div>"
+        )
+    return ""
+
+
+def _llm_block_html(spel_id, state, llm_import=None):
     fas = state.get("fas")
-    if fas not in ("Diplomatifas", "Resultatfas"):
+    llm_import = llm_import or {}
+    has_import_error = bool(
+        llm_import.get("json_error")
+        or llm_import.get("domain_error")
+        or llm_import.get("text")
+    )
+    if fas not in ("Diplomatifas", "Resultatfas") and not has_import_error:
         return ""
     sid = escape(spel_id)
     llm = state.get("llm")
@@ -162,10 +205,15 @@ def _llm_block_html(spel_id, state):
             <a href="/admin/{sid}/order_summary" target="_blank" class="primary">Kopiera ordrar till LLM</a>
         </div>
     '''
+    error_html = _llm_import_error_html(llm_import)
+    draft = escape(llm_import.get("text") or "")
+    invalid = ' aria-invalid="true"' if error_html else ""
+    rows = 8 if error_html else 4
     import_form = f'''
       <form method="post" action="/admin/{sid}/llm_import" enctype="multipart/form-data" class="gm-llm-import">
+        {error_html}
         <label class="gm-section-help" for="gm-llm-json">Klistra in JSON från LLM, eller ladda upp en fil.</label>
-        <textarea id="gm-llm-json" name="json" rows="4" placeholder='{{"nyheter": [], "hp": [], "milstolpar": []}}'></textarea>
+        <textarea id="gm-llm-json" name="json" rows="{rows}"{invalid} placeholder='{{"nyheter": [], "hp": [], "milstolpar": []}}'>{draft}</textarea>
         <div class="gm-llm-import-actions">
           <input type="file" name="fil" accept=".json,application/json,text/plain">
           <button type="submit" class="secondary">Importera LLM-svar</button>
@@ -431,7 +479,7 @@ def live_html_fragments(spel_id, state):
     }
 
 
-def create_gm_console_html(spel_id, data):
+def create_gm_console_html(spel_id, data, llm_import=None):
     state = build_live_state(data)
     runda = state["runda"]
     fas = state["fas"]
@@ -485,7 +533,7 @@ def create_gm_console_html(spel_id, data):
     clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_section_html(state.get("history") or [], state["log"])
-    llm_note = _llm_block_html(spel_id, state)
+    llm_note = _llm_block_html(spel_id, state, llm_import=llm_import)
 
     result_note = ""
     if fas == "Resultatfas" and avslutat:

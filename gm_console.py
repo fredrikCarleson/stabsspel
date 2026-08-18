@@ -1055,12 +1055,133 @@ def build_llm_export_text(data, all_orders, randint=None):
     )
 
 
+class LlmJsonSyntaxError(ValueError):
+    """Strict JSON failed. Carries a formatted error for the GM console."""
+
+    def __init__(self, formatted, raw_text=""):
+        self.formatted = formatted or {}
+        self.raw_text = raw_text or ""
+        super().__init__(self.formatted.get("message") or "Ogiltig JSON")
+
+
+_JSON_FENCE_RE = re.compile(
+    r"^```(?:json)?\s*(.*)```\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_JSON_SNIPPET_RADIUS = 80
+_HINT_DEFAULT = "Kontrollera JSON-strukturen nära markeringen."
+_HINT_QUOTES = (
+    'Kontrollera om ett citationstecken i texten behöver skrivas som \\".'
+)
+_HINT_EXTRA_TEXT = (
+    "Svaret verkar innehålla text utanför JSON-objektet. "
+    "Klistra endast in JSON-svaret."
+)
+_HINT_MISSING_COMMA = "Kontrollera om ett kommatecken saknas nära markeringen."
+_HINT_EXTRA_COMMA = "Kontrollera extra kommatecken nära markeringen."
+_HINT_UNTERMINATED = (
+    "JSON-strängen verkar inte vara avslutad. Kontrollera citationstecken."
+)
+
+
 def _strip_llm_fences(raw):
+    """Remove one outer markdown fence if it wraps the entire payload."""
     text = (raw or "").strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text, count=1, flags=re.IGNORECASE)
-        text = re.sub(r"\s*```$", "", text)
-    return text.strip()
+    match = _JSON_FENCE_RE.fullmatch(text)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
+def format_json_error(raw_text, exc):
+    """Turn JSONDecodeError into a GM-facing dict. Does not change the input."""
+    text = raw_text if isinstance(raw_text, str) else ""
+    lineno = int(getattr(exc, "lineno", 1) or 1)
+    colno = int(getattr(exc, "colno", 1) or 1)
+    pos = getattr(exc, "pos", None)
+    if pos is None:
+        pos = 0
+    try:
+        pos = int(pos)
+    except (TypeError, ValueError):
+        pos = 0
+    snippet, pointer = _json_error_snippet(text, pos, lineno, colno)
+    formatted = {
+        "message": f"Ogiltig JSON nära rad {lineno}, kolumn {colno}.",
+        "detail": str(getattr(exc, "msg", None) or exc),
+        "snippet": snippet,
+        "pointer": pointer,
+        "hint": _json_error_hint(text, exc),
+        "lineno": lineno,
+        "colno": colno,
+        "pos": pos,
+    }
+    formatted["copy_text"] = _json_error_copy_text(formatted)
+    return formatted
+
+
+def _json_error_copy_text(formatted):
+    chunks = [
+        formatted.get("message") or "",
+        formatted.get("detail") or "",
+        formatted.get("snippet") or "",
+        formatted.get("pointer") or "",
+        formatted.get("hint") or "",
+    ]
+    return "\n".join(chunk for chunk in chunks if chunk).strip()
+
+
+def _json_error_snippet(text, pos, lineno, colno):
+    radius = _JSON_SNIPPET_RADIUS
+    pos = max(0, min(pos, len(text)))
+    if "\n" in text:
+        lines = text.splitlines()
+        if 1 <= lineno <= len(lines):
+            line = lines[lineno - 1]
+            col_idx = max(0, min(len(line), colno - 1))
+            start = max(0, col_idx - radius)
+            end = min(len(line), col_idx + radius)
+            prefix = "..." if start else ""
+            suffix = "..." if end < len(line) else ""
+            snippet = prefix + line[start:end] + suffix
+            marker = len(prefix) + (col_idx - start)
+            return snippet, (" " * marker) + "↑"
+    start = max(0, pos - radius)
+    end = min(len(text), pos + radius)
+    prefix = "..." if start else ""
+    suffix = "..." if end < len(text) else ""
+    window = text[start:end].replace("\r", " ").replace("\n", " ")
+    snippet = prefix + window + suffix
+    marker = len(prefix) + (pos - start)
+    return snippet, (" " * marker) + "↑"
+
+
+def _json_error_hint(text, exc):
+    msg = str(getattr(exc, "msg", "") or "")
+    pos = getattr(exc, "pos", 0) or 0
+    try:
+        pos = int(pos)
+    except (TypeError, ValueError):
+        pos = 0
+    stripped = (text or "").lstrip()
+    if stripped and stripped[0] not in "{[":
+        return _HINT_EXTRA_TEXT
+    if msg == "Extra data":
+        return _HINT_EXTRA_TEXT
+    if msg.startswith("Unterminated string"):
+        return _HINT_UNTERMINATED
+    if msg == "Expecting property name enclosed in double quotes":
+        return _HINT_EXTRA_COMMA
+    nearby = (text or "")[max(0, pos - 24) : min(len(text or ""), pos + 24)]
+    if msg == "Expecting ',' delimiter" and '"' in nearby:
+        return _HINT_QUOTES
+    if msg == "Expecting ',' delimiter":
+        return _HINT_MISSING_COMMA
+    if msg == "Expecting value":
+        prev = (text or "")[max(0, pos - 1) : pos]
+        if prev == ",":
+            return _HINT_EXTRA_COMMA
+    return _HINT_DEFAULT
 
 
 def parse_llm_forslag(raw, data):
@@ -1071,7 +1192,7 @@ def parse_llm_forslag(raw, data):
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Ogiltig JSON: {exc}") from exc
+        raise LlmJsonSyntaxError(format_json_error(text, exc), raw_text=raw or "") from exc
     if not isinstance(payload, dict):
         raise ValueError("JSON måste vara ett objekt.")
 

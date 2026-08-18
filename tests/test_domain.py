@@ -36,11 +36,13 @@ from gm_console import (
     effective_hp,
     end_game,
     ensure_round_rolls,
+    format_json_error,
     get_llm_forslag,
     get_round_rolls,
     get_round_utfall,
     hp_delta_from_fields,
     import_llm_forslag,
+    LlmJsonSyntaxError,
     make_order_ref,
     missing_order_teams,
     parse_llm_forslag,
@@ -921,6 +923,150 @@ class TestLlmResolution(unittest.TestCase):
         self.assertNotIn("Alfa-1", dumped)
         self.assertNotIn("dubbelt så stor", dumped)
         self.assertNotIn("llm_forslag", public)
+
+
+class TestLlmJsonImportErrors(unittest.TestCase):
+    def _payload(self, **extra):
+        body = {
+            "runda": 1,
+            "utfall": [],
+            "nyheter": [],
+            "hp": [],
+            "milstolpar": [],
+        }
+        body.update(extra)
+        return body
+
+    def test_valid_json_imports(self):
+        data = create_game_state()
+        parsed = parse_llm_forslag(json.dumps(self._payload()), data)
+        self.assertEqual(parsed["nyheter"], [])
+        self.assertFalse(parsed["hp_applied"])
+
+    def test_swedish_characters_work(self):
+        data = create_game_state()
+        raw = json.dumps(self._payload(nyheter=[{
+            "rubrik": "Åäö-nyhet",
+            "upplasning": "Text med åäö.",
+            "lag": [],
+        }]), ensure_ascii=False)
+        parsed = parse_llm_forslag(raw, data)
+        self.assertEqual(parsed["nyheter"][0]["rubrik"], "Åäö-nyhet")
+
+    def test_escaped_quotes_import(self):
+        data = create_game_state()
+        raw = (
+            '{"runda":1,"utfall":[],"nyheter":[{"rubrik":'
+            '"Mata Media med \\"läckt\\" valfusk","upplasning":"Text","lag":[]}],'
+            '"hp":[],"milstolpar":[]}'
+        )
+        parsed = parse_llm_forslag(raw, data)
+        self.assertEqual(parsed["nyheter"][0]["rubrik"], 'Mata Media med "läckt" valfusk')
+
+    def test_unescaped_quotes_are_rejected_with_location_and_hint(self):
+        data = create_game_state()
+        raw = '{"order":"Mata Media med "läckt" valfusk"}'
+        with self.assertRaises(LlmJsonSyntaxError) as ctx:
+            parse_llm_forslag(raw, data)
+        formatted = ctx.exception.formatted
+        self.assertIsInstance(ctx.exception.__cause__, json.JSONDecodeError)
+        self.assertIn("rad 1", formatted["message"])
+        self.assertIn("kolumn", formatted["message"])
+        self.assertEqual(formatted["lineno"], 1)
+        self.assertGreater(formatted["colno"], 1)
+        self.assertIn("Expecting ',' delimiter", formatted["detail"])
+        self.assertIn("läckt", formatted["snippet"])
+        self.assertIn("↑", formatted["pointer"])
+        self.assertIn('\\"', formatted["hint"])
+        self.assertIsNone(get_llm_forslag(data))
+
+    def test_markdown_json_fence_is_accepted(self):
+        data = create_game_state()
+        inner = json.dumps(self._payload(runda=2))
+        raw = f"```json\n{inner}\n```"
+        parsed = parse_llm_forslag(raw, data)
+        self.assertEqual(parsed["utfall"], [])
+
+    def test_markdown_fence_without_language_is_accepted(self):
+        data = create_game_state()
+        inner = json.dumps(self._payload(runda=2))
+        parsed = parse_llm_forslag(f"```\n{inner}\n```", data)
+        self.assertEqual(parsed["runda"], 1)
+
+    def test_extra_prose_is_rejected_with_outside_json_hint(self):
+        data = create_game_state()
+        raw = "Här är svaret:\n" + json.dumps(self._payload(runda=2))
+        with self.assertRaises(LlmJsonSyntaxError) as ctx:
+            parse_llm_forslag(raw, data)
+        self.assertIn("utanför JSON-objektet", ctx.exception.formatted["hint"])
+
+    def test_trailing_prose_is_rejected_with_outside_json_hint(self):
+        data = create_game_state()
+        raw = json.dumps(self._payload(runda=2)) + "\nHoppas det hjälper."
+        with self.assertRaises(LlmJsonSyntaxError) as ctx:
+            parse_llm_forslag(raw, data)
+        self.assertIn("utanför JSON-objektet", ctx.exception.formatted["hint"])
+
+    def test_multiline_syntax_error_reports_line_and_column(self):
+        data = create_game_state()
+        raw = (
+            "{\n"
+            '  "runda": 1,\n'
+            '  "utfall": [],\n'
+            '  "nyheter": [],\n'
+            '  "hp": [],\n'
+            '  "milstolpar":\n'
+            "}"
+        )
+        with self.assertRaises(LlmJsonSyntaxError) as ctx:
+            parse_llm_forslag(raw, data)
+        formatted = ctx.exception.formatted
+        self.assertEqual(formatted["lineno"], 7)
+        self.assertEqual(formatted["colno"], 1)
+        self.assertIn("rad 7", formatted["message"])
+        self.assertIn("kolumn 1", formatted["message"])
+        self.assertIn("↑", formatted["pointer"])
+
+    def test_format_json_error_does_not_mutate_input(self):
+        raw = '{"order":"Mata Media med "läckt" valfusk"}'
+        original = raw
+        try:
+            json.loads(raw)
+        except json.JSONDecodeError as exc:
+            formatted = format_json_error(raw, exc)
+        self.assertEqual(raw, original)
+        self.assertIn("läckt", formatted["snippet"])
+        self.assertIn("copy_text", formatted)
+
+    def test_domain_error_is_not_a_syntax_error(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {"activities": [{"aktivitet": "X", "hp": 5}]},
+                }
+            }
+        }
+        ensure_round_rolls(data, randint=lambda: 44)
+        with self.assertRaises(ValueError) as ctx:
+            parse_llm_forslag(json.dumps({
+                "utfall": [{
+                    "lag": "Alfa",
+                    "order_ref": "Alfa-1",
+                    "order": "X",
+                    "satsad_hp": 5,
+                    "motstand_hp": 0,
+                    "sannolikhet": 50,
+                    "slump": 21,
+                    "resultat": "framgång",
+                    "motivering": "x",
+                }]
+            }), data)
+        self.assertNotIsInstance(ctx.exception, LlmJsonSyntaxError)
+        self.assertIn("Alfa-1", str(ctx.exception))
+        self.assertIn("44", str(ctx.exception))
 
 
 class TestSessionAndPassword(unittest.TestCase):

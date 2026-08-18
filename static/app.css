@@ -1740,6 +1740,44 @@ thead th {
   padding-left: 18px;
 }
 
+.gm-json-error {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-danger);
+  border-left-width: 4px;
+}
+
+.gm-json-error strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.gm-json-error p {
+  margin: 0 0 6px;
+}
+
+.gm-json-error-detail {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.gm-json-error-snippet {
+  margin: 8px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre;
+  background: #fff;
+  border: 1px dashed var(--c-danger);
+  border-radius: var(--radius-8);
+}
+
+.gm-json-error-hint {
+  font-weight: 600;
+}
+
 .gm-muted {
   color: var(--c-muted);
   font-size: 13px;

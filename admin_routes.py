@@ -30,6 +30,7 @@ from gm_console import (
     end_game,
     hp_delta_from_fields,
     import_llm_forslag,
+    LlmJsonSyntaxError,
     push_undo,
     reset_timer_fields,
     set_regeringsstod,
@@ -1361,53 +1362,7 @@ def admin_panel(spel_id):
 </body>
 </html>'''
     
-    runda = data.get("runda", 1)
-    lag_html = ', '.join([
-        f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
-    ])
-    console_html = create_gm_console_html(spel_id, data)
-    html_content = f'''
-        <!DOCTYPE html>
-        <html lang="sv">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-            <meta http-equiv="Pragma" content="no-cache">
-            <meta http-equiv="Expires" content="0">
-            <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=25">
-            <link rel="stylesheet" href="/static/print.css" media="print">
-            <script>
-                if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
-                    window.location.reload();
-                }}
-                window.addEventListener('load', function() {{
-                    if ('caches' in window) {{
-                        caches.keys().then(function(names) {{
-                            for (let name of names) {{
-                                caches.delete(name);
-                            }}
-                        }});
-                    }}
-                }});
-            </script>
-        </head>
-        <body class="gm-page">
-            <div class="container">
-            <div class="admin-panel-header">
-                <h1>Spelledarpanel</h1>
-                <p class="gm-meta">{data["datum"]} · {data["plats"]} · {data["antal_spelare"]} spelare · {lag_html}</p>
-            </div>
-            {create_declaration_warning(runda)}
-            {console_html}
-        </div>
-        {create_script_references()}
-        </body>
-        </html>
-    '''
-    response = make_response(html_content)
-    return add_no_cache_headers(response)
+    return _spelledarpanel_response(spel_id, data)
 
 def create_quarter_bar_html(quarters, current_round):
     """Skapa kvartalsvisualisering med design-system färger"""
@@ -2202,6 +2157,55 @@ def _llm_json_from_request():
     return request.form.get("json") or ""
 
 
+def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
+    runda = data.get("runda", 1)
+    lag_html = ', '.join([
+        f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
+    ])
+    console_html = create_gm_console_html(spel_id, data, llm_import=llm_import)
+    html_content = f'''
+        <!DOCTYPE html>
+        <html lang="sv">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="Expires" content="0">
+            <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="/static/app.css?v=26">
+            <link rel="stylesheet" href="/static/print.css" media="print">
+            <script>
+                if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
+                    window.location.reload();
+                }}
+                window.addEventListener('load', function() {{
+                    if ('caches' in window) {{
+                        caches.keys().then(function(names) {{
+                            for (let name of names) {{
+                                caches.delete(name);
+                            }}
+                        }});
+                    }}
+                }});
+            </script>
+        </head>
+        <body class="gm-page">
+            <div class="container">
+            <div class="admin-panel-header">
+                <h1>Spelledarpanel</h1>
+                <p class="gm-meta">{data["datum"]} · {data["plats"]} · {data["antal_spelare"]} spelare · {lag_html}</p>
+            </div>
+            {create_declaration_warning(runda)}
+            {console_html}
+        </div>
+        {create_script_references()}
+        </body>
+        </html>
+    '''
+    return add_no_cache_headers(make_response(html_content, status))
+
+
 def _llm_error_page(spel_id, message):
     return (
         "<!doctype html><meta charset=utf-8>"
@@ -2240,9 +2244,27 @@ def llm_import(spel_id):
     if not data:
         return _llm_error_page(spel_id, "Spelet hittades inte.")[0], 404
     try:
-        import_llm_forslag(data, _llm_json_from_request())
+        raw = _llm_json_from_request()
     except ValueError as exc:
-        return _llm_error_page(spel_id, str(exc))
+        return _spelledarpanel_response(
+            spel_id, data, llm_import={"text": "", "domain_error": str(exc)}, status=400
+        )
+    try:
+        import_llm_forslag(data, raw)
+    except LlmJsonSyntaxError as exc:
+        return _spelledarpanel_response(
+            spel_id,
+            data,
+            llm_import={"text": raw, "json_error": exc.formatted},
+            status=400,
+        )
+    except ValueError as exc:
+        return _spelledarpanel_response(
+            spel_id,
+            data,
+            llm_import={"text": raw, "domain_error": str(exc)},
+            status=400,
+        )
     save_game_data(spel_id, data)
     return redirect(url_for("admin.admin_panel", spel_id=spel_id))
 

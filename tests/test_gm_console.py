@@ -603,5 +603,65 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Alfa-1", projector)
 
 
+    def test_invalid_json_error_keeps_pasted_text_and_shows_snippet(self):
+        from gm_console import format_json_error
+        from gm_console_ui import create_gm_console_html
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        raw = '{"order":"Mata Media med "läckt" valfusk"}'
+        try:
+            json.loads(raw)
+            self.fail("expected JSONDecodeError")
+        except json.JSONDecodeError as exc:
+            formatted = format_json_error(raw, exc)
+        html = create_gm_console_html("g1", data, llm_import={
+            "text": raw,
+            "json_error": formatted,
+        })
+        self.assertIn("Ogiltig JSON", html)
+        self.assertIn("Expecting &#39;,&#39; delimiter", html)
+        self.assertIn("läckt", html)
+        self.assertIn("gm-json-error", html)
+        self.assertIn("Kopiera fel", html)
+        self.assertIn('id="gm-llm-json"', html)
+        self.assertIn("Mata Media med", html)
+        self.assertIn('aria-invalid="true"', html)
+
+    def test_json_error_snippet_is_html_escaped(self):
+        from gm_console_ui import create_gm_console_html
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        html = create_gm_console_html("g1", data, llm_import={
+            "text": '{"x":"<script>alert(1)</script>"}',
+            "json_error": {
+                "message": "Ogiltig JSON nära rad 1, kolumn 1.",
+                "detail": "Expecting value",
+                "snippet": "<script>alert(1)</script>",
+                "pointer": "↑",
+                "hint": "Kontrollera JSON-strukturen nära markeringen.",
+                "copy_text": "Ogiltig JSON\n<script>alert(1)</script>",
+            },
+        })
+        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>alert(1)</script>", html)
+
+    def test_domain_import_error_does_not_use_syntax_heading(self):
+        from gm_console_ui import create_gm_console_html
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        payload = '{"utfall":[]}'
+        html = create_gm_console_html("g1", data, llm_import={
+            "text": payload,
+            "domain_error": "Slumpvärdet för Alfa-1 är 21 i LLM-svaret, men spelet har 20.",
+        })
+        self.assertIn("Kunde inte importera", html)
+        self.assertIn("Alfa-1", html)
+        self.assertNotIn("Ogiltig JSON nära", html)
+        self.assertIn("utfall", html)
+
+
 if __name__ == "__main__":
     unittest.main()

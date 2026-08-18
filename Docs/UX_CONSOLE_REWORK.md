@@ -107,6 +107,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Paste or upload JSON on the export page or in Diplomatifas/Resultatfas. Stored as `llm_forslag` plus `llm_resolution.<runda>.result.utfall`. Not sent to the projector.
 - GM sees **Utfall och sannolikhet** (HP, chans, slag, resultat, motivering). News are copied to paper for the studio. **Tillämpa HP** and **Tillämpa milstolpar** are confirm + undo.
 - Old JSON without `utfall` still imports. Example files: `testdata/llm-svar-exempel.json`, `testdata/llm-svar-utfall-exempel.json`.
+- Invalid JSON still fails on `json.loads` (no auto-repair). The console shows line/column, a snippet with a marker, and a short hint (citationstecken, kommatecken, text utanför JSON). One outer markdown fence around the whole payload is stripped. Pasted text stays in the textarea. **Kopiera fel** copies the message for pasting back to the LLM. Domain/`utfall` errors stay separate.
 
 ## Still to do (priority)
 
@@ -125,7 +126,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=25`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=26`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 
