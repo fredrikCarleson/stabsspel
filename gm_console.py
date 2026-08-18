@@ -502,6 +502,20 @@ def _task_can_apply(activity):
         return False
 
 
+def _backlog_estimated_hp(data, activity):
+    selected = (activity.get("backlog_selected") or "").strip()
+    if not selected or selected == "custom":
+        return None
+    try:
+        owner = backlog_owner_for_ref(selected)
+        uppgift, fas = _find_backlog_task(data, owner, selected)
+        if fas is not None:
+            return int(fas.get("estimaterade_hp") or 0)
+        return int(uppgift.get("estimaterade_hp") or 0)
+    except (TypeError, ValueError):
+        return None
+
+
 def build_inbox(data):
     """Flat list of current-round activities plus conflict flags."""
     rows = []
@@ -529,6 +543,7 @@ def build_inbox(data):
                 "backlog_selected": selected,
                 "backlog_applied": bool(activity.get("backlog_applied")),
                 "can_apply_backlog": _task_can_apply(activity),
+                "backlog_estimated": _backlog_estimated_hp(data, activity),
             }
             rows.append(row)
             if key:

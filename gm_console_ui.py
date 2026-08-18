@@ -8,6 +8,7 @@ phase control on one screen.
 
 from markupsafe import escape
 import json
+import re
 from gm_console import STATUS_LABELS, build_live_state, build_public_state
 from models import MAX_RUNDA
 
@@ -26,6 +27,19 @@ CHIP_LABELS = {
 
 GM_CLOCK_WARN_S = 300
 GM_CLOCK_DANGER_S = 60
+_HP_SUFFIX = re.compile(r"\s*\(\d+\s*HP\)\s*$", re.I)
+_TEAM_TONES = {
+    "alfa": "alfa",
+    "bravo": "bravo",
+    "stt": "stt",
+    "fm": "fm",
+    "bs": "bs",
+    "media": "media",
+    "säpo": "sapo",
+    "sapo": "sapo",
+    "regeringen": "regeringen",
+    "usa": "usa",
+}
 
 
 def _status_class(status):
@@ -313,7 +327,7 @@ def create_gm_console_html(spel_id, data):
     if fas == "Orderfas":
         inbox_help = "Utkast syns här. Öppna för laget om de behöver skicka om."
     elif fas == "Diplomatifas":
-        inbox_help = "Gå igenom order och konflikter. Ändra rättar text/HP. Lägg HP flyttar till backlog."
+        inbox_help = "Gå igenom order och konflikter. Lägg HP flyttar till backlog. Pennan rättar text/HP."
     else:
         inbox_help = "Order från rundan. Lägg HP flyttar till backlog vid behov."
     inbox_inner = (
@@ -512,6 +526,45 @@ def _transfer_form_html(spel_id, teams):
     '''
 
 
+def _team_tone(name):
+    return _TEAM_TONES.get((name or "").strip().lower(), "other")
+
+
+def _group_inbox(inbox):
+    groups = []
+    index = {}
+    for row in inbox:
+        team = row.get("team") or ""
+        if team not in index:
+            index[team] = len(groups)
+            groups.append({
+                "team": team,
+                "status": row.get("status") or "empty",
+                "rows": [],
+            })
+        groups[index[team]]["rows"].append(row)
+    return groups
+
+
+def _activity_title(row):
+    name = row.get("aktivitet") or ""
+    if row.get("backlog_estimated"):
+        name = _HP_SUFFIX.sub("", name).strip()
+    return name or "—"
+
+
+def _inbox_hp_html(row):
+    hp = int(row.get("hp") or 0)
+    est = row.get("backlog_estimated")
+    try:
+        est = int(est) if est is not None else None
+    except (TypeError, ValueError):
+        est = None
+    if est and est != hp:
+        return f'{hp} <span class="gm-inbox-hp-est">/ {est}</span> HP'
+    return f"{hp} HP"
+
+
 def _inbox_html(spel_id, inbox, fas, test_mode):
     hidden_fill = "" if test_mode else "hidden"
     autofill = (
@@ -528,68 +581,79 @@ def _inbox_html(spel_id, inbox, fas, test_mode):
             f'{autofill}</div>'
         )
     can_edit = fas in ("Orderfas", "Diplomatifas")
-    seen_withdraw = set()
-    seen_edit = set()
+    show_apply = fas in ("Diplomatifas", "Resultatfas")
     rows = []
-    for row in inbox:
-        conflict = "gm-conflict" if row["conflict"] else ""
-        typ = "Förstöra" if row["typ"] == "forstora" else "Bygga"
-        targets = ", ".join(row["paverkar"]) if row["paverkar"] else "—"
-        edit = ""
+    for group in _group_inbox(inbox):
+        team = group["team"]
+        status = group["status"]
+        team_actions = ""
         if can_edit:
-            edit = (
-                f'<button type="button" class="secondary gm-mini" data-order-edit '
-                f'data-team="{escape(row["team"])}" data-index="{row["index"]}" '
-                f'data-aktivitet="{escape(row["aktivitet"])}" data-syfte="{escape(row["syfte"])}" '
-                f'data-hp="{row["hp"]}">Ändra</button>'
-            )
-            if row["team"] not in seen_edit:
-                seen_edit.add(row["team"])
-                edit += (
-                    f'<a class="secondary gm-mini" '
-                    f'href="/admin/{escape(spel_id)}/edit_order/{escape(row["team"])}">Redigera order</a>'
+            if status in ("submitted", "changed") and fas == "Orderfas":
+                team_actions += (
+                    f'<button type="button" class="warning gm-mini" data-order-withdraw '
+                    f'data-team="{escape(team)}">Öppna för laget</button>'
                 )
-            if (
-                row.get("status") in ("submitted", "changed")
-                and fas == "Orderfas"
-                and row["team"] not in seen_withdraw
-            ):
-                seen_withdraw.add(row["team"])
-                edit += (
-                    f'<button type="button" class="secondary gm-mini" data-order-withdraw '
-                    f'data-team="{escape(row["team"])}">Öppna för laget</button>'
-                )
-        backlog_cell = "—"
-        if row.get("can_apply_backlog"):
-            backlog_cell = (
-                f'<button type="button" class="secondary gm-mini" data-backlog-apply '
-                f'data-team="{escape(row["team"])}" data-index="{row["index"]}">'
-                f'Lägg +{row["hp"]} HP</button>'
+            team_actions += (
+                f'<a class="gm-inbox-link" '
+                f'href="/admin/{escape(spel_id)}/edit_order/{escape(team)}">Redigera</a>'
             )
-        elif row.get("backlog_applied"):
-            backlog_cell = '<span class="gm-applied">Tillagd</span>'
         rows.append(f'''
-        <tr class="{conflict}">
-          <td>{escape(row["team"])}</td>
-          <td><span class="gm-status {_status_class(row["status"])}">{escape(STATUS_LABELS.get(row["status"], row["status"]))}</span></td>
-          <td>
-            <div class="gm-inbox-activity">{escape(row["aktivitet"])}</div>
-            <div class="gm-inbox-purpose">{escape(row["syfte"]) or "—"}</div>
-            <div class="gm-inbox-meta">{escape(typ)} · {escape(targets)}</div>
-            {f'<span class="gm-conflict-tag">Konflikt</span>' if row["conflict"] else ""}
+        <tr class="gm-inbox-team">
+          <td colspan="2">
+            <div class="gm-inbox-team-line">
+              <span class="gm-inbox-team-mark is-{escape(_team_tone(team))}">{escape(team)}</span>
+              <span class="gm-status {_status_class(status)}">{escape(STATUS_LABELS.get(status, status))}</span>
+            </div>
           </td>
-          <td class="gm-inbox-hp">{row["hp"]} HP</td>
           <td>
-            <div class="gm-inbox-actions">{backlog_cell}{edit}</div>
+            <div class="gm-inbox-actions">{team_actions}</div>
           </td>
         </tr>
         ''')
+        for row in group["rows"]:
+            conflict = " gm-conflict" if row["conflict"] else ""
+            typ = "Förstöra" if row["typ"] == "forstora" else "Bygga"
+            typ_class = "is-break" if row["typ"] == "forstora" else "is-build"
+            targets = ", ".join(row["paverkar"]) if row["paverkar"] else "—"
+            actions = ""
+            if show_apply and row.get("can_apply_backlog"):
+                actions += (
+                    f'<button type="button" class="success gm-mini" data-backlog-apply '
+                    f'data-team="{escape(row["team"])}" data-index="{row["index"]}">'
+                    f'Lägg +{row["hp"]} HP</button>'
+                )
+            elif show_apply and row.get("backlog_applied"):
+                actions += '<span class="gm-applied">Tillagd</span>'
+            if can_edit:
+                actions += (
+                    f'<button type="button" class="gm-icon-btn" data-order-edit '
+                    f'data-team="{escape(row["team"])}" data-index="{row["index"]}" '
+                    f'data-aktivitet="{escape(row["aktivitet"])}" data-syfte="{escape(row["syfte"])}" '
+                    f'data-hp="{row["hp"]}" aria-label="Ändra" title="Ändra">✎</button>'
+                )
+            rows.append(f'''
+        <tr class="gm-inbox-activity-row{conflict}">
+          <td>
+            <div class="gm-inbox-activity">{escape(_activity_title(row))}</div>
+            <div class="gm-inbox-purpose">{escape(row["syfte"]) or "—"}</div>
+            <div class="gm-inbox-meta">
+              <span class="gm-type-tag {typ_class}">{escape(typ)}</span>
+              <span>{escape(targets)}</span>
+            </div>
+            {f'<span class="gm-conflict-tag">Konflikt</span>' if row["conflict"] else ""}
+          </td>
+          <td class="gm-inbox-hp">{_inbox_hp_html(row)}</td>
+          <td>
+            <div class="gm-inbox-actions">{actions}</div>
+          </td>
+        </tr>
+            ''')
     return f'''
     <div class="gm-inbox-wrap">
       <table class="gm-inbox">
         <thead>
           <tr>
-            <th>Lag</th><th>Status</th><th>Aktivitet</th><th>HP</th><th></th>
+            <th>Aktivitet</th><th>HP</th><th></th>
           </tr>
         </thead>
         <tbody>
