@@ -118,7 +118,9 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Resultatfas keeps the whole LLM result available under the folded **LLM-underlag och konsekvenser**, so the rundown and Lag view stay operationally dominant.
 - Long LLM output now uses four internal tabs: **Utfall / Nyheter / HP / Milstolpar**. Only one result type is expanded at a time, with counts and applied checkmarks in the tabs.
 - HP and milestone suggestions are single-apply operations: the submit button disables immediately, the server rejects/reconciles repeated POSTs, re-import cannot re-arm an applied consequence, and the applied tab shows a persistent **✓ … är tillämpade** state. Undo is the explicit revision path.
-- Backlog rows show `spenderat / totalt HP`, remaining effort, and a compact progress bar. Repeating work does not get a completion bar.
+- Backlog rows show `spenderat / totalt HP`, remaining effort, and a compact progress bar split into **förra rundan** / **tillagt** / **draget**. Repeating work does not get a completion bar. Klar is written as text, not as a green bar.
+- Console and LLM result controls are real tabs (bordered tablist, selected surface). Tabs that need a GM action show the word **Att göra**, not only a color.
+- **Tillämpa HP** schedules wallet changes for the next round. The Lag card shows **Nästa runda ±N** until **Starta nästa runda**.
 - The start list explicitly marks active games as **Pågår**. The mobile team form gives **Kvar** visual priority and stacks save/submit actions into full-width touch targets.
 
 ## Still to do (priority)
@@ -138,7 +140,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=29`, JS `gm-console.js?v=13`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=31`, JS `gm-console.js?v=14`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 

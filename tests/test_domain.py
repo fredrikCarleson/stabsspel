@@ -24,10 +24,12 @@ from gm_console import (
     apply_activity_hp_to_backlog,
     apply_llm_hp,
     apply_llm_milestones,
+    apply_or_queue_hp,
     apply_new_round,
     apply_next_phase,
     apply_previous_phase,
     apply_undo,
+    build_backlog_board,
     build_inbox,
     build_live_state,
     build_llm_export_text,
@@ -49,6 +51,7 @@ from gm_console import (
     missing_order_teams,
     parse_llm_forslag,
     parse_positive_amount,
+    pending_hp_totals,
     push_undo,
     set_regeringsstod,
     spent_hp_for_team,
@@ -154,6 +157,50 @@ class TestActionPoints(unittest.TestCase):
         data = create_game_state()
         adjust_hp(data, "Alfa", 5, "bonus")
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 30)
+
+    def test_manual_hp_is_immediate_in_orderfas_and_queued_later(self):
+        data = create_game_state()
+        apply_or_queue_hp(data, "Alfa", -5, "spion")
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
+        self.assertFalse(data.get("hp_pending"))
+
+        data["fas"] = "Diplomatifas"
+        apply_or_queue_hp(data, "Alfa", -4, "LLM-skatt")
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
+        self.assertEqual(pending_hp_totals(data)["Alfa"], -4)
+
+        data["fas"] = "Resultatfas"
+        apply_or_queue_hp(data, "Alfa", 1, "korrigering")
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
+        self.assertEqual(pending_hp_totals(data)["Alfa"], -3)
+
+        apply_new_round(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 17)
+        self.assertEqual(data.get("hp_pending") or [], [])
+
+    def test_backlog_snapshot_marks_previous_round_spend(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 8)
+        board = build_backlog_board(data)
+        alfa = next(item for item in board[0]["items"] if item["id"] == "alfa_1")
+        self.assertEqual(alfa["spent"], 8)
+        self.assertEqual(alfa["previous"], 0)
+
+        data["fas"] = "Resultatfas"
+        apply_new_round(data)
+        task = next(item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_1")
+        self.assertEqual(task["tidigare_hp"], 8)
+        self.assertEqual(task["spenderade_hp"], 8)
+        board = build_backlog_board(data)
+        alfa = next(item for item in board[0]["items"] if item["id"] == "alfa_1")
+        self.assertEqual(alfa["previous"], 8)
+        self.assertEqual(alfa["spent"], 8)
+
+        add_backlog_spend(data, "Alfa", "alfa_1", 2)
+        board = build_backlog_board(data)
+        alfa = next(item for item in board[0]["items"] if item["id"] == "alfa_1")
+        self.assertEqual(alfa["previous"], 8)
+        self.assertEqual(alfa["spent"], 10)
 
     def test_hp_delta_from_fields_accepts_any_integer(self):
         self.assertEqual(hp_delta_from_fields("plus5"), 5)
@@ -748,8 +795,10 @@ class TestLlmForslag(unittest.TestCase):
         self.assertNotIn("llm", public)
 
         apply_llm_hp(data)
-        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
-        self.assertEqual(data["poang"]["Bravo"]["aktuell"], 30)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+        self.assertEqual(data["poang"]["Bravo"]["aktuell"], 25)
+        self.assertEqual(pending_hp_totals(data)["Alfa"], -5)
+        self.assertEqual(pending_hp_totals(data)["Bravo"], 5)
         self.assertTrue(get_llm_forslag(data)["hp_applied"])
         with self.assertRaises(ValueError):
             apply_llm_hp(data)
@@ -775,7 +824,18 @@ class TestLlmForslag(unittest.TestCase):
         self.assertEqual(alfa_task["spenderade_hp"], 0)
         data, _label = apply_undo(data)
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+        self.assertFalse(pending_hp_totals(data))
         self.assertFalse(get_llm_forslag(data)["hp_applied"])
+
+    def test_llm_hp_changes_wallet_on_new_round(self):
+        data = create_game_state()
+        import_llm_forslag(data, self._example_json())
+        apply_llm_hp(data)
+        data["fas"] = "Resultatfas"
+        apply_new_round(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
+        self.assertEqual(data["poang"]["Bravo"]["aktuell"], 30)
+        self.assertEqual(data.get("hp_pending") or [], [])
 
     def test_reimport_does_not_rearm_applied_consequences(self):
         data = create_game_state()

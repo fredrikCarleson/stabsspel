@@ -185,6 +185,8 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("gm-backlog-amount", html)
         self.assertIn('role="progressbar"', html)
         self.assertIn('aria-valuenow="0"', html)
+        self.assertIn("gm-backlog-legend", html)
+        self.assertIn("förra rundan", html)
         self.assertIn("HP per klick", html)
         self.assertNotIn("−5</button>", html)
         self.assertNotIn("+5</button>", html)
@@ -217,6 +219,9 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("gm-inbox-activity", fragments["inbox"])
         self.assertIn("5 / 15 HP", fragments["backlog"])
         self.assertIn('aria-valuenow="5"', fragments["backlog"])
+        self.assertIn("gm-backlog-add", fragments["backlog"])
+        self.assertIn("+5 den här rundan", fragments["backlog"])
+        self.assertNotIn("gm-backlog-prev", fragments["backlog"])
 
         data["fas"] = "Diplomatifas"
         fragments = live_html_fragments("g1", build_live_state(data))
@@ -317,6 +322,9 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Testläge", html)
         self.assertNotIn("Orderinkorg", html)
         self.assertNotIn("HP per klick", html)
+        self.assertNotIn("Nästa runda", html)
+        self.assertNotIn("gm-hp-next", html)
+        self.assertNotIn("gm-backlog-prev", html)
 
     def test_result_phase_shows_run_of_show(self):
         from gm_console_ui import create_gm_console_html
@@ -460,7 +468,9 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Orderinkorg", html)
         self.assertIn("gm-tabs", html)
         self.assertIn('id="gm-tab-inkorg"', html)
-        self.assertIn('aria-selected="true">Inkorg</button>', html)
+        self.assertIn('aria-selected="true">Inkorg', html)
+        self.assertIn('class="gm-tab-alert"', html)
+        self.assertIn("Att göra", html)
         self.assertLess(html.find("Kopiera till LLM"), html.find("gm-tabs"))
         self.assertLess(html.find("Kopiera till LLM"), html.find("Orderinkorg"))
         self.assertLess(html.find("Orderinkorg"), html.find("Lag och handlingspoäng"))
@@ -552,6 +562,19 @@ class TestGmConsoleHtml(unittest.TestCase):
         html = create_gm_console_html("g1", data)
         self.assertNotIn("Redigera order", html)
 
+    def test_lag_tab_shows_queued_hp_for_next_round(self):
+        from gm_console_ui import create_gm_console_html
+        from gm_console import apply_or_queue_hp
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        apply_or_queue_hp(data, "Alfa", -4, "test")
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Nästa runda -4", html)
+        self.assertIn("gm-hp-next", html)
+        self.assertIn("HP schemalagt till nästa runda", html)
+        self.assertIn('id="gm-tab-lag" data-tab="lag"', html)
+
     def test_llm_suggestions_render_after_import(self):
         from gm_console import import_llm_forslag
         from gm_console_ui import create_gm_console_html
@@ -567,7 +590,8 @@ class TestGmConsoleHtml(unittest.TestCase):
             import_llm_forslag(data, handle.read())
         html = create_gm_console_html("g1", data)
         self.assertIn("Valmyndigheten tar första steget", html)
-        self.assertIn("Tillämpa HP", html)
+        self.assertIn("Tillämpa HP till nästa runda", html)
+        self.assertIn("Att göra", html)
         self.assertIn("Tillämpa milstolpar", html)
         self.assertIn("Kopiera nyheter till papper", html)
         self.assertIn('aria-label="LLM-resultat"', html)
@@ -580,7 +604,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         data["llm_forslag"]["1"]["hp_applied"] = True
         data["llm_forslag"]["1"]["milestones_applied"] = True
         applied = create_gm_console_html("g1", data, llm_view="hp")
-        self.assertIn("✓ HP är tillämpade", applied)
+        self.assertIn("✓ HP är schemalagda till nästa runda", applied)
         self.assertIn("✓ Milstolpar är tillämpade", applied)
         self.assertIn("Kan inte tillämpas igen", applied)
         self.assertNotIn(">Tillämpa HP</button>", applied)

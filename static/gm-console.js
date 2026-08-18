@@ -222,6 +222,57 @@
     });
   }
 
+  function signedDelta(n) {
+    n = parseInt(n, 10) || 0;
+    return n > 0 ? "+" + n : String(n);
+  }
+
+  function setTabAlert(id, text) {
+    var tab = document.getElementById(id);
+    if (!tab) return;
+    var badge = tab.querySelector(".gm-tab-alert");
+    if (text) {
+      tab.classList.add("needs-action");
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "gm-tab-alert";
+        badge.textContent = "Att göra";
+        tab.appendChild(badge);
+      }
+      badge.title = text;
+    } else {
+      tab.classList.remove("needs-action");
+      if (badge) badge.remove();
+    }
+  }
+
+  function paintTabAlerts(state) {
+    var fas = state.fas || "";
+    var missing = state.missing_teams || [];
+    var inkorg = "";
+    if (fas === "Diplomatifas" && missing.length) {
+      inkorg = "Lag utan inskickad order";
+    } else if (state.conflict_count) {
+      inkorg = "Konflikter i inkorgen";
+    }
+    setTabAlert("gm-tab-inkorg", inkorg);
+
+    var pending = (state.teams || []).some(function (t) {
+      return parseInt(t.pending_next, 10);
+    });
+    var llm = state.llm || {};
+    var lag = "";
+    if (pending) lag = "HP schemalagt till nästa runda";
+    else if (llm.hp && llm.hp.length && !llm.hp_applied) lag = "HP-förslag att tillämpa";
+    setTabAlert("gm-tab-lag", lag);
+
+    var arbete = "";
+    if (llm.milstolpar && llm.milstolpar.length && !llm.milestones_applied) {
+      arbete = "Milstolpar att tillämpa";
+    }
+    setTabAlert("gm-tab-arbete", arbete);
+  }
+
   function paintTeams(teams) {
     (teams || []).forEach(function (t) {
       var chip = document.querySelector('.gm-chip[data-team="' + t.team + '"]');
@@ -252,6 +303,16 @@
         xfer.textContent = t.regeringsstod
           ? "överförbart " + t.aktuell + " · stöd +10 kan inte flyttas"
           : "överförbart " + t.aktuell;
+      }
+      var next = card.querySelector(".gm-hp-next");
+      if (next) {
+        var pending = parseInt(t.pending_next, 10) || 0;
+        if (pending) {
+          next.hidden = false;
+          next.textContent = "Nästa runda " + signedDelta(pending);
+        } else {
+          next.hidden = true;
+        }
       }
     });
   }
@@ -334,11 +395,13 @@
       undo: state.undo_available,
       conflicts: state.conflict_count,
       test_mode: !!state.test_mode,
+      llm: state.llm,
     });
     if (sig === lastPaint) return;
     lastPaint = sig;
 
     paintTeams(state.teams);
+    paintTabAlerts(state);
     paintNextConfirm(state);
 
     setHtml("gm-attention-list", html.attention);

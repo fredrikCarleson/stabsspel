@@ -135,7 +135,8 @@ Created in `skapa_nytt_spel` and grown during play:
 | `fas` | `Orderfas` / `Diplomatifas` / `Resultatfas` |
 | `avslutat` | Game over |
 | `poang.<lag>` | `{ bas, aktuell, regeringsstod }` — spendable HP is `aktuell`, plus +10 if stöd |
-| `backlog` | Dev-team work (Alfa / Bravo / STT). Bravo has phases (Krav, Design, …) |
+| `hp_pending` | Queued HP deltas applied when a new round starts. LLM HP and ± after Orderfas change next round's wallet, not this round's remaining. |
+| `backlog` | Dev-team work (Alfa / Bravo / STT). Bravo has phases (Krav, Design, …). `tidigare_hp` is the spent mark from the previous round for GM progress bars. |
 | `team_orders.orders_round_N.<lag>` | `{ orders.activities[], final, submitted_at, updated_at, edited_by_gm, … }` |
 | `team_tokens` | Secret URLs for order entry |
 | `password` | PBKDF2 hash, or empty → default password for old games |
@@ -146,7 +147,7 @@ Created in `skapa_nytt_spel` and grown during play:
 | `test_mode` | Shows auto-fill / cheat links |
 | `fashistorik` | Phase history for the panel |
 
-**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable.
+**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable. Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and change `aktuell` when **Starta nästa runda** runs. GM ± during Orderfas still changes this round immediately.
 
 ---
 

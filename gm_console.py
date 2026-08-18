@@ -412,6 +412,88 @@ def adjust_hp(data, team, amount, reason=""):
     return data
 
 
+def hp_applies_next_round(data):
+    """Order consequences change next round's wallet, not this round's remaining HP."""
+    return (data.get("fas") or "") in ("Diplomatifas", "Resultatfas")
+
+
+def pending_hp_totals(data):
+    totals = {}
+    for item in data.get("hp_pending") or []:
+        team = item.get("lag")
+        if not team:
+            continue
+        try:
+            totals[team] = int(totals.get(team) or 0) + int(item.get("delta") or 0)
+        except (TypeError, ValueError):
+            continue
+    return totals
+
+
+def queue_hp_delta(data, team, amount, reason="", source="gm"):
+    ensure_poang(data)
+    if team not in data["poang"]:
+        raise ValueError(f"Okänt lag: {team}")
+    amount = int(amount)
+    if amount == 0:
+        raise ValueError("Beloppet får inte vara 0")
+    pending = list(data.get("hp_pending") or [])
+    pending.append({
+        "lag": team,
+        "delta": amount,
+        "orsak": str(reason or "").strip(),
+        "kalla": source,
+    })
+    data["hp_pending"] = pending
+    sign = "+" if amount >= 0 else ""
+    note = (reason or "").strip() or "Justering"
+    append_gm_log(
+        data,
+        "hp",
+        f"{team}: {sign}{amount} HP schemalagt till nästa runda ({note}).",
+        {"team": team, "amount": amount, "reason": note, "when": "next_round"},
+    )
+    return data
+
+
+def apply_or_queue_hp(data, team, amount, reason="", source="gm"):
+    if hp_applies_next_round(data):
+        return queue_hp_delta(data, team, amount, reason, source)
+    return adjust_hp(data, team, amount, reason)
+
+
+def apply_pending_hp(data):
+    items = list(data.get("hp_pending") or [])
+    data["hp_pending"] = []
+    for item in items:
+        team = item.get("lag")
+        try:
+            amount = int(item.get("delta") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not team or amount == 0:
+            continue
+        try:
+            adjust_hp(data, team, amount, item.get("orsak") or "Nästa runda")
+        except ValueError:
+            continue
+    return data
+
+
+def snapshot_backlog_round(data):
+    """Remember current spent HP as the last-round mark for progress bars."""
+    ensure_backlog(data)
+    for tasks in (data.get("backlog") or {}).values():
+        for task in tasks or []:
+            if not isinstance(task, dict):
+                continue
+            task["tidigare_hp"] = int(task.get("spenderade_hp") or 0)
+            for phase in task.get("faser") or []:
+                if isinstance(phase, dict):
+                    phase["tidigare_hp"] = int(phase.get("spenderade_hp") or 0)
+    return data
+
+
 def transfer_hp(data, from_team, to_team, amount, reason=""):
     ensure_poang(data)
     if from_team not in data["poang"] or to_team not in data["poang"]:
@@ -495,6 +577,8 @@ def apply_new_round(data):
     add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
     data = nollstall_regeringsstod(data)
     data["checkbox_states"] = {}
+    snapshot_backlog_round(data)
+    apply_pending_hp(data)
     append_gm_log(data, "phase", f"Runda {data['runda']}, Orderfas.")
     return data
 
@@ -735,9 +819,23 @@ def build_inbox(data):
     return rows
 
 
+def _previous_spent(item, spent, runda):
+    if isinstance(item, dict) and "tidigare_hp" in item:
+        try:
+            return max(0, int(item.get("tidigare_hp") or 0))
+        except (TypeError, ValueError):
+            return 0
+    try:
+        runda = int(runda or 1)
+    except (TypeError, ValueError):
+        runda = 1
+    return 0 if runda <= 1 else max(0, int(spent or 0))
+
+
 def build_backlog_board(data):
     """Per-team backlog rows for the live console."""
     ensure_backlog(data)
+    runda = data.get("runda") or 1
     board = []
     for lag in data.get("lag") or []:
         tasks = (data.get("backlog") or {}).get(lag)
@@ -746,6 +844,7 @@ def build_backlog_board(data):
         items = []
         spent_total = 0
         est_total = 0
+        prev_total = 0
         for uppgift in tasks:
             faser = uppgift.get("faser") or []
             if faser:
@@ -753,12 +852,15 @@ def build_backlog_board(data):
                 for fas in faser:
                     estimated = int(fas.get("estimaterade_hp") or 0)
                     spent = int(fas.get("spenderade_hp") or 0)
+                    previous = _previous_spent(fas, spent, runda)
                     est_total += estimated
                     spent_total += spent
+                    prev_total += previous
                     phases.append({
                         "name": fas.get("namn") or "",
                         "estimated": estimated,
                         "spent": spent,
+                        "previous": previous,
                         "done": bool(fas.get("slutford")),
                     })
                 items.append({
@@ -767,6 +869,7 @@ def build_backlog_board(data):
                     "kind": "phased",
                     "estimated": sum(p["estimated"] for p in phases),
                     "spent": sum(p["spent"] for p in phases),
+                    "previous": sum(p["previous"] for p in phases),
                     "done": bool(uppgift.get("slutford")),
                     "recurring": False,
                     "phases": phases,
@@ -774,14 +877,17 @@ def build_backlog_board(data):
             else:
                 estimated = int(uppgift.get("estimaterade_hp") or 0)
                 spent = int(uppgift.get("spenderade_hp") or 0)
+                previous = _previous_spent(uppgift, spent, runda)
                 est_total += estimated
                 spent_total += spent
+                prev_total += previous
                 items.append({
                     "id": uppgift.get("id") or "",
                     "name": uppgift.get("namn") or "",
                     "kind": "simple",
                     "estimated": estimated,
                     "spent": spent,
+                    "previous": previous,
                     "done": bool(uppgift.get("slutford")),
                     "recurring": uppgift.get("typ") == "aterkommande",
                     "phases": [],
@@ -789,6 +895,7 @@ def build_backlog_board(data):
         board.append({
             "team": lag,
             "spent": spent_total,
+            "previous": prev_total,
             "estimated": est_total,
             "items": items,
         })
@@ -840,6 +947,7 @@ def build_public_progress(data):
 
 def build_team_strip(data):
     ensure_poang(data)
+    pending = pending_hp_totals(data)
     strip = []
     for lag in data.get("lag") or []:
         entry = data["poang"].get(lag) or {}
@@ -854,6 +962,7 @@ def build_team_strip(data):
             "effective": current,
             "spent": spent,
             "remaining": current - spent,
+            "pending_next": int(pending.get(lag) or 0),
             "status": status,
             "status_label": STATUS_LABELS.get(status, status),
             "transferable": int(entry.get("aktuell") or 0),
@@ -1599,7 +1708,7 @@ def apply_llm_hp(data):
         try:
             if applied == 0:
                 push_undo(data, "Tillämpa LLM-HP")
-            adjust_hp(data, item["lag"], int(item["delta"]), item.get("orsak") or "LLM-förslag")
+            queue_hp_delta(data, item["lag"], int(item["delta"]), item.get("orsak") or "LLM-förslag", "llm")
             applied += 1
         except ValueError:
             continue
@@ -1609,7 +1718,7 @@ def apply_llm_hp(data):
     store = dict(data.get("llm_forslag") or {})
     store[str(forslag.get("runda") or data.get("runda") or 1)] = forslag
     data["llm_forslag"] = store
-    append_gm_log(data, "llm", f"Tillämpade {applied} HP-justeringar från LLM")
+    append_gm_log(data, "llm", f"Schemalade {applied} HP-justeringar till nästa runda")
     return applied
 
 
