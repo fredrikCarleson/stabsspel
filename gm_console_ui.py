@@ -91,6 +91,65 @@ def _news_copy_text(nyheter):
     return "\n\n---\n\n".join(blocks)
 
 
+def _split_order_ref(ref):
+    team, sep, number = str(ref or "").rpartition("-")
+    if not sep:
+        return ref, ""
+    return team, number
+
+
+def _utfall_section_html(llm):
+    utfall = (llm or {}).get("utfall") or []
+    rolls = (llm or {}).get("rolls") or {}
+    if utfall:
+        cards = "".join(_utfall_card_html(item) for item in utfall)
+        return (
+            f'<div class="gm-utfall">'
+            f'<h3 class="gm-section-title">Utfall och sannolikhet</h3>'
+            f"{cards}"
+            f"</div>"
+        )
+    if rolls:
+        items = " · ".join(
+            f"{escape(str(ref))}: {int(value)}" for ref, value in rolls.items()
+        )
+        return (
+            f'<p class="gm-utfall-rolls">Slag (innan LLM-svar): {items}. '
+            f"Sannolikhet och resultat kommer efter import.</p>"
+        )
+    return ""
+
+
+def _utfall_card_html(item):
+    resultat = item.get("resultat") or ""
+    mark = {"framgång": "✓", "delvis framgång": "~", "misslyckande": "✕"}.get(resultat, "")
+    label = resultat.upper() if resultat else ""
+    tone = {
+        "framgång": "is-success",
+        "delvis framgång": "is-partial",
+        "misslyckande": "is-fail",
+    }.get(resultat, "")
+    team, number = _split_order_ref(item.get("order_ref") or "")
+    order_no = f"Order {escape(number)}" if number else escape(item.get("order_ref") or "")
+    satsad = int(item.get("satsad_hp") or 0)
+    motstand = int(item.get("motstand_hp") or 0)
+    sannolikhet = int(item.get("sannolikhet") or 0)
+    slump = int(item.get("slump") or 0)
+    return (
+        f'<article class="gm-utfall-card">'
+        f'<p class="gm-utfall-meta">{escape(item.get("lag") or team)} · {order_no}</p>'
+        f'<p class="gm-utfall-order">{escape(item.get("order") or "")}</p>'
+        f'<p class="gm-utfall-hp">{satsad} HP mot {motstand} HP</p>'
+        f'<p class="gm-utfall-headline">'
+        f'<span>{sannolikhet} %</span>'
+        f'<span>Slag {slump}</span>'
+        f'<span class="gm-utfall-result {tone}">{escape(mark)} {escape(label)}</span>'
+        f"</p>"
+        f'<p class="gm-utfall-why">{escape(item.get("motivering") or "")}</p>'
+        f"</article>"
+    )
+
+
 def _llm_block_html(spel_id, state):
     fas = state.get("fas")
     if fas not in ("Diplomatifas", "Resultatfas"):
@@ -115,6 +174,18 @@ def _llm_block_html(spel_id, state):
     '''
     if not llm:
         return f'<div class="gm-llm-panel">{copy_row}{import_form}</div>'
+
+    utfall_html = _utfall_section_html(llm)
+    has_import = bool(
+        llm.get("importerad")
+        or llm.get("nyheter")
+        or llm.get("hp")
+        or llm.get("milstolpar")
+        or llm.get("utfall")
+    )
+    if not has_import:
+        extra = f'<div class="gm-llm-forslag">{utfall_html}</div>' if utfall_html else ""
+        return f'<div class="gm-llm-panel">{copy_row}{import_form}{extra}</div>'
 
     warnings = "".join(
         f"<li>{escape(item)}</li>" for item in (llm.get("warnings") or [])
@@ -193,6 +264,7 @@ def _llm_block_html(spel_id, state):
     forslag = f'''
       <div class="gm-llm-forslag">
         {warning_html}
+        {utfall_html}
         <h3 class="gm-section-title">LLM-förslag</h3>
         <h4>Nyheter till studion</h4>
         {news_html}

@@ -75,9 +75,9 @@ Prefer extending the existing live console over adding another full page.
 
 News stay on paper for the studio:
 
-**copy orders → LLM JSON → paste suggestions → paper → studio**
+**copy orders → LLM JSON (with app dice) → paste suggestions → paper → studio**
 
-Keep `Kopiera ordrar till LLM` as the export step. Pasted JSON may suggest headlines, HP and milestones. Do not add an in-app headline editor.
+Keep `Kopiera ordrar till LLM` as the export step. Pasted JSON may suggest headlines, HP, milestones, and GM-only `utfall`. Do not add an in-app headline editor. Rolls, probabilities and motivering stay off the projector.
 
 ## Design for the current task
 

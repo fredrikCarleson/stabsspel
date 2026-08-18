@@ -1745,6 +1745,57 @@ thead th {
   font-size: 13px;
 }
 
+.gm-utfall {
+  margin: 8px 0 16px;
+}
+
+.gm-utfall-card {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.gm-utfall-card:last-child {
+  border-bottom: 0;
+}
+
+.gm-utfall-meta,
+.gm-utfall-hp {
+  margin: 0 0 4px;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+.gm-utfall-order {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.gm-utfall-headline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: baseline;
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gm-utfall-result.is-success,
+.gm-utfall-result.is-partial,
+.gm-utfall-result.is-fail {
+  letter-spacing: 0.02em;
+}
+
+.gm-utfall-why {
+  margin: 0;
+}
+
+.gm-utfall-rolls {
+  color: var(--c-muted);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
 .gm-section-title {
   margin: 24px 0 4px;
   font-size: 20px;

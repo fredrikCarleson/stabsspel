@@ -102,10 +102,11 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 ### LLM-export and suggestions (2026-08-18)
 
-- Copy text includes Swedish instructions and asks the model for JSON only: `nyheter` (rubrik, upplasning, lag), `hp` (lag, delta, orsak), `milstolpar` (lag, uppgift-id, delta_hp, orsak).
-- Paste or upload that JSON on the export page or in Diplomatifas/Resultatfas. Stored as `llm_forslag` per round. Not sent to the projector.
-- GM copies news to paper for the studio. **Tillämpa HP** and **Tillämpa milstolpar** are confirm + undo.
-- Example file: `testdata/llm-svar-exempel.json`.
+- Copy text is `Docs/prompt.md` filled with round, teams, backlog, orders (`order_ref` like `Alfa-1`), frozen 1–100 rolls, and previous `utfall`.
+- First copy for a round creates `llm_resolution.<runda>.rolls` and saves them. Copy/refresh/undo does not reroll. A new activity gets a new ref/roll only.
+- Paste or upload JSON on the export page or in Diplomatifas/Resultatfas. Stored as `llm_forslag` plus `llm_resolution.<runda>.result.utfall`. Not sent to the projector.
+- GM sees **Utfall och sannolikhet** (HP, chans, slag, resultat, motivering). News are copied to paper for the studio. **Tillämpa HP** and **Tillämpa milstolpar** are confirm + undo.
+- Old JSON without `utfall` still imports. Example files: `testdata/llm-svar-exempel.json`, `testdata/llm-svar-utfall-exempel.json`.
 
 ## Still to do (priority)
 
@@ -124,7 +125,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=24`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=25`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 

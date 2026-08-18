@@ -8,7 +8,7 @@ It is a map of the repository, not the game rules. The exercise itself (teams, r
 
 ## 1. Purpose
 
-Stabsspel is a **live staff-exercise (stabsspel) runner** for 20–60 people. A Game Master (GM) runs four quarters of a fictional year. Teams spend **handlingspoäng (HP)** on orders. After each round, orders are copied into an LLM; the model returns JSON with news, HP and milestone suggestions. Headlines are printed for the news studio. HP and backlog progress can be applied in the console after the GM confirms.
+Stabsspel is a **live staff-exercise (stabsspel) runner** for 20–60 people. A Game Master (GM) runs four quarters of a fictional year. Teams spend **handlingspoäng (HP)** on orders. After each round, orders are copied into an LLM together with app-generated dice rolls. The model returns JSON with news, HP, milestone suggestions, and GM-only resolution (`utfall`). Headlines are printed for the news studio. HP and backlog progress can be applied in the console after the GM confirms.
 
 The app’s job is to **keep the room on the clock** and hold **orders, HP, backlog, and phase** as live state. It is not a news CMS, not a chat tool, and not a general admin CRUD product.
 
@@ -46,7 +46,7 @@ Spelledarpanel  ──────────────►  Spelarskärm  (/s
                 └── next round (or end after round 4)
 ```
 
-News still happen **outside** the studio workflow: **Kopiera ordrar till LLM** → paste JSON suggestions → copy headlines to paper → studio. The app stores suggestions (`llm_forslag`) and can apply HP/backlog on confirm. The GM log records tool actions (phase, HP, backlog, undo), not journalism. Projector payloads must not include `llm_forslag`.
+News still happen **outside** the studio workflow: **Kopiera ordrar till LLM** → paste JSON suggestions → copy headlines to paper → studio. The copy step freezes 1–100 rolls per submitted order (`llm_resolution`). The LLM must reuse those rolls; it does not invent dice. Imported `utfall` is GM-only. Suggestions (`llm_forslag`) can apply HP/backlog on confirm. Projector payloads must not include `llm_forslag`, `llm_resolution`, rolls, probabilities, or order refs.
 
 | Role | Where they look |
 |------|-----------------|
@@ -138,7 +138,9 @@ Created in `skapa_nytt_spel` and grown during play:
 | `team_tokens` | Secret URLs for order entry |
 | `password` | PBKDF2 hash, or empty → default password for old games |
 | `timer_*`, `orderfas_min`, … | Clock |
-| `gm_log`, `gm_undo` | Operational log and ~20 undo snapshots |
+| `gm_log`, `gm_undo` | Operational log and ~20 undo snapshots. Undo does not restore/delete `llm_resolution` rolls. |
+| `llm_forslag` | Per-round imported suggestions (news, HP, milestones). Optional. |
+| `llm_resolution` | Per-round frozen 1–100 rolls and imported `utfall`. Optional. |
 | `test_mode` | Shows auto-fill / cheat links |
 | `fashistorik` | Phase history for the panel |
 
@@ -277,7 +279,7 @@ Plain-text briefs, one file per team (`alfa.txt`, `bravo.txt`, `stt.txt`, `fm.tx
 
 | File | Purpose |
 |------|---------|
-| `Stabsspel Traineeprogrammet.md` | The **game**: rules, teams, HP, rounds, how news work in the room. |
+| `prompt.md` | LLM export template. Filled at copy time; do not put live rolls in this file. |
 | `architecture.md` | This file: the **software**. |
 | `DEPLOYMENT_GUIDE.md` | Render-oriented deploy notes. |
 | `PRODUCTION_CHECKLIST.md` | Production go-live checklist. |
@@ -354,7 +356,7 @@ Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **wri
 1. **Live rules** (phases, HP, orders, backlog, undo) → `gm_console.py` plus a test in `tests/test_domain.py`.
 2. **GM HTML** → `gm_console_ui.py` plus `static/gm-console.js` / `app.css`. Do not grow new live workflows as another full page if they can sit on the console.
 3. **Room-visible data** → `build_public_state` only. Never send inbox or `gm_log` to the projector.
-4. **News** stay on paper for the studio. LLM export asks for JSON; paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). This is not an in-app headline editor.
+4. **News** stay on paper for the studio. LLM export asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor.
 5. Prefer Swedish labels in the UI (the room is Swedish); keep code identifiers in the existing mix (`fas`, `runda`, `poang`, `regeringsstod`).
 
 ---

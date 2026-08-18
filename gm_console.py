@@ -1,9 +1,10 @@
 """
 Game Master live-console helpers.
 
-News is still produced outside the app: copy orders into an LLM, paste the
-JSON reply back as suggestions, print headlines for the studio. This module
-runs the room (phase/time, orders, HP, undo, log) and stores those suggestions.
+News is produced outside the app: copy orders into an LLM, paste JSON
+suggestions, print headlines for the studio. This module runs the room
+(phase/time, orders, HP, undo, log), generates frozen resolution rolls,
+and stores LLM suggestions including GM-only utfall.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import secrets
 import time
 from datetime import datetime
 from pathlib import Path
@@ -29,6 +31,9 @@ from game_management import nollstall_regeringsstod
 UNDO_LIMIT = 20
 LOG_LIMIT = 50
 TESTDATA_DIR = Path(__file__).resolve().parent / "testdata"
+LLM_PROMPT_PATH = Path(__file__).resolve().parent / "Docs" / "prompt.md"
+UNDO_KEEP_KEYS = ("gm_undo", "llm_resolution")
+UTFALL_RESULTAT = ("framgång", "delvis framgång", "misslyckande")
 STATUS_LABELS = {
     "empty": "Tom",
     "draft": "Utkast",
@@ -151,8 +156,13 @@ def auto_submit_unsaved_orders(data, current_round=None):
 
 
 def push_undo(data, action):
-    """Snapshot current state (except the undo stack itself) before a mutation."""
-    snapshot = {k: copy.deepcopy(v) for k, v in data.items() if k != "gm_undo"}
+    """Snapshot current state before a mutation.
+
+    Dice in ``llm_resolution`` are excluded so ordinary undo cannot reroll.
+    """
+    snapshot = {
+        k: copy.deepcopy(v) for k, v in data.items() if k not in UNDO_KEEP_KEYS
+    }
     stack = data.setdefault("gm_undo", [])
     stack.append({"action": action, "at": time.time(), "state": snapshot})
     data["gm_undo"] = stack[-UNDO_LIMIT:]
@@ -164,9 +174,14 @@ def apply_undo(data):
     stack = data.get("gm_undo") or []
     if not stack:
         return data, None
+    frozen_resolution = copy.deepcopy(data.get("llm_resolution"))
     entry = stack.pop()
     restored = copy.deepcopy(entry.get("state") or {})
     restored["gm_undo"] = stack
+    if frozen_resolution is not None:
+        restored["llm_resolution"] = frozen_resolution
+    else:
+        restored.pop("llm_resolution", None)
     return restored, entry.get("action") or "Ångra"
 
 
@@ -803,6 +818,12 @@ _TEAM_ALIASES = {
     "delta": "Delta", "lag delta": "Delta",
     "echo": "Echo", "lag echo": "Echo",
     "stt": "STT", "lag stt": "STT",
+    "fm": "FM", "främmande makt": "FM", "lag fm": "FM",
+    "bs": "BS", "brottssyndikatet": "BS", "lag bs": "BS",
+    "media": "Media", "lag media": "Media",
+    "säpo": "SÄPO", "sapo": "SÄPO", "lag säpo": "SÄPO",
+    "regeringen": "Regeringen", "lag regeringen": "Regeringen",
+    "usa": "USA", "lag usa": "USA",
 }
 
 
@@ -822,40 +843,124 @@ def normalize_team_name(value, teams=None):
     return None
 
 
+def make_order_ref(team, index):
+    """Stable human-readable ref, e.g. Alfa-1 or STT-3."""
+    return f"{team}-{int(index)}"
+
+
+def _round_orders_map(data, all_orders=None):
+    if all_orders is not None:
+        return all_orders
+    runda = data.get("runda") or 1
+    return (data.get("team_orders") or {}).get(f"orders_round_{runda}") or {}
+
+
+def iter_submitted_orders(data, all_orders=None):
+    """Yield (team, index, order_ref, activity) for submitted current-round orders."""
+    orders = _round_orders_map(data, all_orders)
+    teams = list(data.get("lag") or []) or list(orders)
+    for team in teams:
+        record = orders.get(team) or {}
+        if not record.get("final"):
+            continue
+        activities = (record.get("orders") or {}).get("activities") or []
+        for index, activity in enumerate(activities, 1):
+            yield team, index, make_order_ref(team, index), activity
+
+
+def current_order_refs(data, all_orders=None):
+    return [ref for _team, _index, ref, _activity in iter_submitted_orders(data, all_orders)]
+
+
+def _resolution_key(runda=None, data=None):
+    if runda is None and data is not None:
+        runda = data.get("runda") or 1
+    return str(int(runda or 1))
+
+
+def get_round_resolution(data, runda=None):
+    store = data.get("llm_resolution") or {}
+    rec = store.get(_resolution_key(runda, data))
+    return rec if isinstance(rec, dict) else {}
+
+
+def get_round_rolls(data, runda=None):
+    return dict((get_round_resolution(data, runda) or {}).get("rolls") or {})
+
+
+def get_round_utfall(data, runda=None):
+    result = (get_round_resolution(data, runda) or {}).get("result") or {}
+    if isinstance(result, dict):
+        return list(result.get("utfall") or [])
+    return []
+
+
+def _ensure_resolution_record(data, runda=None):
+    key = _resolution_key(runda, data)
+    store = data.setdefault("llm_resolution", {})
+    rec = store.get(key)
+    if not isinstance(rec, dict):
+        rec = {"rolls": {}, "result": None}
+    rec.setdefault("rolls", {})
+    store[key] = rec
+    data["llm_resolution"] = store
+    return rec
+
+
+def _new_roll(randint=None):
+    if randint is not None:
+        value = int(randint())
+    else:
+        value = secrets.randbelow(100) + 1
+    if not 1 <= value <= 100:
+        raise ValueError("Slumpvärde måste vara 1–100")
+    return value
+
+
+def ensure_round_rolls(data, all_orders=None, randint=None):
+    """Create missing 1–100 rolls for submitted orders. Never reroll existing refs."""
+    rec = _ensure_resolution_record(data)
+    rolls = rec.setdefault("rolls", {})
+    for _team, _index, ref, _activity in iter_submitted_orders(data, all_orders):
+        if ref not in rolls:
+            rolls[ref] = _new_roll(randint)
+    rec["rolls"] = rolls
+    return dict(rolls)
+
+
 def format_orders_export(data, all_orders):
     """Plain-text order dump used by the LLM export page."""
     lines = []
-    teams = data.get("lag") or list(all_orders or {})
     poang = data.get("poang") or {}
-    for team in teams:
-        record = (all_orders or {}).get(team) or {}
-        activities = (record.get("orders") or {}).get("activities") or []
-        if not activities:
-            continue
-        hp = int((poang.get(team) or {}).get("aktuell") or 0)
-        lines.append(f"=== LAG {team.upper()} (HP i kassan: {hp}) ===")
-        for i, activity in enumerate(activities, 1):
-            order_type = activity.get("typ", "bygga")
-            typ_label = "BYGGA" if order_type == "bygga" else "FÖRSTÖRA"
-            aktivitet = activity.get("aktivitet") or ""
-            hp_est = int(activity.get("hp") or 0)
-            syfte = (activity.get("syfte") or "").strip()
-            malomrade = activity.get("malomrade") or ""
-            paverkar = activity.get("paverkar") or []
-            backlog_id = activity.get("backlog_selected") or ""
-            backlog_item = activity.get("backlog_item") or ""
-            lines.append(f"{i}. [{typ_label}] {aktivitet} ({hp_est} HP)")
-            if syfte:
-                lines.append(f"   Syfte: {syfte}")
-            if backlog_id and backlog_id != "custom":
-                extra = f" ({backlog_item})" if backlog_item else ""
-                lines.append(f"   Backlog-id: {backlog_id}{extra}")
-            if paverkar:
-                lines.append(f"   Påverkar: {', '.join(str(p) for p in paverkar)}")
-            if malomrade:
-                lines.append(f"   Målområde: {malomrade}")
-        lines.append("")
-    return "\n".join(lines) if lines else "(Inga ordrar inskickade ännu)"
+    current_team = None
+    for team, index, ref, activity in iter_submitted_orders(data, all_orders):
+        if team != current_team:
+            if current_team is not None:
+                lines.append("")
+            current_team = team
+            hp = int((poang.get(team) or {}).get("aktuell") or 0)
+            lines.append(f"=== LAG {team.upper()} (HP i kassan: {hp}) ===")
+        order_type = activity.get("typ", "bygga")
+        typ_label = "BYGGA" if order_type == "bygga" else "FÖRSTÖRA"
+        aktivitet = activity.get("aktivitet") or ""
+        hp_est = int(activity.get("hp") or 0)
+        syfte = (activity.get("syfte") or "").strip()
+        malomrade = activity.get("malomrade") or ""
+        paverkar = activity.get("paverkar") or []
+        backlog_id = activity.get("backlog_selected") or ""
+        backlog_item = activity.get("backlog_item") or ""
+        lines.append(f"{index}. [{typ_label}] {aktivitet} ({hp_est} HP)")
+        lines.append(f"   order_ref: {ref}")
+        if syfte:
+            lines.append(f"   Syfte: {syfte}")
+        if backlog_id and backlog_id != "custom":
+            extra = f" ({backlog_item})" if backlog_item else ""
+            lines.append(f"   Backlog-id: {backlog_id}{extra}")
+        if paverkar:
+            lines.append(f"   Påverkar: {', '.join(str(p) for p in paverkar)}")
+        if malomrade:
+            lines.append(f"   Målområde: {malomrade}")
+    return "\n".join(lines) if lines else "(Inga inskickade ordrar ännu)"
 
 
 def _format_backlog_for_llm(data):
@@ -890,66 +995,64 @@ def _format_backlog_for_llm(data):
     return "\n".join(lines).strip() or "(ingen backlog)"
 
 
-def build_llm_export_text(data, all_orders):
+def _load_llm_prompt_template():
+    try:
+        return LLM_PROMPT_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"Saknar LLM-prompt ({LLM_PROMPT_PATH.name}).") from exc
+
+
+def _format_rolls_for_llm(rolls):
+    if not rolls:
+        return "(Inga slumpvärden. Inga inskickade order.)"
+    lines = [f"{ref}: {int(value)}" for ref, value in rolls.items()]
+    return "\n".join(lines)
+
+
+def format_previous_outcomes(data):
+    """Compact persisted utfall from earlier rounds. No invented summary."""
+    current = int(data.get("runda") or 1)
+    store = data.get("llm_resolution") or {}
+    lines = []
+    for runda in range(1, current):
+        rec = store.get(str(runda)) or {}
+        result = rec.get("result") or {}
+        utfall = result.get("utfall") if isinstance(result, dict) else None
+        if not utfall:
+            continue
+        lines.append(f"Runda {runda}:")
+        for item in utfall:
+            if not isinstance(item, dict):
+                continue
+            lines.append(
+                f"  - {item.get('order_ref')}: {item.get('lag')} | "
+                f"{item.get('order')} | {item.get('resultat')} | "
+                f"{item.get('satsad_hp')} HP mot {item.get('motstand_hp')} HP | "
+                f"sannolikhet {item.get('sannolikhet')} slump {item.get('slump')} | "
+                f"{item.get('motivering')}"
+            )
+    return "\n".join(lines) if lines else "(Inga tidigare utfall)"
+
+
+def build_llm_export_text(data, all_orders, randint=None):
+    """Fill Docs/prompt.md with live round data. Creates missing rolls."""
     runda = int(data.get("runda") or 1)
     fas = data.get("fas") or ""
     teams = ", ".join(data.get("lag") or []) or "Alfa, Bravo, Charlie, Delta, Echo, STT"
-    orders = format_orders_export(data, all_orders)
-    backlog = _format_backlog_for_llm(data)
-    return f"""Du är spelledarens assistent i ett svenskt stabsövningsspel (Stabsspel).
-Spelet har lagen: {teams}.
-Du ska INTE skriva prosa. Du ska BARA svara med giltig JSON enligt schemat längst ner.
-
-SPELFAKTA
-- Runda: {runda}
-- Fas: {fas}
-- Spelledaren kopierar ditt svar tillbaka in i spelet. Nyhetsförslagen skrivs ut på papper och läses i TV-studion. HP- och milstolpeförslagen kan tillämpas i spelet efter spelledarens godkännande.
-- HP i kassan är det laget har kvar att spendera. Negativ HP-delta = förlust (sabotage, dålig press, motgång). Positiv HP-delta = vinst (framgång, stöd, bonus).
-- Milstolpar är backlog-uppgifter. delta_hp är hur många HP som ska läggas på uppgiften den här rundan (alltid 0 eller positivt). Använd id-fältet från listan nedan, t.ex. alfa_1 eller bravo_1_Krav.
-
-UPPDRAG
-1. Skriv 3–6 nyheter som TV-studion kan läsa. Rubriken ska vara kort (max ca 90 tecken). upplasning ska vara 20–40 sekunder att läsa högt, konkret och dramatisk men trovärdig. Koppla nyheter till ordrarna. Ange vilka lag som berörs.
-2. Föreslå HP-justeringar per lag utifrån hur ordrarna lyckas eller möter motstånd. Inte varje lag måste få en justering. Håll deltan små och motiverade (typiskt mellan -15 och +10).
-3. Föreslå milstolpeprogress: vilka backlog-uppgifter som bör få mer lagd HP den här rundan, utifrån BYGGA-ordrar. Förstörarordrar ger normalt INTE progress på den egna backloggen.
-
-REGLER
-- Hitta inte på lag eller uppgifts-id som inte finns i underlaget.
-- Svara ENBART med ett JSON-objekt. Ingen markdown, inga kodstaket, ingen text före eller efter.
-- Använd exakt dessa nycklar: runda, nyheter, hp, milstolpar.
-
-AKTUELL BACKLOG
-{backlog}
-
-ORDRAR DENNA RUNDA
-{orders}
-
-JSON-SCHEMA (exempel på form, inte innehåll)
-{{
-  "runda": {runda},
-  "nyheter": [
-    {{
-      "rubrik": "Kort nyhetsrubrik",
-      "upplasning": "Texten som ska läsas i TV-studion.",
-      "lag": ["Alfa"]
-    }}
-  ],
-  "hp": [
-    {{
-      "lag": "Alfa",
-      "delta": -5,
-      "orsak": "Kort motivering"
-    }}
-  ],
-  "milstolpar": [
-    {{
-      "lag": "Alfa",
-      "uppgift": "alfa_1",
-      "delta_hp": 10,
-      "orsak": "Kort motivering"
-    }}
-  ]
-}}
-"""
+    rolls = ensure_round_rolls(data, all_orders, randint=randint)
+    ordered_refs = current_order_refs(data, all_orders)
+    ordered_rolls = {ref: rolls[ref] for ref in ordered_refs if ref in rolls}
+    template = _load_llm_prompt_template()
+    return (
+        template
+        .replace("{LAGLISTA}", teams)
+        .replace("{RUNDA}", str(runda))
+        .replace("{FAS}", str(fas))
+        .replace("{BACKLOG}", _format_backlog_for_llm(data))
+        .replace("{ORDRAR}", format_orders_export(data, all_orders))
+        .replace("{SLUMPVARDEN}", _format_rolls_for_llm(ordered_rolls))
+        .replace("{TIDIGARE_UTFALL}", format_previous_outcomes(data))
+    )
 
 
 def _strip_llm_fences(raw):
@@ -1043,16 +1146,98 @@ def parse_llm_forslag(raw, data):
             "orsak": str(item.get("orsak") or item.get("reason") or "").strip(),
         })
 
+    has_utfall_key = "utfall" in payload
+    utfall = parse_utfall_items(payload.get("utfall"), data)
+
     return {
         "runda": runda,
         "importerad": datetime.now().isoformat(timespec="seconds"),
         "nyheter": nyheter,
         "hp": hp,
         "milstolpar": milstolpar,
+        "utfall": utfall,
+        "has_utfall_key": has_utfall_key,
         "hp_applied": False,
         "milestones_applied": False,
         "warnings": warnings,
     }
+
+
+def _require_int(value, field, lo=None, hi=None):
+    if isinstance(value, bool) or value is None or value == "":
+        raise ValueError(f"{field} måste vara ett heltal.")
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field} måste vara ett heltal.") from exc
+    if lo is not None and number < lo:
+        raise ValueError(f"{field} måste vara minst {lo}.")
+    if hi is not None and number > hi:
+        raise ValueError(f"{field} får vara högst {hi}.")
+    return number
+
+
+def parse_utfall_items(raw_items, data):
+    """Validate LLM utfall. Missing/empty is OK. Any invalid object rejects the import."""
+    if raw_items is None:
+        return []
+    if not isinstance(raw_items, list):
+        raise ValueError("utfall måste vara en lista.")
+    if not raw_items:
+        return []
+    known_refs = set(current_order_refs(data))
+    rolls = get_round_rolls(data)
+    teams = list(data.get("lag") or [])
+    parsed = []
+    required = (
+        "lag", "order_ref", "order", "satsad_hp", "motstand_hp",
+        "sannolikhet", "slump", "resultat", "motivering",
+    )
+    for item in raw_items:
+        if not isinstance(item, dict):
+            raise ValueError("Varje utfall måste vara ett objekt.")
+        missing = [key for key in required if item.get(key) in (None, "")]
+        if missing:
+            raise ValueError(f"Utfall saknar fält: {', '.join(missing)}.")
+        team = normalize_team_name(item.get("lag"), teams)
+        if not team:
+            raise ValueError(f"Okänt lag i utfall: {item.get('lag')}.")
+        order_ref = str(item.get("order_ref") or "").strip()
+        if order_ref not in known_refs:
+            raise ValueError(
+                f"Okänd order_ref {order_ref}. Finns inte bland rundans inskickade order."
+            )
+        sannolikhet = _require_int(item.get("sannolikhet"), f"sannolikhet för {order_ref}", 10, 90)
+        slump = _require_int(item.get("slump"), f"slump för {order_ref}", 1, 100)
+        expected = rolls.get(order_ref)
+        if expected is None:
+            raise ValueError(
+                f"Ingen slump är sparad för {order_ref}. "
+                "Kopiera ordrar till LLM först så att slumpen är låst."
+            )
+        if slump != int(expected):
+            raise ValueError(
+                f"Slumpvärdet för {order_ref} är {slump} i LLM-svaret, men spelet har {expected}. "
+                "Appen slår tärningen, inte LLM."
+            )
+        resultat = str(item.get("resultat") or "").strip()
+        if resultat not in UTFALL_RESULTAT:
+            raise ValueError(
+                f"Ogiltigt resultat för {order_ref}: {resultat}. "
+                "Använd framgång, delvis framgång eller misslyckande."
+            )
+        parsed.append({
+            "lag": team,
+            "order_ref": order_ref,
+            "order": str(item.get("order") or "").strip(),
+            "satsad_hp": _require_int(item.get("satsad_hp"), f"satsad_hp för {order_ref}", 0),
+            "motstand_hp": _require_int(item.get("motstand_hp"), f"motstand_hp för {order_ref}", 0),
+            "sannolikhet": sannolikhet,
+            "slump": slump,
+            "resultat": resultat,
+            "motivering": str(item.get("motivering") or "").strip(),
+        })
+    return parsed
 
 
 def _resolve_milestone_ref(data, team, uppgift, fas=None):
@@ -1089,15 +1274,20 @@ def _resolve_milestone_ref(data, team, uppgift, fas=None):
 
 def import_llm_forslag(data, raw):
     parsed = parse_llm_forslag(raw, data)
+    has_utfall_key = parsed.pop("has_utfall_key", False)
+    utfall = list(parsed.get("utfall") or [])
     store = dict(data.get("llm_forslag") or {})
     store[str(parsed["runda"])] = parsed
     data["llm_forslag"] = store
+    if has_utfall_key or utfall:
+        rec = _ensure_resolution_record(data, parsed["runda"])
+        rec["result"] = {"utfall": utfall}
     append_gm_log(
         data,
         "llm",
         f"Importerade LLM-förslag för runda {parsed['runda']}: "
         f"{len(parsed['nyheter'])} nyheter, {len(parsed['hp'])} HP, "
-        f"{len(parsed['milstolpar'])} milstolpar",
+        f"{len(parsed['milstolpar'])} milstolpar, {len(utfall)} utfall",
     )
     return parsed
 
@@ -1187,22 +1377,28 @@ def _milestone_etikett(data, item):
 def llm_forslag_view(data, runda=None):
     """Display-ready LLM suggestions for the current round, or None."""
     forslag = get_llm_forslag(data, runda)
-    if not forslag:
+    rolls = get_round_rolls(data, runda)
+    utfall = get_round_utfall(data, runda)
+    if not utfall and forslag:
+        utfall = list(forslag.get("utfall") or [])
+    if not forslag and not rolls and not utfall:
         return None
     milstolpar = []
-    for item in forslag.get("milstolpar") or []:
+    for item in (forslag or {}).get("milstolpar") or []:
         row = dict(item)
         row["etikett"] = _milestone_etikett(data, item)
         milstolpar.append(row)
     return {
-        "runda": forslag.get("runda"),
-        "importerad": forslag.get("importerad"),
-        "nyheter": list(forslag.get("nyheter") or []),
-        "hp": list(forslag.get("hp") or []),
+        "runda": (forslag or {}).get("runda") or (runda if runda is not None else data.get("runda")),
+        "importerad": (forslag or {}).get("importerad"),
+        "nyheter": list((forslag or {}).get("nyheter") or []),
+        "hp": list((forslag or {}).get("hp") or []),
         "milstolpar": milstolpar,
-        "hp_applied": bool(forslag.get("hp_applied")),
-        "milestones_applied": bool(forslag.get("milestones_applied")),
-        "warnings": list(forslag.get("warnings") or []),
+        "utfall": utfall,
+        "rolls": rolls,
+        "hp_applied": bool((forslag or {}).get("hp_applied")),
+        "milestones_applied": bool((forslag or {}).get("milestones_applied")),
+        "warnings": list((forslag or {}).get("warnings") or []),
     }
 
 

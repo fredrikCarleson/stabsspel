@@ -1,0 +1,32 @@
+{
+  "runda": 1,
+  "utfall": [
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-1",
+      "order": "Inloggning val",
+      "satsad_hp": 10,
+      "motstand_hp": 0,
+      "sannolikhet": 80,
+      "slump": 44,
+      "resultat": "framgång",
+      "motivering": "Ingen relevant motståndare. Satsningen bär ordern."
+    }
+  ],
+  "nyheter": [
+    {
+      "rubrik": "Valmyndigheten tar första steget mot digital röstning",
+      "upplasning": "Arbetet med inloggning till valet uppges nu ha kommit igång i testmiljö. Det är ännu oklart hur snabbt övriga delar av systemet följer efter.",
+      "lag": ["Alfa", "STT"]
+    }
+  ],
+  "hp": [],
+  "milstolpar": [
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_1",
+      "delta_hp": 10,
+      "orsak": "10 HP utvecklingsarbete kan tillgodoräknas på uppgiften."
+    }
+  ]
+}

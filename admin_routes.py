@@ -1376,7 +1376,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=24">
+            <link rel="stylesheet" href="/static/app.css?v=25">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -2223,6 +2223,7 @@ def order_summary(spel_id):
         
         # Formatera order för ChatGPT
         formatted_text = build_llm_export_text(data, all_orders)
+        save_game_data(spel_id, data)
         
         return render_template_string(ORDER_SUMMARY_TEMPLATE, 
                                       spel_id=spel_id,

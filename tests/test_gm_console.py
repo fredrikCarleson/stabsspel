@@ -1,4 +1,5 @@
 """Tests for Game Master live-console helpers."""
+import json
 import unittest
 import sys
 import os
@@ -544,6 +545,62 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Tillämpa HP", html)
         self.assertIn("Tillämpa milstolpar", html)
         self.assertIn("Kopiera nyheter till papper", html)
+
+    def test_gm_shows_utfall_probability_roll_and_reason(self):
+        from gm_console import ensure_round_rolls, import_llm_forslag
+        from gm_console_ui import create_gm_console_html, create_projector_html
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [{
+                            "aktivitet": "Massiv DDOS-attack mot valservern",
+                            "syfte": "ner",
+                            "hp": 8,
+                            "typ": "forstora",
+                            "paverkar": ["STT"],
+                        }]
+                    },
+                }
+            }
+        }
+        ensure_round_rolls(data, randint=lambda: 27)
+        import_llm_forslag(data, json.dumps({
+            "utfall": [{
+                "lag": "Alfa",
+                "order_ref": "Alfa-1",
+                "order": "Massiv DDOS-attack mot valservern",
+                "satsad_hp": 8,
+                "motstand_hp": 12,
+                "sannolikhet": 35,
+                "slump": 27,
+                "resultat": "framgång",
+                "motivering": "STT hade ett tydligt resursövertag i försvaret, men det låga slaget gjorde att attacken lyckades.",
+            }],
+            "nyheter": [{
+                "rubrik": "Störningar drabbar tekniska system inför extravalet",
+                "upplasning": "Tekniska miljöer utsattes för omfattande belastning.",
+                "lag": ["Alfa", "STT"],
+            }],
+        }))
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Utfall och sannolikhet", html)
+        self.assertIn("35 %", html)
+        self.assertIn("Slag 27", html)
+        self.assertIn("FRAMGÅNG", html)
+        self.assertIn("8 HP mot 12 HP", html)
+        self.assertIn("STT hade ett tydligt resursövertag", html)
+        self.assertIn("Störningar drabbar tekniska system", html)
+        projector = create_projector_html("g1", data)
+        self.assertNotIn("Utfall och sannolikhet", projector)
+        self.assertNotIn("Slag 27", projector)
+        self.assertNotIn("resursövertag", projector)
+        self.assertNotIn("Alfa-1", projector)
 
 
 if __name__ == "__main__":

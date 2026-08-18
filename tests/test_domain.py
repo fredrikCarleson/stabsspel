@@ -32,11 +32,16 @@ from gm_console import (
     build_public_state,
     build_team_strip,
     can_submit_orders,
+    current_order_refs,
     effective_hp,
     end_game,
+    ensure_round_rolls,
     get_llm_forslag,
+    get_round_rolls,
+    get_round_utfall,
     hp_delta_from_fields,
     import_llm_forslag,
+    make_order_ref,
     missing_order_teams,
     parse_llm_forslag,
     parse_positive_amount,
@@ -640,13 +645,21 @@ class TestLlmForslag(unittest.TestCase):
                 ),
             }
         }
-        text = build_llm_export_text(data, data["team_orders"]["orders_round_1"])
-        self.assertIn("Svara ENBART", text)
+        text = build_llm_export_text(data, data["team_orders"]["orders_round_1"], randint=lambda: 44)
+        self.assertIn("Svara ENDAST", text)
         self.assertIn("JSON-SCHEMA", text)
         self.assertIn("Inloggning val", text)
         self.assertIn("alfa_1", text)
+        self.assertIn("order_ref: Alfa-1", text)
+        self.assertIn("Alfa-1: 44", text)
+        self.assertIn('"utfall"', text)
         self.assertIn('"nyheter"', text)
         self.assertIn('"milstolpar"', text)
+        self.assertIn("TIDIGARE RELEVANTA UTFALL", text)
+        self.assertEqual(get_round_rolls(data)["Alfa-1"], 44)
+        again = build_llm_export_text(data, data["team_orders"]["orders_round_1"], randint=lambda: 1)
+        self.assertEqual(get_round_rolls(data)["Alfa-1"], 44)
+        self.assertIn("Alfa-1: 44", again)
 
     def test_parse_strips_fences_and_aliases(self):
         data = create_game_state()
@@ -721,6 +734,193 @@ class TestLlmForslag(unittest.TestCase):
         data, _label = apply_undo(data)
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
         self.assertFalse(get_llm_forslag(data)["hp_applied"])
+
+
+class TestLlmResolution(unittest.TestCase):
+    def _submit(self, data, team="Alfa", activities=None, runda=None):
+        runda = runda or data.get("runda") or 1
+        activities = activities or [activity(name="API", hp=10)]
+        key = f"orders_round_{runda}"
+        orders = dict(data.get("team_orders") or {})
+        round_orders = dict(orders.get(key) or {})
+        round_orders[team] = order_record(activities, final=True)
+        orders[key] = round_orders
+        data["team_orders"] = orders
+        return data
+
+    def _utfall(self, **overrides):
+        item = {
+            "lag": "Alfa",
+            "order_ref": "Alfa-1",
+            "order": "API",
+            "satsad_hp": 10,
+            "motstand_hp": 5,
+            "sannolikhet": 75,
+            "slump": 44,
+            "resultat": "framgång",
+            "motivering": "Alfa hade ungefär dubbelt så stor relevant satsning.",
+        }
+        item.update(overrides)
+        return item
+
+    def test_order_refs_are_deterministic(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="A", hp=5), activity(name="B", hp=5)])
+        self._submit(data, "STT", [activity(name="C", hp=8)])
+        refs = current_order_refs(data)
+        self.assertEqual(refs, ["Alfa-1", "Alfa-2", "STT-1"])
+        self.assertEqual(make_order_ref("FM", 1), "FM-1")
+        self.assertEqual(current_order_refs(data), refs)
+
+    def test_rolls_are_one_to_hundred_and_stable(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="A", hp=5), activity(name="B", hp=5)])
+        seq = iter([11, 22, 33])
+        rolls = ensure_round_rolls(data, randint=lambda: next(seq))
+        self.assertEqual(rolls, {"Alfa-1": 11, "Alfa-2": 22})
+        self.assertTrue(all(1 <= value <= 100 for value in rolls.values()))
+        again = ensure_round_rolls(data, randint=lambda: 99)
+        self.assertEqual(again, {"Alfa-1": 11, "Alfa-2": 22})
+
+    def test_new_order_gets_roll_without_changing_old(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="A", hp=5)])
+        ensure_round_rolls(data, randint=lambda: 40)
+        self._submit(data, "Alfa", [activity(name="A", hp=5), activity(name="B", hp=7)])
+        rolls = ensure_round_rolls(data, randint=lambda: 81)
+        self.assertEqual(rolls["Alfa-1"], 40)
+        self.assertEqual(rolls["Alfa-2"], 81)
+
+    def test_second_round_gets_independent_rolls(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="A", hp=5)], runda=1)
+        ensure_round_rolls(data, randint=lambda: 12)
+        data["runda"] = 2
+        self._submit(data, "Alfa", [activity(name="B", hp=5)], runda=2)
+        ensure_round_rolls(data, randint=lambda: 90)
+        self.assertEqual(get_round_rolls(data, 1), {"Alfa-1": 12})
+        self.assertEqual(get_round_rolls(data, 2), {"Alfa-1": 90})
+
+    def test_undo_does_not_reroll(self):
+        data = create_game_state()
+        self._submit(data)
+        push_undo(data, "HP")
+        adjust_hp(data, "Alfa", -1, "test")
+        ensure_round_rolls(data, randint=lambda: 55)
+        data, _label = apply_undo(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+        self.assertEqual(get_round_rolls(data), {"Alfa-1": 55})
+
+    def test_valid_utfall_is_accepted(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        parsed = parse_llm_forslag(json.dumps({
+            "runda": 1,
+            "utfall": [self._utfall()],
+            "nyheter": [],
+            "hp": [],
+            "milstolpar": [],
+        }), data)
+        self.assertEqual(parsed["utfall"][0]["resultat"], "framgång")
+        import_llm_forslag(data, json.dumps({
+            "utfall": [self._utfall()],
+            "nyheter": [{"rubrik": "Störning", "upplasning": "Belastning.", "lag": ["Alfa"]}],
+        }))
+        self.assertEqual(get_round_utfall(data)[0]["slump"], 44)
+
+    def test_old_response_without_utfall_still_imports(self):
+        data = create_game_state()
+        parsed = parse_llm_forslag(json.dumps({
+            "runda": 1,
+            "nyheter": [{"rubrik": "Rubrik", "upplasning": "Text", "lag": ["Alfa"]}],
+            "hp": [],
+            "milstolpar": [],
+        }), data)
+        self.assertEqual(parsed["utfall"], [])
+
+    def test_old_game_without_llm_resolution_loads(self):
+        data = create_game_state()
+        self.assertEqual(get_round_rolls(data), {})
+        self.assertEqual(get_round_utfall(data), [])
+        live = build_live_state(data)
+        self.assertIsNone(live.get("llm"))
+
+    def test_rejects_probability_out_of_range(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        with self.assertRaises(ValueError):
+            parse_llm_forslag(json.dumps({"utfall": [self._utfall(sannolikhet=9)]}), data)
+        with self.assertRaises(ValueError):
+            parse_llm_forslag(json.dumps({"utfall": [self._utfall(sannolikhet=91)]}), data)
+        self.assertIsNone(get_llm_forslag(data))
+
+    def test_rejects_invalid_result_unknown_team_and_ref(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        with self.assertRaises(ValueError):
+            parse_llm_forslag(json.dumps({"utfall": [self._utfall(resultat="vinst")]}), data)
+        with self.assertRaises(ValueError):
+            parse_llm_forslag(json.dumps({"utfall": [self._utfall(lag="Narnia")]}), data)
+        with self.assertRaises(ValueError):
+            parse_llm_forslag(json.dumps({"utfall": [self._utfall(order_ref="Alfa-9")]}), data)
+
+    def test_rejects_llm_invented_roll(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        with self.assertRaises(ValueError) as ctx:
+            parse_llm_forslag(json.dumps({"utfall": [self._utfall(slump=81)]}), data)
+        self.assertIn("Alfa-1", str(ctx.exception))
+        self.assertIn("44", str(ctx.exception))
+        self.assertIsNone(get_llm_forslag(data))
+
+    def test_invalid_utfall_does_not_store_hp_suggestions(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        payload = {
+            "utfall": [self._utfall(slump=1)],
+            "hp": [{"lag": "Alfa", "delta": -9, "orsak": "ska inte sparas"}],
+        }
+        with self.assertRaises(ValueError):
+            import_llm_forslag(data, json.dumps(payload))
+        self.assertIsNone(get_llm_forslag(data))
+
+    def test_previous_outcomes_appear_in_later_prompt(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        import_llm_forslag(data, json.dumps({"utfall": [self._utfall()]}))
+        data["runda"] = 2
+        self._submit(data, runda=2)
+        text = build_llm_export_text(
+            data, data["team_orders"]["orders_round_2"], randint=lambda: 70
+        )
+        self.assertIn("TIDIGARE RELEVANTA UTFALL", text)
+        self.assertIn("Runda 1:", text)
+        self.assertIn("Alfa-1", text)
+        self.assertIn("framgång", text)
+
+    def test_public_state_hides_resolution(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        import_llm_forslag(data, json.dumps({
+            "utfall": [self._utfall()],
+            "nyheter": [{"rubrik": "Störningar drabbar tekniska system", "upplasning": "Belastning.", "lag": ["Alfa"]}],
+        }))
+        public = build_public_state(data)
+        dumped = str(public)
+        self.assertNotIn("llm_resolution", public)
+        self.assertNotIn("utfall", public)
+        self.assertNotIn("rolls", public)
+        self.assertNotIn("sannolikhet", dumped)
+        self.assertNotIn("Alfa-1", dumped)
+        self.assertNotIn("dubbelt så stor", dumped)
+        self.assertNotIn("llm_forslag", public)
 
 
 class TestSessionAndPassword(unittest.TestCase):
