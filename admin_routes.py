@@ -1,5 +1,5 @@
 from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string, make_response, session
-from markupsafe import Markup
+from markupsafe import Markup, escape
 import os
 import json
 import time
@@ -17,14 +17,19 @@ from gm_console import (
     add_timer_seconds,
     adjust_hp,
     apply_activity_hp_to_backlog,
+    apply_llm_hp,
+    apply_llm_milestones,
     apply_new_round,
     apply_next_phase,
     apply_previous_phase,
+    apply_test_orders,
     apply_undo,
     auto_submit_unsaved_orders,
     build_live_state,
+    build_llm_export_text,
     end_game,
     hp_delta_from_fields,
+    import_llm_forslag,
     push_undo,
     reset_timer_fields,
     set_regeringsstod,
@@ -1371,7 +1376,7 @@ def admin_panel(spel_id):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=21">
+            <link rel="stylesheet" href="/static/app.css?v=24">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -2182,74 +2187,28 @@ def admin_edit_order(spel_id, team_name):
     return redirect(f"/team/{spel_id}/{team_token}/enter_order?admin_edit=true")
 
 def format_orders_for_chatgpt(data, all_orders):
-    """Formatera order för ChatGPT enligt den nya standarden"""
-    try:
-        team_codes = {
-            'Alfa': 'AL', 'Bravo': 'BR', 'STT': 'ST', 'FM': 'FM', 
-            'BS': 'BS', 'SÄPO': 'SE', 'Regeringen': 'RG', 'USA': 'US', 'Media': 'ME'
-        }
-        
-        formatted_lines = []
-        formatted_lines.append(f"SPEL: {data['id']} | RUNDA: {data['runda']} | FAS: {data['fas']} | DATUM: {data['datum']}")
-        formatted_lines.append("")
-        
-        for team_name, team_orders in all_orders.items():
-            if team_orders and team_orders.get('orders') and team_orders['orders'].get('activities'):
-                team_code = team_codes.get(team_name, team_name)
-                total_hp = 0
-                
-                for i, activity in enumerate(team_orders['orders']['activities'], 1):
-                    # Beräkna total HP
-                    total_hp += activity['hp']
-                    
-                    # Bestäm typ
-                    activity_typ = 'BYGGA' if activity['typ'] == 'bygga' else 'STÖRA'
-                    
-                    # Bestäm mål
-                    activity_mal = 'EGET' if activity['malomrade'] == 'eget' else 'ANNAT'
-                    
-                    # Bestäm miljö baserat på aktivitet
-                    aktivitet_lower = activity['aktivitet'].lower()
-                    if any(word in aktivitet_lower for word in ['utveckling', 'bygga', 'implementera', 'pipeline', 'api']):
-                        miljo = 'DEV'
-                    elif 'test' in aktivitet_lower:
-                        miljo = 'TEST'
-                    elif any(word in aktivitet_lower for word in ['produktion', 'server', 'valservern']):
-                        miljo = 'PROD'
-                    else:
-                        miljo = '-'
-                    
-                    # Prioritet baserat på ordning
-                    priority = i
-                    
-                    # Formatera påverkar
-                    paverkar_codes = []
-                    for paverkar_team in activity.get('paverkar', []):
-                        if paverkar_team in team_codes:
-                            paverkar_codes.append(team_codes[paverkar_team])
-                    paverkar_text = ','.join(paverkar_codes) if paverkar_codes else '-'
-                    
-                    # Use exact backlog item name if available, otherwise use custom description
-                    activity_name = activity.get('aktivitet', '')
-                    if activity.get('backlog_item') and activity.get('backlog_selected') != 'custom':
-                        # Extract the exact backlog item name from the dropdown text
-                        # The activity['aktivitet'] contains the full dropdown text like "Back-end API för inskickade röster (25 HP)"
-                        # We want just the task name part
-                        activity_name = activity_name.split(' (')[0] if ' (' in activity_name else activity_name
-                    
-                    # Skapa raden
-                    line = f"TEAM: {team_code} | AKT: {activity_name[:120]} | SYFTE: {activity['syfte'][:160]} | HP: {activity['hp']} | PÅVERKAR: {paverkar_text} | TYP: {activity_typ} | MÅL: {activity_mal} | PRIO: {priority} | MILJÖ: {miljo}"
-                    formatted_lines.append(line)
-                
-                # Lägg till summa för teamet
-                formatted_lines.append(f"SUM HP TEAM {team_code} = {total_hp}")
-                formatted_lines.append("")
-        
-        result = '\n'.join(formatted_lines)
-        return result
-    except Exception as e:
-        print(f"Error in format_orders_for_chatgpt: {e}")
-        return "Fel vid formatering av order"
+    """LLM export text. Kept name for existing callers."""
+    return build_llm_export_text(data, all_orders)
+
+
+def _llm_json_from_request():
+    upload = request.files.get("fil")
+    if upload and getattr(upload, "filename", None):
+        payload = upload.read()
+        try:
+            return payload.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Filen måste vara UTF-8-text.") from exc
+    return request.form.get("json") or ""
+
+
+def _llm_error_page(spel_id, message):
+    return (
+        "<!doctype html><meta charset=utf-8>"
+        f"<p>{escape(message)}</p>"
+        f'<p><a href="/admin/{escape(spel_id)}">Tillbaka till spelledarpanelen</a></p>'
+        f'<p><a href="/admin/{escape(spel_id)}/order_summary">Tillbaka till LLM-export</a></p>'
+    ), 400
 
 @admin_bp.route("/admin/<spel_id>/order_summary")
 def order_summary(spel_id):
@@ -2263,7 +2222,7 @@ def order_summary(spel_id):
         all_orders = data.get("team_orders", {}).get(orders_key, {})
         
         # Formatera order för ChatGPT
-        formatted_text = format_orders_for_chatgpt(data, all_orders)
+        formatted_text = build_llm_export_text(data, all_orders)
         
         return render_template_string(ORDER_SUMMARY_TEMPLATE, 
                                       spel_id=spel_id,
@@ -2273,9 +2232,41 @@ def order_summary(spel_id):
     except Exception as e:
         return f"Fel: {str(e)}", 500
 
+
+@admin_bp.route("/admin/<spel_id>/llm_import", methods=["POST"])
+def llm_import(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return _llm_error_page(spel_id, "Spelet hittades inte.")[0], 404
+    try:
+        import_llm_forslag(data, _llm_json_from_request())
+    except ValueError as exc:
+        return _llm_error_page(spel_id, str(exc))
+    save_game_data(spel_id, data)
+    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+
+
+@admin_bp.route("/admin/<spel_id>/llm_apply", methods=["POST"])
+def llm_apply(spel_id):
+    data = load_game_data(spel_id)
+    if not data:
+        return _llm_error_page(spel_id, "Spelet hittades inte.")[0], 404
+    op = (request.form.get("op") or "").strip()
+    try:
+        if op == "hp":
+            apply_llm_hp(data)
+        elif op == "milstolpar":
+            apply_llm_milestones(data)
+        else:
+            raise ValueError("Okänd LLM-åtgärd.")
+    except ValueError as exc:
+        return _llm_error_page(spel_id, str(exc))
+    save_game_data(spel_id, data)
+    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+
 @admin_bp.route("/admin/<spel_id>/auto_fill_orders", methods=["POST"])
 def auto_fill_orders(spel_id):
-    """Auto-fyll alla teams order med test data"""
+    """Auto-fyll alla teams order med testdata för aktuell runda."""
     try:
         data = load_game_data(spel_id)
         if not data:
@@ -2290,291 +2281,24 @@ def auto_fill_orders(spel_id):
                 f'<p><a href="/admin/{spel_id}">Tillbaka till spelledarpanelen</a></p>'
             ), 403
         push_undo(data, "Auto-fyll testdata")
-        
-        orders_key = f"orders_round_{data['runda']}"
-        if "team_orders" not in data:
-            data["team_orders"] = {}
-        if orders_key not in data["team_orders"]:
-            data["team_orders"][orders_key] = {}
-        
-        # Test data för varje team
-        test_orders = {
-            "Alfa": [
-                {
-                    "id": int(time.time() * 1000) + 1,
-                    "aktivitet": "Inloggning val (15 HP)",
-                    "syfte": "Genom att bygga en automatisk kedja för test och leverans hoppas teamet frigöra resurser och snabbare få ut funktionalitet i produktion. De satsar på att visa att agilt arbetssätt ger snabba resultat.",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa", "STT"],
-                    "typ": "bygga",
-                    "hp": 10,
-                    "backlog_selected": "alfa_1",
-                    "backlog_item": "Inloggning val"
-                },
-                {
-                    "id": int(time.time() * 1000) + 2,
-                    "aktivitet": "Back-end API för inskickade röster (25 HP)",
-                    "syfte": "Säkerställa att röster kan skickas in digitalt. Målet är att kunna köra end-to-end-test med hjälp av STT:s testmiljö. Om detta lyckas stärker det Alfas position gentemot Bravo.",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa", "STT"],
-                    "typ": "bygga",
-                    "hp": 9,
-                    "backlog_selected": "alfa_2",
-                    "backlog_item": "Back-end API för inskickade röster"
-                },
-                {
-                    "id": int(time.time() * 1000) + 3,
-                    "aktivitet": "Kampanja mot Bravo i korridorerna",
-                    "syfte": "Alfa försöker påverka Media genom att sprida berättelser om Bravos långsamma process och överdrivna dokumentation. De hoppas framstå som mer moderna och nyskapande.",
-                    "malomrade": "eget",
-                    "paverkar": ["Media", "Bravo"],
-                    "typ": "bygga",
-                    "hp": 6,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                }
-            ],
-            "Bravo": [
-                {
-                    "id": int(time.time() * 1000) + 4,
-                    "aktivitet": "Grafisk visning valet - Krav (10 HP)",
-                    "syfte": "Dokumentera samtliga krav för grafisk visning och sökfunktion. Teamet är övertygat om att planering i detalj är nyckeln för att hinna i tid.",
-                    "malomrade": "eget",
-                    "paverkar": ["Bravo"],
-                    "typ": "bygga",
-                    "hp": 12,
-                    "backlog_selected": "bravo_1_Krav",
-                    "backlog_item": "Grafisk visning valet - Krav"
-                },
-                {
-                    "id": int(time.time() * 1000) + 5,
-                    "aktivitet": "Kontakta regeringen för extra resurser",
-                    "syfte": "Bravo presenterar en detaljerad kostnadsplan och argumenterar för att deras strukturerade metod ger störst chans att leverera stabilt system. De vill få resurser flyttade från Alfa.",
-                    "malomrade": "eget",
-                    "paverkar": ["Regeringen", "Alfa"],
-                    "typ": "bygga",
-                    "hp": 7,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                },
-                {
-                    "id": int(time.time() * 1000) + 6,
-                    "aktivitet": "Sprida rykten om Alfa",
-                    "syfte": "Teamet sprider via Media att Alfas experimentella metoder kan leda till säkerhetshaveri. Målet är att vinna tid genom att andra aktörer pressar Alfa.",
-                    "malomrade": "eget",
-                    "paverkar": ["Media", "Alfa"],
-                    "typ": "bygga",
-                    "hp": 6,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                }
-            ],
-            "STT": [
-                {
-                    "id": int(time.time() * 1000) + 7,
-                    "aktivitet": "Infrastruktur för val (setup, hardening, konfig) (20 HP)",
-                    "syfte": "STT förstärker brandväggar, loggning och övervakning för att stå emot cyberattacker. Detta är resurskrävande men viktigt.",
-                    "malomrade": "eget",
-                    "paverkar": ["STT"],
-                    "typ": "bygga",
-                    "hp": 12,
-                    "backlog_selected": "stt_1",
-                    "backlog_item": "Infrastruktur för val (setup, hardening, konfig)"
-                },
-                {
-                    "id": int(time.time() * 1000) + 8,
-                    "aktivitet": "Infrastruktur för deklaration (20 HP)",
-                    "syfte": "Planera inför april–juni, då det är absolut förbjudet att släppa nytt i produktion. STT vill förankra reglerna hos Alfa och Bravo för att undvika konflikter senare.",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa", "Bravo"],
-                    "typ": "bygga",
-                    "hp": 7,
-                    "backlog_selected": "stt_2",
-                    "backlog_item": "Infrastruktur för deklaration"
-                },
-                {
-                    "id": int(time.time() * 1000) + 9,
-                    "aktivitet": "Förhandla om prioritet",
-                    "syfte": "STT pressar Alfa och Bravo på extra resurser i utbyte mot att deras leveranser får gå ut i produktion. \"Den som betalar mest får företräde.\"",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa", "Bravo"],
-                    "typ": "bygga",
-                    "hp": 6,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                }
-            ],
-            "FM": [
-                {
-                    "id": int(time.time() * 1000) + 10,
-                    "aktivitet": "Massiv DDOS-attack mot valservern",
-                    "syfte": "Genom att koordinera botnät i Östeuropa vill FM slå ut valets front-end. Angreppet syftar till att skapa misstro hos väljarna.",
-                    "malomrade": "eget",
-                    "paverkar": ["STT"],
-                    "typ": "forstora",
-                    "hp": 8,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                },
-                {
-                    "id": int(time.time() * 1000) + 11,
-                    "aktivitet": "Desinformationskampanj på sociala medier",
-                    "syfte": "Sprida rykten om att röster kan manipuleras. FM använder trollkonton för att skapa oro och tryck på regeringen.",
-                    "malomrade": "eget",
-                    "paverkar": ["Regeringen", "Media"],
-                    "typ": "forstora",
-                    "hp": 4,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                }
-            ],
-            "BS": [
-                {
-                    "id": int(time.time() * 1000) + 12,
-                    "aktivitet": "Utpressa en STT-medlem",
-                    "syfte": "BS hotar en utvecklare i STT med att läcka komprometterande bilder. Om personen går med får BS insiderinformation om STT:s prioriteringar.",
-                    "malomrade": "eget",
-                    "paverkar": ["STT"],
-                    "typ": "forstora",
-                    "hp": 7,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                },
-                {
-                    "id": int(time.time() * 1000) + 13,
-                    "aktivitet": "Manipulera databasen",
-                    "syfte": "Försöker placera en backdoor i röstdatabasen för att kunna sälja resultat i efterhand.",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa", "Bravo"],
-                    "typ": "forstora",
-                    "hp": 5,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                }
-            ],
-            "SÄPO": [
-                {
-                    "id": int(time.time() * 1000) + 14,
-                    "aktivitet": "Spaning på Alfa",
-                    "syfte": "Misstänker infiltration i Team Alfa. SÄPO skickar underrättelsepersonal för att övervaka deras aktiviteter och identifiera spioner.",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa"],
-                    "typ": "bygga",
-                    "hp": 7,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                },
-                {
-                    "id": int(time.time() * 1000) + 15,
-                    "aktivitet": "Samarbete med Media",
-                    "syfte": "Läckor planeras där SÄPO framstår som garant för säkerheten. De vill bygga narrativ om att myndigheten är nödvändig.",
-                    "malomrade": "eget",
-                    "paverkar": ["Media"],
-                    "typ": "bygga",
-                    "hp": 5,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                }
-            ],
-            "Regeringen": [
-                {
-                    "id": int(time.time() * 1000) + 16,
-                    "aktivitet": "Fördela extra resurser till Bravo",
-                    "syfte": "Regeringen vill stödja det mest strukturerade teamet för att minska risken för kaos. De hoppas på ett lugnare narrativ i media.",
-                    "malomrade": "eget",
-                    "paverkar": ["Bravo"],
-                    "typ": "bygga",
-                    "hp": 6,
-                    "backlog_selected": "custom",
-                    "backlog_item": ""
-                },
-                {
-                    "id": int(time.time() * 1000) + 17,
-                    "aktivitet": "Mörka säkerhetsbrister",
-                    "syfte": "I samråd med PR-konsulter beslutar regeringen att tona ned problem med valets IT-system för att inte väcka panik.",
-                    "malomrade": "eget",
-                    "paverkar": ["Media", "STT"],
-                    "typ": "bygga",
-                    "hp": 4
-                }
-            ],
-            "USA": [
-                {
-                    "id": int(time.time() * 1000) + 18,
-                    "aktivitet": "Pressa regeringen att gynna ett extremparti",
-                    "syfte": "USA kopplar bistånd och IT-stöd till politiska krav. Hotar att strypa tillgången till Office 365-licenser om regeringen inte samarbetar.",
-                    "malomrade": "eget",
-                    "paverkar": ["Regeringen"],
-                    "typ": "bygga",
-                    "hp": 8
-                },
-                {
-                    "id": int(time.time() * 1000) + 19,
-                    "aktivitet": "Erbjuda säkerhetsinformation till STT",
-                    "syfte": "Lämna \"strategiska tips\" om FM:s metoder, men med syfte att skapa beroende av amerikansk teknologi.",
-                    "malomrade": "eget",
-                    "paverkar": ["STT"],
-                    "typ": "bygga",
-                    "hp": 4
-                }
-            ],
-            "Media": [
-                {
-                    "id": int(time.time() * 1000) + 20,
-                    "aktivitet": "Publicera artikel om misstänkt sabotage i Alfa",
-                    "syfte": "Skapa rubriker om att utvecklingen är saboterad. Oavsett fakta får detta klick och skadar Alfas rykte.",
-                    "malomrade": "eget",
-                    "paverkar": ["Alfa"],
-                    "typ": "bygga",
-                    "hp": 7
-                },
-                {
-                    "id": int(time.time() * 1000) + 21,
-                    "aktivitet": "Granskning av regeringens mörkläggning",
-                    "syfte": "Publicera uppgifter om att regeringen undanhåller allvarliga säkerhetsproblem. Detta ger stort genomslag internationellt.",
-                    "malomrade": "eget",
-                    "paverkar": ["Regeringen"],
-                    "typ": "bygga",
-                    "hp": 5
-                }
-            ]
-        }
-        
-        # Fyll i order för varje team
-        base_time = int(time.time() * 1000)
-        for i, team_name in enumerate(data["lag"]):
-            if team_name in test_orders:
-                # Skapa unika ID:n för varje aktivitet
-                team_orders = []
-                for j, activity in enumerate(test_orders[team_name]):
-                    activity_copy = activity.copy()
-                    activity_copy["id"] = base_time + (i * 100) + j
-                    team_orders.append(activity_copy)
-                
-                data["team_orders"][orders_key][team_name] = {
-                    "submitted_at": time.time(),
-                    "phase": data["fas"],
-                    "round": data["runda"],
-                    "orders": {
-                        "activities": team_orders,
-                        "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
-                    },
-                    "final": True
-                }
-        
+        data, processed_teams = apply_test_orders(data)
         save_game_data(spel_id, data)
-        
-        # Return info about which teams were processed
-        processed_teams = [team for team in data["lag"] if team in test_orders]
         if request.is_json:
             return jsonify({
                 "success": True,
-                "message": f"Auto-fyllde order för {len(processed_teams)} team: {', '.join(processed_teams)}",
+                "message": (
+                    f"Auto-fyllde order för runda {data.get('runda')} "
+                    f"({len(processed_teams)} team: {', '.join(processed_teams)})"
+                ),
                 "processed_teams": processed_teams,
-                "total_teams": len(data["lag"])
+                "total_teams": len(data.get("lag") or []),
+                "runda": data.get("runda"),
             })
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
-        
+    except ValueError as e:
+        if request.is_json:
+            return jsonify({"success": False, "error": str(e)}), 400
+        return f"Fel: {str(e)}", 400
     except Exception as e:
         return jsonify({"success": False, "error": f"Fel: {str(e)}"}), 500
 
@@ -3209,6 +2933,17 @@ ORDER_SUMMARY_TEMPLATE = """
             color: #2c3e50;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
+
+        .import-json {
+            width: 100%;
+            min-height: 160px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 16px;
+            border: 1px solid #e8e9ea;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
         
         
         .team-section {
@@ -3424,8 +3159,8 @@ ORDER_SUMMARY_TEMPLATE = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>📋 Order Sammanfattning</h1>
-            <p>Kopiera texten nedan och klistra in i Grok, Gemini eller ChatGPT. Nyhetsrubriker skrivs på papper och läses i studion — de lagras inte här.</p>
+            <h1>Kopiera ordrar till LLM</h1>
+            <p>Kopiera texten till Grok, Gemini eller ChatGPT. Klistra in JSON-svaret här eller i spelledarpanelen. Nyheter skrivs på papper till studion.</p>
         </div>
         
         <div class="game-info">
@@ -3441,20 +3176,21 @@ ORDER_SUMMARY_TEMPLATE = """
                 <div class="copy-text" id="copyText">
 {% if formatted_text %}
 {{ formatted_text }}
-
-Baserat på dessa order, ge förslag på:
-1. Uppdaterad backlogstatus: hur många fler (eller färre) poäng varje team har på sina arbetsuppgifter. Använd EXAKTA namnen från backlog-uppgifterna (t.ex. "Back-end API för inskickade röster", "Grafisk visning valet - Krav", "Infrastruktur för val").
-2. Plus/minus poäng för varje team inför nästa runda.
-3. Konsekvenser av teamens handlingar.
-4. Eventuella konflikter mellan team.
-5. Samlad resultatrapport i tidningsformat.
-
-VIKTIGT: När du refererar till backlog-uppgifter, använd alltid de EXAKTA namnen som visas i ordern (t.ex. "Back-end API för inskickade röster" istället för "Röst-API").
 {% else %}
 Inga order har skickats in ännu.
 {% endif %}
                 </div>
-                <button class="copy-button" onclick="copyToClipboard()" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">📋 Kopiera</button>
+                <button class="copy-button" onclick="copyToClipboard()" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">Kopiera</button>
+            </div>
+
+            <div class="copy-section">
+                <h3>Klistra in LLM-svar</h3>
+                <p>JSON med nyheter, HP och milstolpar. Förslagen visas i spelledarpanelen så du kan kopiera nyheter till papper och tillämpa HP/milstolpar.</p>
+                <form method="post" action="/admin/{{ spel_id }}/llm_import" enctype="multipart/form-data">
+                    <textarea class="import-json" name="json" rows="8" placeholder='{"runda": 1, "nyheter": [], "hp": [], "milstolpar": []}'></textarea>
+                    <p><input type="file" name="fil" accept=".json,application/json,text/plain"></p>
+                    <button type="submit" class="copy-button" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;">Importera LLM-svar</button>
+                </form>
             </div>
             
             <h2>📊 Detaljerad Översikt</h2>

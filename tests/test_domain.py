@@ -6,6 +6,7 @@ phases, HP, order budgets, undo, timers, and roster size.
 They do not render the GUI.
 """
 import time
+import json
 import unittest
 from unittest.mock import patch
 import os
@@ -19,19 +20,25 @@ from gm_console import (
     adjust_hp,
     append_gm_log,
     apply_activity_hp_to_backlog,
+    apply_llm_hp,
+    apply_llm_milestones,
     apply_new_round,
     apply_next_phase,
     apply_previous_phase,
     apply_undo,
     build_inbox,
     build_live_state,
+    build_llm_export_text,
     build_public_state,
     build_team_strip,
     can_submit_orders,
     effective_hp,
     end_game,
+    get_llm_forslag,
     hp_delta_from_fields,
+    import_llm_forslag,
     missing_order_teams,
+    parse_llm_forslag,
     parse_positive_amount,
     push_undo,
     set_regeringsstod,
@@ -526,6 +533,8 @@ class TestPublicProjector(unittest.TestCase):
         self.assertNotIn("log", public)
         self.assertNotIn("history", public)
         self.assertNotIn("test_mode", public)
+        self.assertNotIn("llm", public)
+        self.assertNotIn("llm_forslag", public)
         self.assertIn("progress", public)
         alfa_progress = next(team for team in public["progress"] if team["team"] == "Alfa")
         self.assertIn("Inloggning val", [item["name"] for item in alfa_progress["items"]])
@@ -542,6 +551,176 @@ class TestPublicProjector(unittest.TestCase):
         self.assertGreater(login["percent"], 0)
         dumped = str(public)
         self.assertNotIn("HP per klick", dumped)
+
+
+class TestRoundTestdata(unittest.TestCase):
+    def test_round_files_exist_and_differ(self):
+        from gm_console import load_round_testdata
+
+        round1 = load_round_testdata(1)
+        round2 = load_round_testdata(2)
+        round3 = load_round_testdata(3)
+        round4 = load_round_testdata(4)
+        self.assertEqual(round1["runda"], 1)
+        self.assertIn("Alfa", round1["orders"])
+        self.assertIn("Inloggning val", round1["orders"]["Alfa"][0]["aktivitet"])
+        self.assertIn("Sökfunktion", round2["orders"]["Alfa"][0]["aktivitet"])
+        self.assertTrue(any("deklaration" in (a.get("syfte") or "").lower() or "deklaration" in (a.get("aktivitet") or "").lower()
+                           for a in round3["orders"]["STT"]))
+        self.assertTrue(any(a.get("backlog_selected") == "stt_6" for a in round4["orders"]["STT"]))
+        self.assertNotEqual(
+            round1["orders"]["Alfa"][0]["aktivitet"],
+            round2["orders"]["Alfa"][0]["aktivitet"],
+        )
+
+    def test_apply_test_orders_fills_current_round(self):
+        from gm_console import apply_test_orders
+
+        data = create_game_state()
+        data["test_mode"] = True
+        data, processed = apply_test_orders(data)
+        self.assertIn("Alfa", processed)
+        alfa = data["team_orders"]["orders_round_1"]["Alfa"]
+        self.assertTrue(alfa["final"])
+        self.assertEqual(alfa["orders"]["activities"][0]["backlog_selected"], "alfa_1")
+        self.assertEqual(team_order_status(data, "Alfa"), "submitted")
+
+    def test_apply_test_orders_uses_round_two_file(self):
+        from gm_console import apply_test_orders
+
+        data = create_game_state(runda=2)
+        data["test_mode"] = True
+        data, _processed = apply_test_orders(data)
+        alfa = data["team_orders"]["orders_round_2"]["Alfa"]
+        self.assertIn("Sökfunktion", alfa["orders"]["activities"][0]["aktivitet"])
+        self.assertNotIn("orders_round_1", data["team_orders"])
+
+    def test_apply_test_orders_requires_test_mode(self):
+        from gm_console import apply_test_orders
+
+        data = create_game_state()
+        with self.assertRaises(ValueError):
+            apply_test_orders(data)
+
+    def test_missing_round_file_raises(self):
+        from gm_console import load_round_testdata
+
+        with self.assertRaises(ValueError):
+            load_round_testdata(9)
+
+
+class TestLlmForslag(unittest.TestCase):
+    def _example_json(self):
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "testdata",
+            "llm-svar-exempel.json",
+        )
+        with open(path, encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_old_games_without_llm_key_still_load(self):
+        data = create_game_state()
+        self.assertIsNone(get_llm_forslag(data))
+        live = build_live_state(data)
+        self.assertIsNone(live.get("llm"))
+        public = build_public_state(data)
+        self.assertNotIn("llm", public)
+        self.assertNotIn("llm_forslag", public)
+        with self.assertRaises(ValueError):
+            apply_llm_hp(data)
+
+    def test_export_contains_instructions_and_schema(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record(
+                    [activity(name="Inloggning val", hp=10, backlog_selected="alfa_1")],
+                    final=True,
+                ),
+            }
+        }
+        text = build_llm_export_text(data, data["team_orders"]["orders_round_1"])
+        self.assertIn("Svara ENBART", text)
+        self.assertIn("JSON-SCHEMA", text)
+        self.assertIn("Inloggning val", text)
+        self.assertIn("alfa_1", text)
+        self.assertIn('"nyheter"', text)
+        self.assertIn('"milstolpar"', text)
+
+    def test_parse_strips_fences_and_aliases(self):
+        data = create_game_state()
+        raw = (
+            "```json\n"
+            + json.dumps({
+                "runda": 1,
+                "nyheter": [{"rubrik": "Rubrik", "upplasning": "Text", "lag": ["Lag Alfa"]}],
+                "hp": [{"lag": "alfa", "delta": -5, "orsak": "Press"}],
+                "milstolpar": [{"lag": "Alfa", "uppgift": "Inloggning val", "delta_hp": 8}],
+            })
+            + "\n```"
+        )
+        parsed = parse_llm_forslag(raw, data)
+        self.assertEqual(parsed["nyheter"][0]["lag"], ["Alfa"])
+        self.assertEqual(parsed["hp"][0]["lag"], "Alfa")
+        self.assertEqual(parsed["milstolpar"][0]["uppgift"], "alfa_1")
+        self.assertFalse(parsed["hp_applied"])
+
+    def test_skips_unknown_team_and_unknown_milestone(self):
+        data = create_game_state()
+        parsed = parse_llm_forslag(json.dumps({
+            "hp": [
+                {"lag": "Narnia", "delta": -9},
+                {"lag": "Alfa", "delta": 4},
+            ],
+            "milstolpar": [
+                {"lag": "Alfa", "uppgift": "finns_inte", "delta_hp": 5},
+                {"lag": "Alfa", "uppgift": "alfa_1", "delta_hp": 6},
+            ],
+        }), data)
+        self.assertEqual(parsed["hp"], [{"lag": "Alfa", "delta": 4, "orsak": ""}])
+        self.assertEqual(len(parsed["milstolpar"]), 1)
+        self.assertEqual(parsed["milstolpar"][0]["uppgift"], "alfa_1")
+        self.assertTrue(parsed["warnings"])
+
+    def test_import_apply_hp_and_milestones_then_undo(self):
+        data = create_game_state()
+        import_llm_forslag(data, self._example_json())
+        self.assertEqual(get_llm_forslag(data)["nyheter"][0]["rubrik"][:14], "Valmyndigheten")
+        public = build_public_state(data)
+        dumped = str(public)
+        self.assertNotIn("Valmyndigheten", dumped)
+        self.assertNotIn("llm", public)
+
+        apply_llm_hp(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
+        self.assertEqual(data["poang"]["Bravo"]["aktuell"], 30)
+        self.assertTrue(get_llm_forslag(data)["hp_applied"])
+        with self.assertRaises(ValueError):
+            apply_llm_hp(data)
+
+        apply_llm_milestones(data)
+        alfa_task = next(
+            item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_1"
+        )
+        self.assertEqual(alfa_task["spenderade_hp"], 10)
+        bravo_krav = next(
+            fas for fas in next(
+                item for item in data["backlog"]["Bravo"] if item["id"] == "bravo_1"
+            )["faser"]
+            if fas["namn"] == "Krav"
+        )
+        self.assertEqual(bravo_krav["spenderade_hp"], 10)
+
+        data, label = apply_undo(data)
+        self.assertEqual(label, "Tillämpa LLM-milstolpar")
+        alfa_task = next(
+            item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_1"
+        )
+        self.assertEqual(alfa_task["spenderade_hp"], 0)
+        data, _label = apply_undo(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+        self.assertFalse(get_llm_forslag(data)["hp_applied"])
 
 
 class TestSessionAndPassword(unittest.TestCase):

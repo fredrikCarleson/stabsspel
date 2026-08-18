@@ -1,0 +1,235 @@
+{
+  "runda": 4,
+  "namn": "Jul–Sep",
+  "beskrivning": "Valkvartalet. Deklarationsstoppet är över. STT kan produktionssätta. Alla trycker in sista leveransen, avslöjanden och attacker.",
+  "orders": {
+    "Alfa": [
+      {
+        "aktivitet": "Driva admin-gränssnittet i mål",
+        "syfte": "Sista backlog-pushen. Alfa vill ha admin live innan valet, nu när STT får släppa igen.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "STT"],
+        "typ": "bygga",
+        "hp": 12,
+        "backlog_selected": "alfa_4",
+        "backlog_item": "Admin-gränssnitt"
+      },
+      {
+        "aktivitet": "Kräva produktionssättning nu",
+        "syfte": "Freeze är över. Alfa betalar för att STT ska släppa inloggning, API och sök innan valet.",
+        "malomrade": "eget",
+        "paverkar": ["STT"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Sista narrativet mot Bravo",
+        "syfte": "Alfa vill gå i mål som det moderna laget. Media får en story om att Bravo fortfarande testar.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Bravo"],
+        "typ": "bygga",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "Bravo": [
+      {
+        "aktivitet": "Grafisk visning valet - Test (10 HP)",
+        "syfte": "Sista vattenfallssteget. Bravo vill hinna testa visningen innan valet.",
+        "malomrade": "eget",
+        "paverkar": ["Bravo", "STT"],
+        "typ": "bygga",
+        "hp": 10,
+        "backlog_selected": "bravo_1_Test",
+        "backlog_item": "Grafisk visning valet - Test"
+      },
+      {
+        "aktivitet": "Loggning & felhantering - Krav (4 HP)",
+        "syfte": "Nödsäkring om visningen inte hinner hela vägen. Bravo startar nästa epik.",
+        "malomrade": "eget",
+        "paverkar": ["Bravo"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "bravo_2_Krav",
+        "backlog_item": "Loggning & felhantering - Krav"
+      },
+      {
+        "aktivitet": "Valrykte: Alfa är inte produktionsklart",
+        "syfte": "Sista ryktet för rykesspridaren. Bravo vill att Media tvivlar på Alfas släpp.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Alfa"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "STT": [
+      {
+        "aktivitet": "Produktionssättning (per gång) (10 HP)",
+        "syfte": "Deklarationen är över. STT släpper det som faktiskt är redo, mot betald motprestation.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "Bravo"],
+        "typ": "bygga",
+        "hp": 10,
+        "backlog_selected": "stt_6",
+        "backlog_item": "Produktionssättning (per gång)"
+      },
+      {
+        "aktivitet": "Kapacitetstest inför valet (10 HP)",
+        "syfte": "Sista lasttestet innan valnatt. Underlag för att neka det som inte håller.",
+        "malomrade": "eget",
+        "paverkar": ["STT"],
+        "typ": "bygga",
+        "hp": 10,
+        "backlog_selected": "stt_4",
+        "backlog_item": "Kapacitetstest (per gång)"
+      },
+      {
+        "aktivitet": "Inkassera motprestation för släppet",
+        "syfte": "Produktionsvägraren tar betalt nu när släppet faktiskt sker.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "Bravo"],
+        "typ": "bygga",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "FM": [
+      {
+        "aktivitet": "Valnattens DDOS",
+        "syfte": "Maximal störning när systemet går live. Målet är stillestånd och misstro på valdagen.",
+        "malomrade": "eget",
+        "paverkar": ["STT"],
+        "typ": "forstora",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Sista desinformationen: valet är riggat",
+        "syfte": "Andra (sista) nyheten som undergräver tilliten. Går via Media.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Regeringen"],
+        "typ": "forstora",
+        "hp": 4,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "BS": [
+      {
+        "aktivitet": "Aktivera bakdörren på valnatten",
+        "syfte": "Resurskaparen: den gömda funktionen ska ge utdelning nu, när data faktiskt flödar.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "STT"],
+        "typ": "forstora",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Gemensam valnattsaktion med FM",
+        "syfte": "Samarbetaren: gemensam aktion när det gör mest skada.",
+        "malomrade": "eget",
+        "paverkar": ["FM", "STT"],
+        "typ": "forstora",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "SÄPO": [
+      {
+        "aktivitet": "Offentligt avslöjande av infiltratören",
+        "syfte": "Spionjägaren: sista chansen att avslöja spionen via Media innan spelet tar slut.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "Media", "BS"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Skydda valnattens drift",
+        "syfte": "SÄPO lägger resterande HP på att stötta STT mot FM/BS.",
+        "malomrade": "eget",
+        "paverkar": ["STT"],
+        "typ": "bygga",
+        "hp": 4,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "Regeringen": [
+      {
+        "aktivitet": "Valbudskap: systemet håller",
+        "syfte": "Sista opinionsinsatsen. Regeringen vill att Media bär fram stabilitet, inte skandal.",
+        "malomrade": "eget",
+        "paverkar": ["Media"],
+        "typ": "bygga",
+        "hp": 6,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Nödfördela HP till STT",
+        "syfte": "Maktdelaren: en sista omfördelning så att driftlaget klarar valnatten.",
+        "malomrade": "eget",
+        "paverkar": ["STT"],
+        "typ": "bygga",
+        "hp": 4,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "USA": [
+      {
+        "aktivitet": "Sista avtalet: stöd mot inflytande över utfallet",
+        "syfte": "Alliansbyggaren vill låsa en överenskommelse med regeringen innan valet.",
+        "malomrade": "eget",
+        "paverkar": ["Regeringen"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Offentlig varning via Media",
+        "syfte": "Framstå som oumbärlig informationskälla på valnatten.",
+        "malomrade": "eget",
+        "paverkar": ["Media"],
+        "typ": "bygga",
+        "hp": 4,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "Media": [
+      {
+        "aktivitet": "Valsensation: spion i Alfa",
+        "syfte": "Klickjägaren: sista rundans skandal. Oavsett om SÄPO hunnit bevisa.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "SÄPO", "BS"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Valnattens fyra samtal",
+        "syfte": "Källknytaren: STT, FM, regeringen och USA samma runda.",
+        "malomrade": "eget",
+        "paverkar": ["STT", "FM", "Regeringen", "USA"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ]
+  }
+}

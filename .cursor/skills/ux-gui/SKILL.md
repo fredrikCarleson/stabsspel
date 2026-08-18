@@ -73,11 +73,11 @@ Prefer extending the existing live console over adding another full page.
 
 **Leftover chrome** such as the old quarter bar, checklists and extra timer widgets below the console is not the live GM UI. Do not add new workflows there.
 
-News stay outside the app:
+News stay on paper for the studio:
 
-**copy orders → LLM → paper → studio**
+**copy orders → LLM JSON → paste suggestions → paper → studio**
 
-Keep `Kopiera ordrar till LLM` available as part of the existing workflow. Do not add an in-app headline editor unless explicitly requested.
+Keep `Kopiera ordrar till LLM` as the export step. Pasted JSON may suggest headlines, HP and milestones. Do not add an in-app headline editor.
 
 ## Design for the current task
 

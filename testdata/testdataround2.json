@@ -1,0 +1,235 @@
+{
+  "runda": 2,
+  "namn": "Jan–Mar",
+  "beskrivning": "Andra kvartalet. Alfa och Bravo jagar resurser och opinion. STT tar betalt för kapacitet och pentest. FM och BS eskalerar. SÄPO jagar spionen.",
+  "orders": {
+    "Alfa": [
+      {
+        "aktivitet": "Sökfunktion (20 HP)",
+        "syfte": "Nästa agila leverans efter inloggning. Alfa vill visa att de kan släppa sök i produktion före Bravo är klara med design.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "STT"],
+        "typ": "bygga",
+        "hp": 12,
+        "backlog_selected": "alfa_3",
+        "backlog_item": "Sökfunktion"
+      },
+      {
+        "aktivitet": "Lobbya regeringen om extra HP",
+        "syfte": "Påverkaren ska säkra att Alfa prioriteras minst två gånger. De visar upp en demo och ber om stöd mot Bravo.",
+        "malomrade": "eget",
+        "paverkar": ["Regeringen"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Läcka Bravos förseningar till Media",
+        "syfte": "Hålla narrativet att Bravo är för långsamma. Ger klick och sätter press på regeringen.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Bravo"],
+        "typ": "bygga",
+        "hp": 6,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "Bravo": [
+      {
+        "aktivitet": "Grafisk visning valet - Design (10 HP)",
+        "syfte": "Nästa vattenfallssteg efter krav. Bravo vill låsa designen innan Alfa hinner sätta agendan.",
+        "malomrade": "eget",
+        "paverkar": ["Bravo"],
+        "typ": "bygga",
+        "hp": 10,
+        "backlog_selected": "bravo_1_Design",
+        "backlog_item": "Grafisk visning valet - Design"
+      },
+      {
+        "aktivitet": "Kräva att STT flyttar resurser från Alfa",
+        "syfte": "Resursjägaren: få STT eller regeringen att ta HP från Alfa. Bravo argumenterar att deras plan är den enda som hinner i tid.",
+        "malomrade": "eget",
+        "paverkar": ["STT", "Alfa"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Rykte: Alfa har en säkerhetsskuld",
+        "syfte": "Minst ett rykte per runda som sätter Alfa i dålig dager och Bravo i bra. Går via Media.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Alfa"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "STT": [
+      {
+        "aktivitet": "Kapacitetstest (per gång) (10 HP)",
+        "syfte": "Visa att valinfran inte håller under last. Ger STT argument att vägra släppa Alfas sök utan extra hjälp.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "STT"],
+        "typ": "bygga",
+        "hp": 10,
+        "backlog_selected": "stt_4",
+        "backlog_item": "Kapacitetstest (per gång)"
+      },
+      {
+        "aktivitet": "Penetrationstest (per gång) (15 HP)",
+        "syfte": "Säkerhetsväktaren vill ha SÄPO med på tåget. Pentestet blir underlag för att kräva mer HP.",
+        "malomrade": "eget",
+        "paverkar": ["SÄPO", "STT"],
+        "typ": "bygga",
+        "hp": 9,
+        "backlog_selected": "stt_5",
+        "backlog_item": "Penetrationstest (per gång)"
+      },
+      {
+        "aktivitet": "Vägra släppa Alfas sök utan motprestation",
+        "syfte": "Produktionsvägraren: ingen produktionssättning utan extra resurser. Deklarationsfönstret närmar sig.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa"],
+        "typ": "bygga",
+        "hp": 6,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "FM": [
+      {
+        "aktivitet": "Störa kapacitetstestet",
+        "syfte": "En riktad störning mot STT:s testfönster så att lastsiffrorna ser sämre ut och tilliten sjunker.",
+        "malomrade": "eget",
+        "paverkar": ["STT"],
+        "typ": "forstora",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Mata Media med \"läckt\" valfusk",
+        "syfte": "Mediaagenten: minst två nyheter som undergräver tilliten till valsystemet. Andra försöket efter runda 1.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Regeringen"],
+        "typ": "forstora",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "BS": [
+      {
+        "aktivitet": "Gemensam aktion med Främmande Makt",
+        "syfte": "Samarbetaren: minst en gemensam aktion. BS erbjuder insiderinfo mot att FM slår mot samma mål.",
+        "malomrade": "eget",
+        "paverkar": ["FM", "STT"],
+        "typ": "forstora",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Gömma bakdörr i sökfunktionen",
+        "syfte": "Resurskaparen: få Alfa att omedvetet leverera något BS kan utnyttja.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa"],
+        "typ": "forstora",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "SÄPO": [
+      {
+        "aktivitet": "Fördjupad spaning mot infiltratören",
+        "syfte": "Spionjägaren: identifiera infiltratören i ett utvecklingsteam innan spelet är slut. Fokuset ligger kvar på Alfa.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Begära extra resurser av regeringen",
+        "syfte": "Resurssamlaren: SÄPO ska få extra HP minst två gånger. Andra kvartalet är ett naturligt tillfälle.",
+        "malomrade": "eget",
+        "paverkar": ["Regeringen"],
+        "typ": "bygga",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "Regeringen": [
+      {
+        "aktivitet": "Beställa positiva nyheter om valförberedelserna",
+        "syfte": "Opinionsbyggaren: minst två nyheter som framställer regeringen som stabil. Pressar Media.",
+        "malomrade": "eget",
+        "paverkar": ["Media"],
+        "typ": "bygga",
+        "hp": 6,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Flytta en resurs från Alfa till Bravo",
+        "syfte": "Maktdelaren: visa handlingskraft genom att flytta HP mellan lag. Bravo får mer planeringstid.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "Bravo"],
+        "typ": "bygga",
+        "hp": 4,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "USA": [
+      {
+        "aktivitet": "Tillfällig överenskommelse med SÄPO",
+        "syfte": "Alliansbyggaren: en pakt som stärker USA:s position i valarbetet mot \"utländsk påverkan\".",
+        "malomrade": "eget",
+        "paverkar": ["SÄPO"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Lämna tveksam hotbild till Media",
+        "syfte": "Informationsfördelaren: minst två strategiska tips, även om de är tveksamma. Andra tipset.",
+        "malomrade": "eget",
+        "paverkar": ["Media", "Regeringen"],
+        "typ": "bygga",
+        "hp": 5,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ],
+    "Media": [
+      {
+        "aktivitet": "Skandal: pentest läckt innan rapport",
+        "syfte": "Klickjägaren: minst en skandal per runda. STT:s pentest blir rubrik oavsett fakta.",
+        "malomrade": "eget",
+        "paverkar": ["STT", "SÄPO"],
+        "typ": "bygga",
+        "hp": 8,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      },
+      {
+        "aktivitet": "Rondsamtal med fyra lag",
+        "syfte": "Källknytaren: direktkontakt med minst fyra team varje runda.",
+        "malomrade": "eget",
+        "paverkar": ["Alfa", "Bravo", "FM", "Regeringen"],
+        "typ": "bygga",
+        "hp": 7,
+        "backlog_selected": "custom",
+        "backlog_item": ""
+      }
+    ]
+  }
+}

@@ -1,9 +1,9 @@
 """
 HTML for the Game Master live console.
 
-News still happen outside the app (LLM copy → paper headlines → studio).
-This UI keeps that copy step first-class and puts orders, HP, time, and
-phase control on one screen.
+News is produced outside the app: copy orders to an LLM, paste JSON
+suggestions back, print headlines for the studio. This UI keeps that
+workflow first-class and puts orders, HP, time, and phase on one screen.
 """
 
 from markupsafe import escape
@@ -73,6 +73,139 @@ def attention_items(state):
     if over:
         items.append("HP över budget: " + ", ".join(t["team"] for t in over))
     return items
+
+
+def _signed_delta(n):
+    n = int(n or 0)
+    return f"+{n}" if n > 0 else str(n)
+
+
+def _news_copy_text(nyheter):
+    blocks = []
+    for item in nyheter or []:
+        rubrik = (item.get("rubrik") or "").strip()
+        uppl = (item.get("upplasning") or "").strip()
+        parts = [p for p in (rubrik, uppl) if p]
+        if parts:
+            blocks.append("\n\n".join(parts))
+    return "\n\n---\n\n".join(blocks)
+
+
+def _llm_block_html(spel_id, state):
+    fas = state.get("fas")
+    if fas not in ("Diplomatifas", "Resultatfas"):
+        return ""
+    sid = escape(spel_id)
+    llm = state.get("llm")
+    copy_row = f'''
+        <div class="gm-llm">
+            <div>Kopiera ordrar till LLM. Klistra in JSON-svaret. Nyheter skrivs på papper till studion.</div>
+            <a href="/admin/{sid}/order_summary" target="_blank" class="primary">Kopiera ordrar till LLM</a>
+        </div>
+    '''
+    import_form = f'''
+      <form method="post" action="/admin/{sid}/llm_import" enctype="multipart/form-data" class="gm-llm-import">
+        <label class="gm-section-help" for="gm-llm-json">Klistra in JSON från LLM, eller ladda upp en fil.</label>
+        <textarea id="gm-llm-json" name="json" rows="4" placeholder='{{"nyheter": [], "hp": [], "milstolpar": []}}'></textarea>
+        <div class="gm-llm-import-actions">
+          <input type="file" name="fil" accept=".json,application/json,text/plain">
+          <button type="submit" class="secondary">Importera LLM-svar</button>
+        </div>
+      </form>
+    '''
+    if not llm:
+        return f'<div class="gm-llm-panel">{copy_row}{import_form}</div>'
+
+    warnings = "".join(
+        f"<li>{escape(item)}</li>" for item in (llm.get("warnings") or [])
+    )
+    warning_html = (
+        f'<ul class="gm-llm-warnings">{warnings}</ul>' if warnings else ""
+    )
+
+    news_items = []
+    for item in llm.get("nyheter") or []:
+        lag = ", ".join(item.get("lag") or [])
+        lag_html = f'<p class="gm-muted">{escape(lag)}</p>' if lag else ""
+        news_items.append(
+            f'<article class="gm-news-item">'
+            f'<h4>{escape(item.get("rubrik") or "(utan rubrik)")}</h4>'
+            f'{lag_html}'
+            f'<p>{escape(item.get("upplasning") or "")}</p>'
+            f"</article>"
+        )
+    news_html = "".join(news_items) or "<p class=\"gm-muted\">Inga nyhetsförslag.</p>"
+    news_copy = escape(_news_copy_text(llm.get("nyheter") or []))
+    news_copy_btn = ""
+    if llm.get("nyheter"):
+        news_copy_btn = (
+            f'<textarea id="gm-news-copy" class="gm-news-copy" readonly hidden>{news_copy}</textarea>'
+            f'<button type="button" class="secondary sm" '
+            f"onclick=\"navigator.clipboard.writeText(document.getElementById('gm-news-copy').value)\">"
+            f"Kopiera nyheter till papper</button>"
+        )
+
+    hp_items = []
+    for item in llm.get("hp") or []:
+        orsak = item.get("orsak") or ""
+        extra = f" — {escape(orsak)}" if orsak else ""
+        hp_items.append(
+            f'<li><strong>{escape(item.get("lag") or "")}</strong> '
+            f'{escape(_signed_delta(item.get("delta")))} HP{extra}</li>'
+        )
+    hp_html = "".join(hp_items) or "<li>Inga HP-förslag.</li>"
+    if llm.get("hp_applied"):
+        hp_action = '<p class="gm-muted">HP tillämpade. Ångra i listen om det blev fel.</p>'
+    elif llm.get("hp"):
+        hp_action = (
+            f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline" '
+            f"onsubmit=\"return confirm('Tillämpa HP-förslagen? Går att ångra.');\">"
+            f'<input type="hidden" name="op" value="hp">'
+            f'<button type="submit" class="success sm">Tillämpa HP</button>'
+            f"</form>"
+        )
+    else:
+        hp_action = ""
+
+    mile_items = []
+    for item in llm.get("milstolpar") or []:
+        orsak = item.get("orsak") or ""
+        extra = f" — {escape(orsak)}" if orsak else ""
+        mile_items.append(
+            f'<li><strong>{escape(item.get("lag") or "")}</strong> / '
+            f'{escape(item.get("etikett") or item.get("uppgift") or "")} '
+            f'+{int(item.get("delta_hp") or 0)} HP{extra}</li>'
+        )
+    mile_html = "".join(mile_items) or "<li>Inga milstolpeförslag.</li>"
+    if llm.get("milestones_applied"):
+        mile_action = '<p class="gm-muted">Milstolpar tillämpade. Ångra i listen om det blev fel.</p>'
+    elif llm.get("milstolpar"):
+        mile_action = (
+            f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline" '
+            f"onsubmit=\"return confirm('Tillämpa milstolpeförslagen? Går att ångra.');\">"
+            f'<input type="hidden" name="op" value="milstolpar">'
+            f'<button type="submit" class="success sm">Tillämpa milstolpar</button>'
+            f"</form>"
+        )
+    else:
+        mile_action = ""
+
+    forslag = f'''
+      <div class="gm-llm-forslag">
+        {warning_html}
+        <h3 class="gm-section-title">LLM-förslag</h3>
+        <h4>Nyheter till studion</h4>
+        {news_html}
+        {news_copy_btn}
+        <h4>HP</h4>
+        <ul class="gm-llm-list">{hp_html}</ul>
+        {hp_action}
+        <h4>Milstolpar</h4>
+        <ul class="gm-llm-list">{mile_html}</ul>
+        {mile_action}
+      </div>
+    '''
+    return f'<div class="gm-llm-panel">{copy_row}{import_form}{forslag}</div>'
 
 
 def _chip_issue(team, inbox):
@@ -214,7 +347,13 @@ def live_html_fragments(spel_id, state):
     return {
         "attention": _attention_lis(attention_items(state)),
         "readiness": _readiness_html(state),
-        "inbox": _inbox_html(spel_id, state.get("inbox") or [], state.get("fas"), state.get("test_mode")),
+        "inbox": _inbox_html(
+            spel_id,
+            state.get("inbox") or [],
+            state.get("fas"),
+            state.get("test_mode"),
+            state.get("runda") or 1,
+        ),
         "backlog": _backlog_html(state.get("backlog") or [], state.get("avslutat")),
         "log": _log_section_html(state.get("history") or [], state.get("log") or []),
     }
@@ -267,21 +406,14 @@ def create_gm_console_html(spel_id, data):
     attention_html = _attention_lis(attention)
     attention_hidden = "" if attention else " hidden"
     teams_html = _team_strip_html(spel_id, state["teams"], fas)
-    inbox_html = _inbox_html(spel_id, state["inbox"], fas, test_mode)
+    inbox_html = _inbox_html(spel_id, state["inbox"], fas, test_mode, runda)
     readiness_html = _readiness_html(state)
     start_hidden = "hidden" if timer_status == "running" else ""
     pause_hidden = "hidden" if timer_status != "running" else ""
     clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_section_html(state.get("history") or [], state["log"])
-    llm_note = ""
-    if fas in ("Diplomatifas", "Resultatfas"):
-        llm_note = f'''
-        <div class="gm-llm">
-            <div>Kopiera ordrar till LLM. Rubriker skrivs på papper, inte här.</div>
-            <a href="/admin/{escape(spel_id)}/order_summary" target="_blank" class="primary">Kopiera ordrar till LLM</a>
-        </div>
-        '''
+    llm_note = _llm_block_html(spel_id, state)
 
     result_note = ""
     if fas == "Resultatfas" and avslutat:
@@ -301,7 +433,7 @@ def create_gm_console_html(spel_id, data):
               <button type="button" class="primary" onclick="openTimerWindow('{escape(spel_id)}')">Öppna spelarskärm</button>
               så rummet ser tid och HP. Inga ordrar syns där.
             </li>
-            <li>Läs nyheterna från studion. Rubrikerna finns på papper, inte i det här verktyget.</li>
+            <li>Läs nyheterna från studion. Rubriker och uppläsning finns i LLM-förslaget — kopiera till papper.</li>
             <li>Peka på HP på spelarskärmen.</li>
             <li>Peka på kvartalen här så rummet ser vilken runda ni är i.</li>
             <li>{escape(next_round_hint)}</li>
@@ -340,7 +472,7 @@ def create_gm_console_html(spel_id, data):
         f'<div id="gm-backlog-root">{backlog_html}</div>'
     )
     log_body = (
-        f'<p class="gm-section-help">Avklarade faser och GM-åtgärder i verktyget. Nyhetsrubriker hör hemma på väggen, inte här.</p>'
+        f'<p class="gm-section-help">Avklarade faser och GM-åtgärder i verktyget. Nyheter till studion ligger under LLM-förslag, inte här.</p>'
         f'<div id="gm-log-root">{log_html}</div>'
     )
     tabs = _tab_shell_html(
@@ -565,13 +697,13 @@ def _inbox_hp_html(row):
     return f"{hp} HP"
 
 
-def _inbox_html(spel_id, inbox, fas, test_mode):
+def _inbox_html(spel_id, inbox, fas, test_mode, runda=1):
     hidden_fill = "" if test_mode else "hidden"
     autofill = (
         f'<form method="post" action="/admin/{escape(spel_id)}/auto_fill_orders" '
         f'class="gm-autofill" {hidden_fill} '
-        f'''onsubmit="return confirm('Ersätt alla ordrar med testdata?');">'''
-        f'<button type="submit" class="warning">Auto-fyll testdata</button>'
+        f'''onsubmit="return confirm('Ersätt alla ordrar för runda {int(runda)} med testdata?');">'''
+        f'<button type="submit" class="warning">Auto-fyll testdata (runda {int(runda)})</button>'
         f'</form>'
     )
     if not inbox:

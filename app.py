@@ -333,7 +333,7 @@ def startsida():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Stabsspelet - Krisledningssimulation</title>
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css?v=21">
+        <link rel="stylesheet" href="/static/app.css?v=23">
         <link rel="stylesheet" href="/static/print.css" media="print">
     </head>
     <body class="home-page">

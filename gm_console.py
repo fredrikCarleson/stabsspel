@@ -1,15 +1,19 @@
 """
 Game Master live-console helpers.
 
-News and plot-twist headlines are created outside this app (copy orders into
-an LLM, then paper + news studio). This module supports running the room:
-phase/time, orders, HP, undo, and an operational log — not a news CMS.
+News is still produced outside the app: copy orders into an LLM, paste the
+JSON reply back as suggestions, print headlines for the studio. This module
+runs the room (phase/time, orders, HP, undo, log) and stores those suggestions.
 """
 
 from __future__ import annotations
 
 import copy
+import json
+import re
 import time
+from datetime import datetime
+from pathlib import Path
 from models import (
     FASER,
     MAX_RUNDA,
@@ -24,6 +28,7 @@ from game_management import nollstall_regeringsstod
 
 UNDO_LIMIT = 20
 LOG_LIMIT = 50
+TESTDATA_DIR = Path(__file__).resolve().parent / "testdata"
 STATUS_LABELS = {
     "empty": "Tom",
     "draft": "Utkast",
@@ -177,6 +182,109 @@ def append_gm_log(data, kind, message, extra=None):
     log.append(item)
     data["gm_log"] = log[-LOG_LIMIT:]
     return data
+
+
+def testdata_path_for_round(runda):
+    try:
+        runda = int(runda)
+    except (TypeError, ValueError):
+        runda = 1
+    return TESTDATA_DIR / f"testdataround{runda}.json"
+
+
+def load_round_testdata(runda):
+    """Load editable testdata/testdataroundN.json. Raises ValueError if missing or invalid."""
+    path = testdata_path_for_round(runda)
+    if not path.is_file():
+        raise ValueError(f"Saknar testdata för runda {runda} ({path.name}).")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as e:
+        raise ValueError(f"Kunde inte läsa {path.name}: {e}") from e
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Ogiltig JSON i {path.name}: {e}") from e
+    if not isinstance(payload, dict) or not isinstance(payload.get("orders"), dict):
+        raise ValueError(f"{path.name} måste innehålla ett objekt \"orders\" med lag.")
+    if not payload["orders"]:
+        raise ValueError(f"{path.name} har inga lag under \"orders\".")
+    return payload
+
+
+def _normalize_test_activity(raw, activity_id):
+    if not isinstance(raw, dict):
+        raise ValueError("Varje aktivitet måste vara ett objekt")
+    name = str(raw.get("aktivitet") or "").strip()
+    if not name:
+        raise ValueError("Aktivitet saknar namn")
+    try:
+        hp = int(raw.get("hp") or 0)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Ogiltiga HP för {name}") from e
+    if hp < 0:
+        raise ValueError(f"Negativa HP för {name}")
+    paverkar = raw.get("paverkar") or []
+    if isinstance(paverkar, str):
+        paverkar = [paverkar]
+    if not isinstance(paverkar, list):
+        paverkar = []
+    typ = raw.get("typ") or "bygga"
+    if typ not in ("bygga", "forstora"):
+        typ = "bygga"
+    selected = str(raw.get("backlog_selected") or "custom").strip() or "custom"
+    return {
+        "id": activity_id,
+        "aktivitet": name,
+        "syfte": str(raw.get("syfte") or "").strip(),
+        "malomrade": str(raw.get("malomrade") or "eget").strip() or "eget",
+        "paverkar": [str(item).strip() for item in paverkar if str(item).strip()],
+        "typ": typ,
+        "hp": hp,
+        "backlog_selected": selected,
+        "backlog_item": str(raw.get("backlog_item") or "").strip(),
+    }
+
+
+def apply_test_orders(data, now=None):
+    """Replace this round's submitted orders from testdata/testdataroundN.json."""
+    if not data.get("test_mode"):
+        raise ValueError("Auto-fyll kräver testläge")
+    runda = data.get("runda", 1)
+    payload = load_round_testdata(runda)
+    orders = payload["orders"]
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    submitted_at = time.time() if now is None else now
+    base_id = int(submitted_at * 1000)
+    orders_key = f"orders_round_{runda}"
+    data.setdefault("team_orders", {})
+    data["team_orders"].setdefault(orders_key, {})
+    processed = []
+    for i, team_name in enumerate(data.get("lag") or []):
+        activities = orders.get(team_name)
+        if not isinstance(activities, list) or not activities:
+            continue
+        team_orders = [
+            _normalize_test_activity(activity, base_id + (i * 100) + j)
+            for j, activity in enumerate(activities)
+        ]
+        data["team_orders"][orders_key][team_name] = {
+            "submitted_at": submitted_at,
+            "phase": data.get("fas"),
+            "round": runda,
+            "orders": {
+                "activities": team_orders,
+                "timestamp": stamp,
+            },
+            "final": True,
+        }
+        processed.append(team_name)
+    if not processed:
+        raise ValueError(f"Ingen testdata matchade lagen i runda {runda}.")
+    append_gm_log(
+        data,
+        "order",
+        f"Auto-fyllde testdata för runda {runda} ({len(processed)} lag).",
+    )
+    return data, processed
 
 
 def ensure_poang(data):
@@ -688,6 +796,416 @@ def build_team_strip(data):
     return strip
 
 
+_TEAM_ALIASES = {
+    "alfa": "Alfa", "lag alfa": "Alfa",
+    "bravo": "Bravo", "lag bravo": "Bravo",
+    "charlie": "Charlie", "lag charlie": "Charlie",
+    "delta": "Delta", "lag delta": "Delta",
+    "echo": "Echo", "lag echo": "Echo",
+    "stt": "STT", "lag stt": "STT",
+}
+
+
+def normalize_team_name(value, teams=None):
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    known = list(teams) if teams is not None else list(_TEAM_ALIASES.values())
+    if raw in known:
+        return raw
+    mapped = _TEAM_ALIASES.get(raw.lower())
+    if mapped and mapped in known:
+        return mapped
+    for team in known:
+        if team.lower() == raw.lower():
+            return team
+    return None
+
+
+def format_orders_export(data, all_orders):
+    """Plain-text order dump used by the LLM export page."""
+    lines = []
+    teams = data.get("lag") or list(all_orders or {})
+    poang = data.get("poang") or {}
+    for team in teams:
+        record = (all_orders or {}).get(team) or {}
+        activities = (record.get("orders") or {}).get("activities") or []
+        if not activities:
+            continue
+        hp = int((poang.get(team) or {}).get("aktuell") or 0)
+        lines.append(f"=== LAG {team.upper()} (HP i kassan: {hp}) ===")
+        for i, activity in enumerate(activities, 1):
+            order_type = activity.get("typ", "bygga")
+            typ_label = "BYGGA" if order_type == "bygga" else "FÖRSTÖRA"
+            aktivitet = activity.get("aktivitet") or ""
+            hp_est = int(activity.get("hp") or 0)
+            syfte = (activity.get("syfte") or "").strip()
+            malomrade = activity.get("malomrade") or ""
+            paverkar = activity.get("paverkar") or []
+            backlog_id = activity.get("backlog_selected") or ""
+            backlog_item = activity.get("backlog_item") or ""
+            lines.append(f"{i}. [{typ_label}] {aktivitet} ({hp_est} HP)")
+            if syfte:
+                lines.append(f"   Syfte: {syfte}")
+            if backlog_id and backlog_id != "custom":
+                extra = f" ({backlog_item})" if backlog_item else ""
+                lines.append(f"   Backlog-id: {backlog_id}{extra}")
+            if paverkar:
+                lines.append(f"   Påverkar: {', '.join(str(p) for p in paverkar)}")
+            if malomrade:
+                lines.append(f"   Målområde: {malomrade}")
+        lines.append("")
+    return "\n".join(lines) if lines else "(Inga ordrar inskickade ännu)"
+
+
+def _format_backlog_for_llm(data):
+    lines = []
+    poang = data.get("poang") or {}
+    for group in build_backlog_board(data):
+        team = group.get("team")
+        hp = int((poang.get(team) or {}).get("aktuell") or 0)
+        lines.append(f"=== {team} (HP i kassan: {hp}) ===")
+        items = group.get("items") or []
+        if not items:
+            lines.append("  (tom backlog)")
+            lines.append("")
+            continue
+        for item in items:
+            spent = int(item.get("spent") or 0)
+            estimated = int(item.get("estimated") or 0)
+            status = "klar" if item.get("done") else "pågår"
+            lines.append(
+                f"  - id={item.get('id')} | {item.get('name')} | "
+                f"lagd HP {spent}/{estimated} | status={status}"
+            )
+            for phase in item.get("phases") or []:
+                p_status = "klar" if phase.get("done") else "pågår"
+                pname = phase.get("name") or ""
+                lines.append(
+                    f"      id={item.get('id')}_{pname} | fas={pname} | "
+                    f"lagd HP {int(phase.get('spent') or 0)}/"
+                    f"{int(phase.get('estimated') or 0)} | status={p_status}"
+                )
+        lines.append("")
+    return "\n".join(lines).strip() or "(ingen backlog)"
+
+
+def build_llm_export_text(data, all_orders):
+    runda = int(data.get("runda") or 1)
+    fas = data.get("fas") or ""
+    teams = ", ".join(data.get("lag") or []) or "Alfa, Bravo, Charlie, Delta, Echo, STT"
+    orders = format_orders_export(data, all_orders)
+    backlog = _format_backlog_for_llm(data)
+    return f"""Du är spelledarens assistent i ett svenskt stabsövningsspel (Stabsspel).
+Spelet har lagen: {teams}.
+Du ska INTE skriva prosa. Du ska BARA svara med giltig JSON enligt schemat längst ner.
+
+SPELFAKTA
+- Runda: {runda}
+- Fas: {fas}
+- Spelledaren kopierar ditt svar tillbaka in i spelet. Nyhetsförslagen skrivs ut på papper och läses i TV-studion. HP- och milstolpeförslagen kan tillämpas i spelet efter spelledarens godkännande.
+- HP i kassan är det laget har kvar att spendera. Negativ HP-delta = förlust (sabotage, dålig press, motgång). Positiv HP-delta = vinst (framgång, stöd, bonus).
+- Milstolpar är backlog-uppgifter. delta_hp är hur många HP som ska läggas på uppgiften den här rundan (alltid 0 eller positivt). Använd id-fältet från listan nedan, t.ex. alfa_1 eller bravo_1_Krav.
+
+UPPDRAG
+1. Skriv 3–6 nyheter som TV-studion kan läsa. Rubriken ska vara kort (max ca 90 tecken). upplasning ska vara 20–40 sekunder att läsa högt, konkret och dramatisk men trovärdig. Koppla nyheter till ordrarna. Ange vilka lag som berörs.
+2. Föreslå HP-justeringar per lag utifrån hur ordrarna lyckas eller möter motstånd. Inte varje lag måste få en justering. Håll deltan små och motiverade (typiskt mellan -15 och +10).
+3. Föreslå milstolpeprogress: vilka backlog-uppgifter som bör få mer lagd HP den här rundan, utifrån BYGGA-ordrar. Förstörarordrar ger normalt INTE progress på den egna backloggen.
+
+REGLER
+- Hitta inte på lag eller uppgifts-id som inte finns i underlaget.
+- Svara ENBART med ett JSON-objekt. Ingen markdown, inga kodstaket, ingen text före eller efter.
+- Använd exakt dessa nycklar: runda, nyheter, hp, milstolpar.
+
+AKTUELL BACKLOG
+{backlog}
+
+ORDRAR DENNA RUNDA
+{orders}
+
+JSON-SCHEMA (exempel på form, inte innehåll)
+{{
+  "runda": {runda},
+  "nyheter": [
+    {{
+      "rubrik": "Kort nyhetsrubrik",
+      "upplasning": "Texten som ska läsas i TV-studion.",
+      "lag": ["Alfa"]
+    }}
+  ],
+  "hp": [
+    {{
+      "lag": "Alfa",
+      "delta": -5,
+      "orsak": "Kort motivering"
+    }}
+  ],
+  "milstolpar": [
+    {{
+      "lag": "Alfa",
+      "uppgift": "alfa_1",
+      "delta_hp": 10,
+      "orsak": "Kort motivering"
+    }}
+  ]
+}}
+"""
+
+
+def _strip_llm_fences(raw):
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, count=1, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+    return text.strip()
+
+
+def parse_llm_forslag(raw, data):
+    """Parse pasted LLM JSON into a stored suggestion object. Raises ValueError."""
+    text = _strip_llm_fences(raw)
+    if not text:
+        raise ValueError("Klistra in JSON från LLM.")
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Ogiltig JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("JSON måste vara ett objekt.")
+
+    ensure_backlog(data)
+    teams = list(data.get("lag") or [])
+    runda = int(data.get("runda") or 1)
+    warnings = []
+    payload_runda = payload.get("runda")
+    if payload_runda is not None:
+        try:
+            if int(payload_runda) != runda:
+                warnings.append(
+                    f"LLM angav runda {payload_runda}, spelet är på runda {runda}."
+                )
+        except (TypeError, ValueError):
+            pass
+
+    nyheter = []
+    for item in payload.get("nyheter") or payload.get("news") or []:
+        if not isinstance(item, dict):
+            continue
+        rubrik = str(item.get("rubrik") or item.get("headline") or "").strip()
+        uppl = str(item.get("upplasning") or item.get("text") or item.get("lasning") or "").strip()
+        if not rubrik and not uppl:
+            continue
+        lag = []
+        for name in item.get("lag") or item.get("teams") or []:
+            team = normalize_team_name(name, teams)
+            if team:
+                lag.append(team)
+        nyheter.append({"rubrik": rubrik, "upplasning": uppl, "lag": lag})
+
+    hp = []
+    for item in payload.get("hp") or payload.get("hp_justeringar") or []:
+        if not isinstance(item, dict):
+            continue
+        team = normalize_team_name(item.get("lag") or item.get("team"), teams)
+        try:
+            delta = int(item.get("delta") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not team or delta == 0:
+            continue
+        hp.append({
+            "lag": team,
+            "delta": delta,
+            "orsak": str(item.get("orsak") or item.get("reason") or "").strip(),
+        })
+
+    milstolpar = []
+    for item in payload.get("milstolpar") or payload.get("milestones") or payload.get("backlog") or []:
+        if not isinstance(item, dict):
+            continue
+        team = normalize_team_name(item.get("lag") or item.get("team"), teams)
+        uppgift = str(item.get("uppgift") or item.get("id") or item.get("task") or "").strip()
+        try:
+            delta_hp = int(item.get("delta_hp") or item.get("hp") or 0)
+        except (TypeError, ValueError):
+            continue
+        if delta_hp <= 0 or not uppgift:
+            continue
+        try:
+            resolved_team, task_id, fas = _resolve_milestone_ref(data, team, uppgift, item.get("fas"))
+        except ValueError as exc:
+            warnings.append(str(exc))
+            continue
+        milstolpar.append({
+            "lag": resolved_team,
+            "uppgift": task_id,
+            "fas": fas,
+            "delta_hp": delta_hp,
+            "orsak": str(item.get("orsak") or item.get("reason") or "").strip(),
+        })
+
+    return {
+        "runda": runda,
+        "importerad": datetime.now().isoformat(timespec="seconds"),
+        "nyheter": nyheter,
+        "hp": hp,
+        "milstolpar": milstolpar,
+        "hp_applied": False,
+        "milestones_applied": False,
+        "warnings": warnings,
+    }
+
+
+def _resolve_milestone_ref(data, team, uppgift, fas=None):
+    raw = str(uppgift or "").strip()
+    phase = str(fas).strip() if fas else None
+    if team:
+        try:
+            task_id, phase_name = split_task_ref(raw, phase)
+            _find_backlog_task(data, team, task_id, phase_name)
+            return team, task_id, phase_name
+        except ValueError:
+            pass
+
+    needle = raw.lower()
+    search_teams = [team] if team else list(data.get("lag") or [])
+    matches = []
+    for t in search_teams:
+        for item in (data.get("backlog") or {}).get(t) or []:
+            name = str(item.get("namn") or "").strip()
+            if name.lower() == needle or item.get("id") == raw:
+                matches.append((t, item["id"], None))
+            for p in item.get("faser") or []:
+                pname = str(p.get("namn") or "")
+                composite = f"{name} - {pname}".lower()
+                ref = f"{item['id']}_{pname}"
+                if needle in {pname.lower(), composite, ref.lower()} or raw == ref:
+                    matches.append((t, item["id"], pname))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(f"Flera milstolpar matchade {raw}")
+    raise ValueError(f"Hittade ingen milstolpe för {team or '?'}: {raw}")
+
+
+def import_llm_forslag(data, raw):
+    parsed = parse_llm_forslag(raw, data)
+    store = dict(data.get("llm_forslag") or {})
+    store[str(parsed["runda"])] = parsed
+    data["llm_forslag"] = store
+    append_gm_log(
+        data,
+        "llm",
+        f"Importerade LLM-förslag för runda {parsed['runda']}: "
+        f"{len(parsed['nyheter'])} nyheter, {len(parsed['hp'])} HP, "
+        f"{len(parsed['milstolpar'])} milstolpar",
+    )
+    return parsed
+
+
+def get_llm_forslag(data, runda=None):
+    store = data.get("llm_forslag") or {}
+    key = str(runda if runda is not None else data.get("runda") or 1)
+    return store.get(key)
+
+
+def apply_llm_hp(data):
+    forslag = get_llm_forslag(data)
+    if not forslag:
+        raise ValueError("Inga LLM-förslag för den här rundan.")
+    if forslag.get("hp_applied"):
+        raise ValueError("HP-förslagen är redan tillämpade.")
+    items = list(forslag.get("hp") or [])
+    if not items:
+        raise ValueError("Inga HP-förslag att tillämpa.")
+    applied = 0
+    for item in items:
+        try:
+            if applied == 0:
+                push_undo(data, "Tillämpa LLM-HP")
+            adjust_hp(data, item["lag"], int(item["delta"]), item.get("orsak") or "LLM-förslag")
+            applied += 1
+        except ValueError:
+            continue
+    if applied == 0:
+        raise ValueError("Kunde inte tillämpa någon HP-justering.")
+    forslag["hp_applied"] = True
+    store = dict(data.get("llm_forslag") or {})
+    store[str(forslag.get("runda") or data.get("runda") or 1)] = forslag
+    data["llm_forslag"] = store
+    append_gm_log(data, "llm", f"Tillämpade {applied} HP-justeringar från LLM")
+    return applied
+
+
+def apply_llm_milestones(data):
+    forslag = get_llm_forslag(data)
+    if not forslag:
+        raise ValueError("Inga LLM-förslag för den här rundan.")
+    if forslag.get("milestones_applied"):
+        raise ValueError("Milstolpeförslagen är redan tillämpade.")
+    items = list(forslag.get("milstolpar") or [])
+    if not items:
+        raise ValueError("Inga milstolpeförslag att tillämpa.")
+    applied = 0
+    for item in items:
+        try:
+            if applied == 0:
+                push_undo(data, "Tillämpa LLM-milstolpar")
+            add_backlog_spend(
+                data,
+                item["lag"],
+                item["uppgift"],
+                int(item["delta_hp"]),
+                item.get("fas"),
+                item.get("orsak") or "LLM-förslag",
+            )
+            applied += 1
+        except ValueError:
+            continue
+    if applied == 0:
+        raise ValueError("Kunde inte tillämpa någon milstolpe.")
+    forslag["milestones_applied"] = True
+    store = dict(data.get("llm_forslag") or {})
+    store[str(forslag.get("runda") or data.get("runda") or 1)] = forslag
+    data["llm_forslag"] = store
+    append_gm_log(data, "llm", f"Tillämpade {applied} milstolpeförslag från LLM")
+    return applied
+
+
+def _milestone_etikett(data, item):
+    try:
+        uppgift, fas = _find_backlog_task(
+            data, item.get("lag"), item.get("uppgift"), item.get("fas")
+        )
+        name = uppgift.get("namn") or item.get("uppgift")
+        if fas:
+            return f"{name} ({fas.get('namn')})"
+        return name
+    except ValueError:
+        return item.get("uppgift") or ""
+
+
+def llm_forslag_view(data, runda=None):
+    """Display-ready LLM suggestions for the current round, or None."""
+    forslag = get_llm_forslag(data, runda)
+    if not forslag:
+        return None
+    milstolpar = []
+    for item in forslag.get("milstolpar") or []:
+        row = dict(item)
+        row["etikett"] = _milestone_etikett(data, item)
+        milstolpar.append(row)
+    return {
+        "runda": forslag.get("runda"),
+        "importerad": forslag.get("importerad"),
+        "nyheter": list(forslag.get("nyheter") or []),
+        "hp": list(forslag.get("hp") or []),
+        "milstolpar": milstolpar,
+        "hp_applied": bool(forslag.get("hp_applied")),
+        "milestones_applied": bool(forslag.get("milestones_applied")),
+        "warnings": list(forslag.get("warnings") or []),
+    }
+
+
 def build_live_state(data):
     inbox = build_inbox(data)
     conflicts = [row for row in inbox if row["conflict"]]
@@ -715,6 +1233,7 @@ def build_live_state(data):
         "previous_label": f"{previous[0]} (runda {previous[1]})" if previous else None,
         "faser": FASER,
         "test_mode": bool(data.get("test_mode")),
+        "llm": llm_forslag_view(data),
     }
 
 

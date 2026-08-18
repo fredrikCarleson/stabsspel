@@ -59,6 +59,7 @@ Important keys include:
 * `gm_log`
 * `gm_undo`
 * `test_mode`
+* `llm_forslag` — per-round LLM suggestions; optional on older saves
 
 Important rules:
 
@@ -66,7 +67,7 @@ Important rules:
 * **Transfers use stored `aktuell` only. Government support is not transferable.**
 * `build_live_state` is the GM payload.
 * `build_public_state` is the projector payload. Never send inbox, `gm_log`, test mode, secret orders or other GM-only state to the projector.
-* News and headlines stay **outside** the app. LLM export is a copy step, not a CMS.
+* News headlines stay on paper for the studio. LLM export asks for JSON; paste/upload stores suggestions (`llm_forslag`). HP and milestones apply only after GM confirm. Do not send `llm_forslag` in `build_public_state`.
 * Code identifiers keep the existing mix such as `fas`, `runda`, `poang`, `regeringsstod`.
 * UI strings are Swedish. See the [ux-gui](../ux-gui/SKILL.md) skill.
 

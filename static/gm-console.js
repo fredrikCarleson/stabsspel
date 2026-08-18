@@ -443,7 +443,7 @@
     var row = btn.closest("tr");
     var cell = row && row.querySelector(".gm-inbox-activity");
     if (!cell) return;
-    cell = cell.parentNode;
+    cell = cell.closest("td") || cell.parentNode;
     editing = true;
     var team = btn.getAttribute("data-team");
     var index = btn.getAttribute("data-index");

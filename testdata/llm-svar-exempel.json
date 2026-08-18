@@ -1,0 +1,41 @@
+{
+  "runda": 1,
+  "nyheter": [
+    {
+      "rubrik": "Valmyndigheten tar första steget mot digital röstning",
+      "upplasning": "Alfa rapporterar att inloggning till valet nu finns som fungerande kedja i test. STT har öppnat sin testmiljö, men Bravo varnar för att väljarna fortfarande saknar en begriplig skärm att möta. I korridorerna sprids redan berättelsen om vem som egentligen äger valet.",
+      "lag": ["Alfa", "STT", "Bravo"]
+    },
+    {
+      "rubrik": "Kravspecifikation klar — designstrid väntar",
+      "upplasning": "Bravo har spikat kraven för den grafiska visningen av valet. Teamet säger att det är ansvarstagande. Kritikerna kallar det mer papper. Samtidigt hörs uppgifter om att någon försöker störa Alfas leveranskedja innan första demon.",
+      "lag": ["Bravo", "Alfa"]
+    }
+  ],
+  "hp": [
+    {
+      "lag": "Alfa",
+      "delta": -5,
+      "orsak": "Kampanj mot Bravo ger motreaktion i pressen."
+    },
+    {
+      "lag": "Bravo",
+      "delta": 5,
+      "orsak": "Tydliga krav stärker förtroendet för processen."
+    }
+  ],
+  "milstolpar": [
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_1",
+      "delta_hp": 10,
+      "orsak": "Inloggning val enligt order."
+    },
+    {
+      "lag": "Bravo",
+      "uppgift": "bravo_1_Krav",
+      "delta_hp": 10,
+      "orsak": "Kravfasen för grafisk visning."
+    }
+  ]
+}

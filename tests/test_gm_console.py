@@ -135,6 +135,7 @@ class TestGmConsole(unittest.TestCase):
         self.assertTrue(any(team["team"] == "Alfa" for team in state["backlog"]))
         inbox_row = next(row for row in state["inbox"] if row["team"] == "Alfa")
         self.assertIn("can_apply_backlog", inbox_row)
+        self.assertIn("backlog_estimated", inbox_row)
 
     def test_add_minutes_does_not_restart_elapsed(self):
         data = sample_game()
@@ -185,11 +186,65 @@ class TestGmConsoleHtml(unittest.TestCase):
             }
         }
         fragments = live_html_fragments("g1", build_live_state(data))
-        self.assertIn("Lägg +5 HP", fragments["inbox"])
+        self.assertIn("gm-inbox-team", fragments["inbox"])
+        self.assertIn("Öppna för laget", fragments["inbox"])
+        self.assertIn("Redigera", fragments["inbox"])
+        self.assertIn('aria-label="Ändra"', fragments["inbox"])
+        self.assertNotIn("Lägg +5 HP", fragments["inbox"])
         self.assertIn("gm-inbox-activity", fragments["inbox"])
         self.assertIn("5/15", fragments["backlog"])
-        self.assertIn("Ändra", fragments["inbox"])
-        self.assertIn("Öppna för laget", fragments["inbox"])
+
+        data["fas"] = "Diplomatifas"
+        fragments = live_html_fragments("g1", build_live_state(data))
+        self.assertIn("Lägg +5 HP", fragments["inbox"])
+        self.assertIn('class="success gm-mini"', fragments["inbox"])
+        self.assertNotIn("Öppna för laget", fragments["inbox"])
+        self.assertIn('gm-inbox-hp-est">/ 15', fragments["inbox"])
+
+    def test_inbox_groups_team_actions_once(self):
+        from gm_console_ui import live_html_fragments
+        from gm_console import build_live_state
+
+        data = sample_game()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [
+                            {
+                                "aktivitet": "Inloggning val",
+                                "syfte": "klar",
+                                "hp": 10,
+                                "typ": "bygga",
+                                "paverkar": ["Alfa"],
+                                "backlog_selected": "alfa_1",
+                            },
+                            {
+                                "aktivitet": "API",
+                                "syfte": "snabbare",
+                                "hp": 8,
+                                "typ": "bygga",
+                                "paverkar": ["STT"],
+                            },
+                        ]
+                    },
+                }
+            }
+        }
+        inbox = live_html_fragments("g1", build_live_state(data))["inbox"]
+        self.assertEqual(inbox.count('class="gm-inbox-team"'), 1)
+        self.assertEqual(inbox.count("Öppna för laget"), 1)
+        self.assertEqual(inbox.count(">Redigera</a>"), 1)
+        self.assertEqual(inbox.count("gm-inbox-activity-row"), 2)
+        self.assertNotIn("Lägg +", inbox)
+
+        data["fas"] = "Diplomatifas"
+        dip = live_html_fragments("g1", build_live_state(data))["inbox"]
+        self.assertEqual(dip.count("Lägg +10 HP"), 1)
+        self.assertNotIn("Öppna för laget", dip)
+        self.assertIn("gm-type-tag is-build", dip)
 
     def test_admin_order_form_has_back_to_console(self):
         from team_order_routes import TEAM_ORDER_TEMPLATE
@@ -372,6 +427,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         data["fas"] = "Diplomatifas"
         html = create_gm_console_html("g1", data)
         self.assertIn("Kopiera ordrar till LLM", html)
+        self.assertIn("Importera LLM-svar", html)
         self.assertIn("Nästa: Resultatfas", html)
         self.assertIn('value="prev_fas" class="secondary"', html)
         self.assertNotIn('value="prev_fas" class="secondary" disabled', html)
@@ -430,6 +486,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Ange order", html)
         self.assertIn('class="gm-autofill" hidden', html)
         self.assertNotIn("cheat-link", html)
+        self.assertNotIn("Importera LLM-svar", html)
 
         data["test_mode"] = True
         html = create_gm_console_html("g1", data)
@@ -460,13 +517,33 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Redigera order", html)
         self.assertIn("Ändra", html)
         fragments = live_html_fragments("g1", build_live_state(data))
-        self.assertIn("Redigera order", fragments["inbox"])
-        self.assertIn("Ändra", fragments["inbox"])
+        self.assertIn(">Redigera</a>", fragments["inbox"])
+        self.assertIn('aria-label="Ändra"', fragments["inbox"])
+        self.assertNotIn("Öppna för laget", fragments["inbox"])
         self.assertIn('class="gm-autofill" hidden', fragments["inbox"])
 
         data["fas"] = "Resultatfas"
         html = create_gm_console_html("g1", data)
         self.assertNotIn("Redigera order", html)
+
+    def test_llm_suggestions_render_after_import(self):
+        from gm_console import import_llm_forslag
+        from gm_console_ui import create_gm_console_html
+
+        example = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "testdata",
+            "llm-svar-exempel.json",
+        )
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        with open(example, encoding="utf-8") as handle:
+            import_llm_forslag(data, handle.read())
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Valmyndigheten tar första steget", html)
+        self.assertIn("Tillämpa HP", html)
+        self.assertIn("Tillämpa milstolpar", html)
+        self.assertIn("Kopiera nyheter till papper", html)
 
 
 if __name__ == "__main__":
