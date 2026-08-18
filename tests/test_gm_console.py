@@ -22,6 +22,7 @@ from gm_console import (
     transfer_hp,
 )
 from models import get_phase_timer
+from gm_console_ui import create_projector_html
 
 
 def sample_game():
@@ -67,6 +68,23 @@ class TestGmConsole(unittest.TestCase):
         data = apply_previous_phase(data)
         self.assertEqual(data["fas"], "Orderfas")
         self.assertEqual(data["runda"], 1)
+
+    def test_gm_javascript_defines_its_poll_interval(self):
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "static",
+            "gm-console.js",
+        )
+        with open(path, encoding="utf-8") as handle:
+            script = handle.read()
+        self.assertRegex(script, r"var\s+POLL_MS\s*=\s*[1-9][0-9]*\s*;")
+
+    def test_projector_json_cannot_close_its_script_element(self):
+        data = sample_game()
+        data["fas"] = "</script><script>alert('x')</script>"
+        html = create_projector_html("g1", data)
+        self.assertNotIn("</script><script>alert('x')</script>", html)
+        self.assertIn("\\u003c/script", html)
 
     def test_new_round_from_result(self):
         data = sample_game()

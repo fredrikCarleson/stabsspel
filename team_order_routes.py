@@ -3,14 +3,65 @@ Team order entry routes for Stabsspel
 Handles team-specific order entry with authorization and mobile-responsive design
 """
 
-from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response
-from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG
+from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response, g
+from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG, game_lock_for
 from admin_routes import create_team_overview, check_admin_session
 from gm_console import can_submit_orders, can_withdraw_orders, validate_order_hp, withdraw_order
 import json
 import time
 
 team_order_bp = Blueprint('team_order', __name__)
+
+
+@team_order_bp.before_request
+def lock_team_game_mutation():
+    """Keep team order read-modify-write operations atomic per game."""
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    spel_id = (request.view_args or {}).get("spel_id")
+    if not spel_id:
+        return None
+    lock = game_lock_for(spel_id)
+    lock.acquire()
+    g._team_game_mutation_lock = lock
+    return None
+
+
+@team_order_bp.teardown_request
+def unlock_team_game_mutation(_error=None):
+    lock = getattr(g, "_team_game_mutation_lock", None)
+    if lock is not None:
+        del g._team_game_mutation_lock
+        lock.release()
+
+
+def _merge_server_activity_fields(existing_record, order_data):
+    """Preserve server-owned apply/ref metadata when a browser saves again."""
+    previous = ((existing_record or {}).get("orders") or {}).get("activities") or []
+    by_id = {
+        str(item.get("id")): item
+        for item in previous
+        if isinstance(item, dict) and item.get("id") is not None
+    }
+    for item in (order_data or {}).get("activities") or []:
+        if not isinstance(item, dict):
+            continue
+        item.pop("_order_ref", None)
+        item.pop("backlog_applied", None)
+        old = by_id.get(str(item.get("id"))) if item.get("id") is not None else None
+        if not old:
+            continue
+        for key in ("_order_ref", "backlog_applied"):
+            if key in old:
+                item[key] = old[key]
+    return order_data
+
+
+def _has_meaningful_activity(order_data):
+    return any(
+        isinstance(item, dict) and str(item.get("aktivitet") or "").strip()
+        for item in (order_data or {}).get("activities") or []
+    )
 
 
 def format_time(seconds):
@@ -182,6 +233,7 @@ def team_save_order(spel_id, token):
     admin_edit = request.args.get("admin_edit") == "true" and check_admin_session(spel_id)
     if existing.get("final") and not admin_edit:
         return jsonify({"success": False, "error": "Order already submitted"}), 403
+    order_data = _merge_server_activity_fields(existing, order_data)
 
     # Save order data
     saved = {
@@ -242,15 +294,26 @@ def team_submit_order(spel_id, token):
     if orders_key not in data["team_orders"]:
         data["team_orders"][orders_key] = {}
     
+    existing = data["team_orders"][orders_key].get(team_name, {})
+    admin_edit = request.args.get("admin_edit") == "true" and check_admin_session(spel_id)
+    if existing.get("final") and not admin_edit:
+        return jsonify({"success": False, "error": "Order already submitted"}), 403
+    if not _has_meaningful_activity(order_data):
+        return jsonify({"success": False, "error": "Order must contain an activity"}), 400
+    order_data = _merge_server_activity_fields(existing, order_data)
+
     # Save final order data
-    data["team_orders"][orders_key][team_name] = {
-        "submitted_at": time.time(),
+    saved = {
+        "submitted_at": existing.get("submitted_at") or time.time(),
         "updated_at": time.time(),
         "phase": data["fas"],
         "round": data["runda"],
         "orders": order_data,
         "final": True
     }
+    if admin_edit:
+        saved["edited_by_gm"] = True
+    data["team_orders"][orders_key][team_name] = saved
     
     # Save to file
     try:
@@ -1253,7 +1316,7 @@ TEAM_ORDER_TEMPLATE = """
                 timestamp: new Date().toISOString()
             };
             
-            const url = isFinal ? '/team/{{ spel_id }}/{{ token }}/submit_order' : '/team/{{ spel_id }}/{{ token }}/save_order';
+            const url = (isFinal ? '/team/{{ spel_id }}/{{ token }}/submit_order' : '/team/{{ spel_id }}/{{ token }}/save_order'){% if is_admin_edit %} + '?admin_edit=true'{% endif %};
             const maxRetries = 3;
             
             fetch(url, {

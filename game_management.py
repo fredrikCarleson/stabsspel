@@ -5,7 +5,7 @@ This module contains functions for managing game data and operations.
 
 import os
 import json
-from models import DATA_DIR, save_game_data, load_game_data
+from models import DATA_DIR, save_game_data, load_game_data, game_lock_for
 
 
 def save_checkbox_state(spel_id, checkbox_id, checked):
@@ -56,12 +56,17 @@ def delete_game(spel_id):
     """
     try:
         filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
-        if os.path.exists(filnamn):
-            os.remove(filnamn)
-            print(f"Successfully deleted game file: {filnamn}")
-            return True
-        print(f"Game file not found: {filnamn}")
-        return False
+        removed = False
+        with game_lock_for(spel_id):
+            for path in (filnamn, filnamn + ".backup"):
+                if os.path.exists(path):
+                    os.remove(path)
+                    removed = True
+        if removed:
+            print(f"Successfully deleted game files for: {spel_id}")
+        else:
+            print(f"Game file not found: {filnamn}")
+        return removed
     except Exception as e:
         print(f"Error deleting game {spel_id}: {e}")
         raise
@@ -80,4 +85,4 @@ def nollstall_regeringsstod(data):
     if "poang" in data:
         for lag in data["poang"]:
             data["poang"][lag]["regeringsstod"] = False
-    return data 
+    return data

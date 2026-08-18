@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string, make_response, session
+from flask import Blueprint, request, redirect, url_for, jsonify, render_template_string, make_response, session, g
 from markupsafe import Markup, escape
 import os
 import json
@@ -7,7 +7,7 @@ from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
     check_game_password, is_game_session_valid, create_game_session, refresh_game_session, get_phase_timer, is_declaration_period,
-    list_saved_games, clone_backlog_for_teams
+    list_saved_games, clone_backlog_for_teams, game_lock_for, generate_game_id
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
@@ -45,9 +45,30 @@ admin_bp = Blueprint('admin', __name__)
 PUBLIC_ADMIN_ENDPOINTS = {
     "admin.admin_start",
     "admin.admin_panel",
-    "admin.admin_live",
     "admin.upload_game",
 }
+
+
+@admin_bp.before_request
+def lock_admin_game_mutation():
+    """Serialize each game's complete read-modify-write HTTP mutation."""
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    spel_id = (request.view_args or {}).get("spel_id")
+    if not spel_id:
+        return None
+    lock = game_lock_for(spel_id)
+    lock.acquire()
+    g._admin_game_mutation_lock = lock
+    return None
+
+
+@admin_bp.teardown_request
+def unlock_admin_game_mutation(_error=None):
+    lock = getattr(g, "_admin_game_mutation_lock", None)
+    if lock is not None:
+        del g._admin_game_mutation_lock
+        lock.release()
 
 def check_admin_session(spel_id):
     """Kontrollera om admin har giltig session för spelet"""
@@ -1849,12 +1870,13 @@ def admin_reset(spel_id):
         return "Spelet hittades inte.", 404
     with open(filnamn, encoding="utf-8") as f:
         data = json.load(f)
-    push_undo(data, "Återställ spel")
+    push_undo(data, "Återställ spel", include_resolution=True)
     data["runda"] = 1
     data["fas"] = "Orderfas"
     data["timer_status"] = "stopped"
     data["timer_start"] = None
     data["timer_elapsed"] = 0
+    data["timer_bonus"] = 0
     data["avslutat"] = False
     data["fashistorik"] = init_fashistorik_v2()
     # Nollställ handlingspoäng och regeringsstöd, sätt rätt basvärde från TEAMS
@@ -1872,6 +1894,10 @@ def admin_reset(spel_id):
     # Nollställ team orders
     if "team_orders" in data:
         data["team_orders"] = {}
+
+    # Gamla AI-slag och importerade förslag hör till den tidigare spelomgången.
+    data["llm_resolution"] = {}
+    data["llm_forslag"] = {}
     
     # Rensa fas_start_time
     if "fas_start_time" in data:
@@ -2778,9 +2804,8 @@ def upload_game():
                 if field not in game_data:
                     return f"Invalid game file: missing field '{field}'", 400
             
-            # Generate new ID to avoid conflicts
-            import time
-            new_id = f"{int(time.time())}"
+            # Generate a fresh ID so rapid/concurrent imports cannot overwrite each other.
+            new_id = generate_game_id()
             game_data['id'] = new_id
             game_data['spel_id'] = new_id
             

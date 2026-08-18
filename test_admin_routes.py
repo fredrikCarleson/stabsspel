@@ -349,7 +349,10 @@ class TestAdminRoutes(unittest.TestCase):
                 with patch('models.DATA_DIR', self.test_data_dir):
                     # Verify game file exists before deletion
                     game_file = os.path.join(self.test_data_dir, f"game_{self.test_spel_id}.json")
+                    backup_file = game_file + ".backup"
+                    shutil.copyfile(game_file, backup_file)
                     self.assertTrue(os.path.exists(game_file))
+                    self.assertTrue(os.path.exists(backup_file))
                     self.login_admin()
                     
                     response = self.app.post(
@@ -361,6 +364,7 @@ class TestAdminRoutes(unittest.TestCase):
                     self.assertIn(b'Spelet har tagits bort', response.data)
                     self.assertNotIn(b'Stabsspel Admin', response.data)
                     self.assertFalse(os.path.exists(game_file))
+                    self.assertFalse(os.path.exists(backup_file))
 
     def test_delete_game_json_stays_on_page(self):
         """AJAX delete returns JSON and does not redirect to /admin."""

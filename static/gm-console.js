@@ -4,6 +4,7 @@
  */
 
 (function () {
+  var POLL_MS = 3000;
   var GM_WARN_S = 300;
   var GM_DANGER_S = 60;
   var CHIP_LABELS = {

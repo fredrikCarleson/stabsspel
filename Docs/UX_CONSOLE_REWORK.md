@@ -126,7 +126,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=27`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=27`, JS `gm-console.js?v=11`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 

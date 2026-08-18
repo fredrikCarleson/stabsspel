@@ -18,6 +18,16 @@ def _fmt_time(seconds):
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 
+def _json_for_script(value):
+    """Serialize JSON without allowing data to terminate a script element."""
+    return (
+        json.dumps(value, ensure_ascii=False)
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
+
+
 CHIP_LABELS = {
     "empty": "Saknas",
     "draft": "Utkast",
@@ -619,7 +629,7 @@ def create_gm_console_html(spel_id, data, llm_import=None):
     test_checked = "checked" if test_mode else ""
     test_class = "is-on" if test_mode else ""
 
-    state_json = json.dumps({
+    state_json = _json_for_script({
         "spel_id": spel_id,
         "remaining": remaining,
         "timer_status": timer_status,
@@ -627,7 +637,7 @@ def create_gm_console_html(spel_id, data, llm_import=None):
         "runda": runda,
         "avslutat": avslutat,
         "test_mode": bool(test_mode),
-    }, ensure_ascii=False)
+    })
 
     return f'''
     <div class="gm-console" id="gm-console">
@@ -1106,7 +1116,7 @@ def create_projector_html(spel_id, data):
     progress_html = _projector_progress_html(state.get("progress") or [])
     ended = " Spelet är slut." if state["avslutat"] else ""
     clock_class = _projector_clock_class(state["remaining"])
-    state_json = json.dumps({"spel_id": spel_id, **state}, ensure_ascii=False)
+    state_json = _json_for_script({"spel_id": spel_id, **state})
     return f'''<!DOCTYPE html>
 <html lang="sv">
 <head>

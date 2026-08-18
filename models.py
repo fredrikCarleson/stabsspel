@@ -20,9 +20,16 @@ def _save_lock_for(spel_id):
     with _save_locks_guard:
         lock = _save_locks.get(spel_id)
         if lock is None:
-            lock = threading.Lock()
+            # Request handlers hold this lock across load -> mutate -> save.
+            # save_game_data also takes it, so it must be re-entrant.
+            lock = threading.RLock()
             _save_locks[spel_id] = lock
         return lock
+
+
+def game_lock_for(spel_id):
+    """Return the per-game lock used to serialize read-modify-write mutations."""
+    return _save_lock_for(str(spel_id))
 
 TEAMS = [
     ("Alfa", 25),
@@ -503,9 +510,14 @@ def save_game_data(spel_id, data):
         print(f"Error saving game data for {spel_id}: {last_error}")
         raise last_error
 
+def generate_game_id():
+    """Return a readable ID with enough entropy to avoid same-second collisions."""
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    return f"{timestamp}-{secrets.token_hex(8)}"
+
+
 def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min, password=None):
-    spel_id = datetime.now().strftime("%Y%m%d%H%M%S")
-    filnamn = os.path.join(DATA_DIR, f"game_{spel_id}.json")
+    spel_id = generate_game_id()
     
     lag = suggest_teams(antal_spelare)
     backlog_data = clone_backlog_for_teams(lag)
@@ -547,8 +559,7 @@ def skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min,
     for lag_namn in lag:
         bas_hp = get_team_base_hp(lag_namn, data)
         data["poang"][lag_namn] = {"bas": bas_hp, "aktuell": bas_hp, "regeringsstod": False}
-    with open(filnamn, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    save_game_data(spel_id, data)
     return spel_id
 
 def init_fashistorik_v2():
@@ -619,4 +630,4 @@ def get_team_by_token(spel_id, token):
                 return team_name
         return None
     except:
-        return None 
+        return None

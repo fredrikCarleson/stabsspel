@@ -7,7 +7,9 @@ They do not render the GUI.
 """
 import time
 import json
+import tempfile
 import unittest
+from datetime import datetime as real_datetime
 from unittest.mock import patch
 import os
 import sys
@@ -68,6 +70,7 @@ from models import (
     is_game_session_valid,
     is_large_game,
     refresh_game_session,
+    skapa_nytt_spel,
     suggest_teams,
     verify_password,
 )
@@ -91,6 +94,20 @@ class TestPhaseMachine(unittest.TestCase):
         data = create_game_state(fas="Resultatfas")
         with self.assertRaises(ValueError):
             apply_next_phase(data)
+
+    def test_ended_game_does_not_accept_orders_even_in_order_phase(self):
+        self.assertFalse(can_submit_orders(create_game_state(avslutat=True)))
+
+    def test_empty_draft_is_not_auto_submitted_on_phase_change(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([], final=False),
+            }
+        }
+        apply_next_phase(data)
+        self.assertFalse(data["team_orders"]["orders_round_1"]["Alfa"].get("final"))
+        self.assertIn("Alfa", missing_order_teams(data))
 
     def test_refuses_a_fifth_round(self):
         data = create_game_state(fas="Resultatfas", runda=MAX_RUNDA)
@@ -384,6 +401,26 @@ class TestBacklogSpend(unittest.TestCase):
         add_backlog_spend(data, "Alfa", "alfa_1", -20)
         self.assertEqual(data["backlog"]["Alfa"][0]["spenderade_hp"], 0)
         self.assertFalse(data["backlog"]["Alfa"][0]["slutford"])
+
+    def test_spend_never_exceeds_task_total(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 100)
+        self.assertEqual(data["backlog"]["Alfa"][0]["spenderade_hp"], 15)
+        self.assertTrue(data["backlog"]["Alfa"][0]["slutford"])
+
+    def test_bravo_phase_spend_never_exceeds_phase_total(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Bravo", "bravo_1_Krav", 100)
+        krav = data["backlog"]["Bravo"][0]["faser"][0]
+        self.assertEqual(krav["spenderade_hp"], 10)
+        self.assertTrue(krav["slutford"])
+
+    def test_recurring_task_progress_is_capped_per_occurrence(self):
+        data = create_game_state()
+        add_backlog_spend(data, "STT", "stt_4", 100)
+        task = next(item for item in data["backlog"]["STT"] if item["id"] == "stt_4")
+        self.assertEqual(task["spenderade_hp"], 10)
+        self.assertFalse(task["slutford"])
 
     def test_bravo_phase_completes_only_when_all_phases_are_done(self):
         data = create_game_state()
@@ -796,6 +833,23 @@ class TestLlmResolution(unittest.TestCase):
         self.assertEqual(rolls["Alfa-1"], 40)
         self.assertEqual(rolls["Alfa-2"], 81)
 
+    def test_deleting_an_activity_does_not_move_existing_order_refs(self):
+        data = create_game_state()
+        first = activity(name="A", hp=5, id=101)
+        second = activity(name="B", hp=5, id=202)
+        self._submit(data, "Alfa", [first, second])
+        ensure_round_rolls(data, randint=iter([40, 60]).__next__)
+
+        third = activity(name="C", hp=5, id=303)
+        self._submit(data, "Alfa", [second, third])
+        ensure_round_rolls(data, randint=lambda: 81)
+
+        self.assertEqual(current_order_refs(data), ["Alfa-2", "Alfa-3"])
+        self.assertEqual(
+            get_round_rolls(data),
+            {"Alfa-1": 40, "Alfa-2": 60, "Alfa-3": 81},
+        )
+
     def test_second_round_gets_independent_rolls(self):
         data = create_game_state()
         self._submit(data, "Alfa", [activity(name="A", hp=5)], runda=1)
@@ -815,6 +869,11 @@ class TestLlmResolution(unittest.TestCase):
         data, _label = apply_undo(data)
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
         self.assertEqual(get_round_rolls(data), {"Alfa-1": 55})
+        ensure_round_rolls(
+            data,
+            randint=lambda: self.fail("undo försökte skapa ett nytt slag"),
+        )
+        self.assertEqual(current_order_refs(data), ["Alfa-1"])
 
     def test_valid_utfall_is_accepted(self):
         data = create_game_state()
@@ -851,6 +910,23 @@ class TestLlmResolution(unittest.TestCase):
         live = build_live_state(data)
         self.assertIsNone(live.get("llm"))
 
+    def test_old_rolls_without_activity_refs_are_reused(self):
+        data = create_game_state()
+        self._submit(
+            data,
+            "Alfa",
+            [activity(name="A", hp=5), activity(name="B", hp=5)],
+        )
+        data["llm_resolution"] = {
+            "1": {"rolls": {"Alfa-1": 12, "Alfa-2": 34}, "result": None}
+        }
+        ensure_round_rolls(
+            data,
+            randint=lambda: self.fail("ett gammalt fryst slag ersattes"),
+        )
+        self.assertEqual(current_order_refs(data), ["Alfa-1", "Alfa-2"])
+        self.assertEqual(get_round_rolls(data), {"Alfa-1": 12, "Alfa-2": 34})
+
     def test_rejects_probability_out_of_range(self):
         data = create_game_state()
         self._submit(data)
@@ -871,6 +947,18 @@ class TestLlmResolution(unittest.TestCase):
             parse_llm_forslag(json.dumps({"utfall": [self._utfall(lag="Narnia")]}), data)
         with self.assertRaises(ValueError):
             parse_llm_forslag(json.dumps({"utfall": [self._utfall(order_ref="Alfa-9")]}), data)
+
+    def test_rejects_team_that_does_not_own_order_ref(self):
+        data = create_game_state()
+        self._submit(data)
+        ensure_round_rolls(data, randint=lambda: 44)
+        with self.assertRaises(ValueError) as ctx:
+            parse_llm_forslag(
+                json.dumps({"utfall": [self._utfall(lag="Bravo")]}),
+                data,
+            )
+        self.assertIn("Alfa-1", str(ctx.exception))
+        self.assertIn("Alfa", str(ctx.exception))
 
     def test_rejects_llm_invented_roll(self):
         data = create_game_state()
@@ -1019,6 +1107,20 @@ class TestLlmDeterministicBacklog(unittest.TestCase):
         apply_llm_milestones(data)
         task = next(item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_3")
         self.assertEqual(task["spenderade_hp"], 20)
+
+    def test_milestone_suggestion_is_clamped_to_remaining_hp(self):
+        data = create_game_state()
+        add_backlog_spend(data, "Alfa", "alfa_1", 12)
+        parsed = parse_llm_forslag(json.dumps({
+            "utfall": [],
+            "milstolpar": [{
+                "lag": "Alfa",
+                "uppgift": "alfa_1",
+                "delta_hp": 10,
+            }],
+        }), data)
+        self.assertEqual(parsed["milstolpar"][0]["delta_hp"], 3)
+        self.assertTrue(parsed["warnings"])
 
     def test_backlog_plus_contested_outcome_keeps_progress_and_optional_delmal(self):
         data = create_game_state()
@@ -1321,6 +1423,22 @@ class TestSessionAndPassword(unittest.TestCase):
         session["timestamp"] = time.time() - SESSION_TIMEOUT_SECONDS + 10
         refresh_game_session(session)
         self.assertTrue(is_game_session_valid("g1", session))
+
+
+class TestGameCreation(unittest.TestCase):
+    def test_two_games_created_in_same_second_do_not_overwrite_each_other(self):
+        fixed_now = real_datetime(2025, 1, 2, 3, 4, 5)
+        with tempfile.TemporaryDirectory() as data_dir, \
+                patch("models.DATA_DIR", data_dir), \
+                patch("models.datetime") as mocked_datetime, \
+                patch("models.secrets.token_hex", side_effect=["aaaa", "bbbb"]):
+            mocked_datetime.now.return_value = fixed_now
+            first = skapa_nytt_spel("2025-01-02", "A", 20, 10, 10)
+            second = skapa_nytt_spel("2025-01-02", "B", 20, 10, 10)
+
+            self.assertNotEqual(first, second)
+            self.assertTrue(os.path.exists(os.path.join(data_dir, f"game_{first}.json")))
+            self.assertTrue(os.path.exists(os.path.join(data_dir, f"game_{second}.json")))
 
 
 if __name__ == "__main__":

@@ -109,7 +109,10 @@ def get_previous_phase(current_fas, runda):
 
 def can_submit_orders(data):
     """Orders may be saved during Orderfas and Diplomatifas, not Resultatfas."""
-    return data.get("fas") in ("Orderfas", "Diplomatifas")
+    return (
+        data.get("fas") in ("Orderfas", "Diplomatifas")
+        and not data.get("avslutat")
+    )
 
 
 def validate_order_hp(data, team_name, order_data):
@@ -148,14 +151,19 @@ def auto_submit_unsaved_orders(data, current_round=None):
         return data
     now = time.time()
     for team_orders in round_orders.values():
-        if team_orders and not team_orders.get("final", False):
+        activities = ((team_orders or {}).get("orders") or {}).get("activities") or []
+        has_content = any(
+            isinstance(item, dict) and str(item.get("aktivitet") or "").strip()
+            for item in activities
+        )
+        if team_orders and has_content and not team_orders.get("final", False):
             team_orders["final"] = True
             team_orders["auto_submitted"] = True
             team_orders["submitted_at"] = now
     return data
 
 
-def push_undo(data, action):
+def push_undo(data, action, include_resolution=False):
     """Snapshot current state before a mutation.
 
     Dice in ``llm_resolution`` are excluded so ordinary undo cannot reroll.
@@ -164,9 +172,48 @@ def push_undo(data, action):
         k: copy.deepcopy(v) for k, v in data.items() if k not in UNDO_KEEP_KEYS
     }
     stack = data.setdefault("gm_undo", [])
-    stack.append({"action": action, "at": time.time(), "state": snapshot})
+    entry = {"action": action, "at": time.time(), "state": snapshot}
+    if include_resolution:
+        if "llm_resolution" in data:
+            snapshot["llm_resolution"] = copy.deepcopy(data["llm_resolution"])
+        entry["restore_resolution"] = True
+    stack.append(entry)
     data["gm_undo"] = stack[-UNDO_LIMIT:]
     return data
+
+
+def _preserve_frozen_order_refs(source, restored):
+    """Copy server-assigned refs into an undo snapshot that predates export."""
+    source_rounds = source.get("team_orders") or {}
+    restored_rounds = restored.get("team_orders") or {}
+    for round_key, restored_teams in restored_rounds.items():
+        source_teams = source_rounds.get(round_key) or {}
+        if not isinstance(restored_teams, dict):
+            continue
+        for team, restored_record in restored_teams.items():
+            source_record = source_teams.get(team) or {}
+            source_activities = (
+                (source_record.get("orders") or {}).get("activities") or []
+            )
+            restored_activities = (
+                ((restored_record or {}).get("orders") or {}).get("activities") or []
+            )
+            source_by_id = {
+                str(item.get("id")): item
+                for item in source_activities
+                if isinstance(item, dict) and item.get("id") is not None
+            }
+            for index, activity in enumerate(restored_activities):
+                if not isinstance(activity, dict):
+                    continue
+                current = None
+                if activity.get("id") is not None:
+                    current = source_by_id.get(str(activity.get("id")))
+                if current is None and index < len(source_activities):
+                    current = source_activities[index]
+                ref = (current or {}).get("_order_ref") if isinstance(current, dict) else None
+                if ref:
+                    activity["_order_ref"] = ref
 
 
 def apply_undo(data):
@@ -177,11 +224,13 @@ def apply_undo(data):
     frozen_resolution = copy.deepcopy(data.get("llm_resolution"))
     entry = stack.pop()
     restored = copy.deepcopy(entry.get("state") or {})
+    _preserve_frozen_order_refs(data, restored)
     restored["gm_undo"] = stack
-    if frozen_resolution is not None:
-        restored["llm_resolution"] = frozen_resolution
-    else:
-        restored.pop("llm_resolution", None)
+    if not entry.get("restore_resolution"):
+        if frozen_resolution is not None:
+            restored["llm_resolution"] = frozen_resolution
+        else:
+            restored.pop("llm_resolution", None)
     return restored, entry.get("action") or "Ångra"
 
 
@@ -560,7 +609,7 @@ def _mark_backlog_complete(uppgift, fas=None):
 
 
 def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
-    """Add (or subtract) spent HP on a backlog task. Never goes below 0."""
+    """Add/subtract backlog HP, clamped to 0..total for finite tasks."""
     if team not in (data.get("lag") or []):
         raise ValueError(f"Okänt lag: {team}")
     amount = int(amount)
@@ -569,18 +618,24 @@ def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
     uppgift, fas = _find_backlog_task(data, team, task_id, phase)
     target = fas if fas is not None else uppgift
     current = int(target.get("spenderade_hp") or 0)
-    target["spenderade_hp"] = max(0, current + amount)
+    updated = max(0, current + amount)
+    estimated = max(0, int(target.get("estimaterade_hp") or 0))
+    updated = min(estimated, updated)
+    if updated == current:
+        raise ValueError("Backlog-uppgiften kan inte ändras mer i den riktningen")
+    target["spenderade_hp"] = updated
     _mark_backlog_complete(uppgift, fas)
     label = uppgift.get("namn") or task_id
     if fas is not None:
         label = f"{label} ({fas.get('namn')})"
-    sign = "+" if amount >= 0 else ""
+    applied_amount = updated - current
+    sign = "+" if applied_amount >= 0 else ""
     actor = log_actor or team
     append_gm_log(
         data,
         "backlog",
-        f"{actor}: {sign}{amount} HP på {team} / {label}. Nu {target['spenderade_hp']}.",
-        {"team": team, "task_id": uppgift.get("id"), "amount": amount},
+        f"{actor}: {sign}{applied_amount} HP på {team} / {label}. Nu {target['spenderade_hp']}.",
+        {"team": team, "task_id": uppgift.get("id"), "amount": applied_amount},
     )
     return data
 
@@ -848,6 +903,49 @@ def make_order_ref(team, index):
     return f"{team}-{int(index)}"
 
 
+def _ensure_activity_order_refs(data, team, activities):
+    """Assign immutable per-round refs while retaining rolls for deleted orders."""
+    prefix = f"{team}-"
+    rolls = (get_round_resolution(data) or {}).get("rolls") or {}
+    reserved = {
+        ref for ref in rolls
+        if isinstance(ref, str) and ref.startswith(prefix)
+    }
+    seen = set()
+    pattern = re.compile(rf"^{re.escape(team)}-([1-9][0-9]*)$")
+
+    for activity in activities:
+        if not isinstance(activity, dict):
+            continue
+        ref = str(activity.get("_order_ref") or "").strip()
+        if not pattern.fullmatch(ref) or ref in seen:
+            activity.pop("_order_ref", None)
+            continue
+        seen.add(ref)
+
+    # Backwards compatibility: older saves have index-based rolls but did not
+    # persist the corresponding ref on each activity.
+    for index, activity in enumerate(activities, 1):
+        if not isinstance(activity, dict) or activity.get("_order_ref"):
+            continue
+        legacy_ref = make_order_ref(team, index)
+        if legacy_ref in reserved and legacy_ref not in seen:
+            activity["_order_ref"] = legacy_ref
+            seen.add(legacy_ref)
+
+    unavailable = reserved | seen
+    next_index = 1
+    for activity in activities:
+        if not isinstance(activity, dict) or activity.get("_order_ref"):
+            continue
+        while make_order_ref(team, next_index) in unavailable:
+            next_index += 1
+        ref = make_order_ref(team, next_index)
+        activity["_order_ref"] = ref
+        unavailable.add(ref)
+        next_index += 1
+
+
 def _round_orders_map(data, all_orders=None):
     if all_orders is not None:
         return all_orders
@@ -864,8 +962,9 @@ def iter_submitted_orders(data, all_orders=None):
         if not record.get("final"):
             continue
         activities = (record.get("orders") or {}).get("activities") or []
+        _ensure_activity_order_refs(data, team, activities)
         for index, activity in enumerate(activities, 1):
-            yield team, index, make_order_ref(team, index), activity
+            yield team, index, activity.get("_order_ref"), activity
 
 
 def current_order_refs(data, all_orders=None):
@@ -1267,6 +1366,13 @@ def parse_llm_forslag(raw, data):
         except ValueError as exc:
             warnings.append(str(exc))
             continue
+        delta_hp, clamp_warning = _clamp_milestone_delta(
+            data, resolved_team, task_id, fas, delta_hp
+        )
+        if clamp_warning:
+            warnings.append(clamp_warning)
+        if delta_hp <= 0:
+            continue
         milstolpar.append({
             "lag": resolved_team,
             "uppgift": task_id,
@@ -1314,7 +1420,11 @@ def parse_utfall_items(raw_items, data):
         raise ValueError("utfall måste vara en lista.")
     if not raw_items:
         return []
-    known_refs = set(current_order_refs(data))
+    known_orders = {
+        ref: (team, activity)
+        for team, _index, ref, activity in iter_submitted_orders(data)
+    }
+    known_refs = set(known_orders)
     rolls = get_round_rolls(data)
     teams = list(data.get("lag") or [])
     parsed = []
@@ -1335,6 +1445,11 @@ def parse_utfall_items(raw_items, data):
         if order_ref not in known_refs:
             raise ValueError(
                 f"Okänd order_ref {order_ref}. Finns inte bland rundans inskickade order."
+            )
+        owner, _activity = known_orders[order_ref]
+        if team != owner:
+            raise ValueError(
+                f"order_ref {order_ref} tillhör {owner}, inte {team}."
             )
         sannolikhet = _require_int(item.get("sannolikhet"), f"sannolikhet för {order_ref}", 10, 90)
         slump = _require_int(item.get("slump"), f"slump för {order_ref}", 1, 100)
@@ -1403,6 +1518,24 @@ def _resolve_milestone_ref(data, team, uppgift, fas=None):
     if len(matches) > 1:
         raise ValueError(f"Flera milstolpar matchade {raw}")
     raise ValueError(f"Hittade ingen milstolpe för {team or '?'}: {raw}")
+
+
+def _clamp_milestone_delta(data, team, task_id, phase, requested):
+    """Cap finite milestone suggestions at the task's remaining HP."""
+    uppgift, fas = _find_backlog_task(data, team, task_id, phase)
+    target = fas if fas is not None else uppgift
+    estimated = max(0, int(target.get("estimaterade_hp") or 0))
+    spent = max(0, int(target.get("spenderade_hp") or 0))
+    remaining = max(0, estimated - spent)
+    clamped = min(int(requested), remaining)
+    if clamped == int(requested):
+        return clamped, None
+    label = task_id + (f"_{phase}" if phase else "")
+    return (
+        clamped,
+        f"Milstolpe {label} begränsades från {requested} till {clamped} HP "
+        f"eftersom {remaining} HP återstår.",
+    )
 
 
 def import_llm_forslag(data, raw):

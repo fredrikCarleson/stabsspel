@@ -119,7 +119,8 @@ flowchart TB
 
 - **Python** 3.12 (`runtime.txt`), **Flask** 3.x, **Gunicorn** in production (`Procfile` → `wsgi:app`).
 - **Persistence:** `speldata/game_<spel_id>.json` (gitignored). Atomic write: temp file → `os.replace`, plus `.backup`. Per-`spel_id` threading lock so two GM clicks do not clobber each other.
-- **IDs:** `spel_id` is a timestamp string from create (`YYYYMMDDHHMMSS`).
+- **IDs:** `spel_id` is a readable timestamp plus a random suffix
+  (`YYYYMMDDHHMMSS-<hex>`) so rapid creates/imports cannot overwrite each other.
 - **No ORM.** The game dict *is* the model. `gm_console.py` is the place for live-event rules so they can be unit-tested without rendering HTML.
 
 ### Game JSON (important keys)
@@ -233,7 +234,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `POST /admin/<id>/llm_apply` | Confirm apply of suggested HP or milestones (undoable) |
 | `POST /admin/<id>/reset` | Full game reset (under Mer, with confirm) |
 
-`GET /admin/<id>/live` is treated as **public like the panel** (the same information is already on the HTML page). Mutations require a valid GM session. Unauthenticated JSON mutations return 401.
+`GET /admin/<id>/live` contains the same private information as the GM panel and therefore requires a valid GM session. Mutations also require a valid GM session. Unauthenticated JSON requests return 401.
 
 **Still useful print/export**
 
