@@ -47,7 +47,7 @@ Spelledarpanel  ──────────────►  Spelarskärm  (/s
                 └── next round (or end after round 4)
 ```
 
-News still happen **outside** the studio workflow: **Kopiera ordrar till LLM** → paste JSON suggestions → copy headlines to paper → studio. The copy step freezes 1–100 rolls per submitted order (`llm_resolution`). The LLM must reuse those rolls; it does not invent dice. Imported `utfall` is GM-only. Suggestions (`llm_forslag`) can apply HP/backlog on confirm. Projector payloads must not include `llm_forslag`, `llm_resolution`, rolls, probabilities, or order refs.
+News still happen **outside** the studio workflow: **Kopiera ordrar till LLM** → paste JSON suggestions → copy headlines to paper → studio. The copy step freezes 1–100 rolls per submitted order (`llm_resolution`). The LLM must reuse those rolls when an outcome is actually uncertain; it must not invent dice. Unused rolls are valid: ordinary backlog work is deterministic progress and should not appear in `utfall`. Imported `utfall` is GM-only. Suggestions (`llm_forslag`) can apply HP/backlog on confirm. Projector payloads must not include `llm_forslag`, `llm_resolution`, rolls, probabilities, or order refs.
 
 | Role | Where they look |
 |------|-----------------|
@@ -204,7 +204,7 @@ There is **no** `templates/` directory. Most pages are strings in Python.
 |------|---------|
 | `models.py` | `DATA_DIR`, `TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, roster size (5 vs 9 teams), STT base HP in large games, declaration period (round 3). |
 | `game_management.py` | `delete_game`, `nollstall_regeringsstod`, checkbox get/set (legacy checklists). Re-exports load/save. |
-| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` validation, `format_json_error` for JSON syntax), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
+| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` only for uncertain outcomes, optional `delmal`, `format_json_error` for JSON syntax), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
 | `gm_console_ui.py` | HTML for the sticky GM bar, attention list, team HP strip, transfer form, inbox, backlog board, LLM copy/import + **Utfall och sannolikhet**, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
 
 Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/test_domain.py`, not in route handlers.
@@ -363,7 +363,7 @@ Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **wri
 1. **Live rules** (phases, HP, orders, backlog, undo, LLM rolls/`utfall`) → `gm_console.py` plus a test in `tests/test_domain.py`.
 2. **GM HTML** → `gm_console_ui.py` plus `static/gm-console.js` / `app.css`. Do not grow new live workflows as another full page if they can sit on the console.
 3. **Room-visible data** → `build_public_state` only. Never send inbox, `gm_log`, `llm_forslag`, `llm_resolution`, rolls, or `utfall` to the projector.
-4. **News** stay on paper for the studio. LLM export fills `Docs/prompt.md` and asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). The app generates dice; the LLM must not. Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor.
+4. **News** stay on paper for the studio. LLM export fills `Docs/prompt.md` and asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). The app generates one die per submitted order; unused rolls are ignored. Ordinary backlog HP is deterministic progress, not a probability. `utfall` is only for uncertain outcomes (optional `delmal` when only part of an order is rolled). Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor.
 5. Prefer Swedish labels in the UI (the room is Swedish); keep code identifiers in the existing mix (`fas`, `runda`, `poang`, `regeringsstod`).
 
 ---

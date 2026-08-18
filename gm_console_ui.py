@@ -135,10 +135,15 @@ def _utfall_card_html(item):
     motstand = int(item.get("motstand_hp") or 0)
     sannolikhet = int(item.get("sannolikhet") or 0)
     slump = int(item.get("slump") or 0)
+    delmal = str(item.get("delmal") or "").strip()
+    delmal_html = (
+        f'<p class="gm-utfall-delmal">{escape(delmal)}</p>' if delmal else ""
+    )
     return (
         f'<article class="gm-utfall-card">'
         f'<p class="gm-utfall-meta">{escape(item.get("lag") or team)} · {order_no}</p>'
         f'<p class="gm-utfall-order">{escape(item.get("order") or "")}</p>'
+        f"{delmal_html}"
         f'<p class="gm-utfall-hp">{satsad} HP mot {motstand} HP</p>'
         f'<p class="gm-utfall-headline">'
         f'<span>{sannolikhet} %</span>'

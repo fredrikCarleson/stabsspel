@@ -1005,7 +1005,13 @@ def _load_llm_prompt_template():
 def _format_rolls_for_llm(rolls):
     if not rolls:
         return "(Inga slumpvärden. Inga inskickade order.)"
-    lines = [f"{ref}: {int(value)}" for ref, value in rolls.items()]
+    lines = [
+        "Det kan finnas ett slumpvärde för en order som inte behöver slumpas. "
+        "I så fall ska slumpvärdet ignoreras. Slumpvärdets existens betyder inte "
+        "att ordern måste få ett sannolikhetsutfall.",
+        "",
+    ]
+    lines.extend(f"{ref}: {int(value)}" for ref, value in rolls.items())
     return "\n".join(lines)
 
 
@@ -1026,7 +1032,9 @@ def format_previous_outcomes(data):
                 continue
             lines.append(
                 f"  - {item.get('order_ref')}: {item.get('lag')} | "
-                f"{item.get('order')} | {item.get('resultat')} | "
+                f"{item.get('order')}"
+                + (f" | delmal {item.get('delmal')}" if item.get("delmal") else "")
+                + f" | {item.get('resultat')} | "
                 f"{item.get('satsad_hp')} HP mot {item.get('motstand_hp')} HP | "
                 f"sannolikhet {item.get('sannolikhet')} slump {item.get('slump')} | "
                 f"{item.get('motivering')}"
@@ -1299,7 +1307,7 @@ def _require_int(value, field, lo=None, hi=None):
 
 
 def parse_utfall_items(raw_items, data):
-    """Validate LLM utfall. Missing/empty is OK. Any invalid object rejects the import."""
+    """Validate LLM utfall. Missing/empty is OK and not every order needs an entry. Any invalid object rejects the import."""
     if raw_items is None:
         return []
     if not isinstance(raw_items, list):
@@ -1347,7 +1355,7 @@ def parse_utfall_items(raw_items, data):
                 f"Ogiltigt resultat för {order_ref}: {resultat}. "
                 "Använd framgång, delvis framgång eller misslyckande."
             )
-        parsed.append({
+        row = {
             "lag": team,
             "order_ref": order_ref,
             "order": str(item.get("order") or "").strip(),
@@ -1357,7 +1365,11 @@ def parse_utfall_items(raw_items, data):
             "slump": slump,
             "resultat": resultat,
             "motivering": str(item.get("motivering") or "").strip(),
-        })
+        }
+        delmal = str(item.get("delmal") or "").strip()
+        if delmal:
+            row["delmal"] = delmal
+        parsed.append(row)
     return parsed
 
 

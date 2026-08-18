@@ -4,29 +4,22 @@
     {
       "lag": "Alfa",
       "order_ref": "Alfa-1",
-      "order": "Inloggning val",
-      "satsad_hp": 10,
+      "order": "Lobbya regeringen om extra HP",
+      "satsad_hp": 7,
       "motstand_hp": 0,
-      "sannolikhet": 80,
+      "sannolikhet": 75,
       "slump": 44,
       "resultat": "framgång",
-      "motivering": "Ingen relevant motståndare. Satsningen bär ordern."
+      "motivering": "Osäker politisk handling utan direkt motorder. Satsningen bär, slumpvärdet ligger under sannolikheten."
     }
   ],
   "nyheter": [
     {
-      "rubrik": "Valmyndigheten tar första steget mot digital röstning",
-      "upplasning": "Arbetet med inloggning till valet uppges nu ha kommit igång i testmiljö. Det är ännu oklart hur snabbt övriga delar av systemet följer efter.",
-      "lag": ["Alfa", "STT"]
+      "rubrik": "Regeringen signalerar mer stöd till valförberedelserna",
+      "upplasning": "Regeringskansliet uppges ha lyssnat på argument om mer resurser till det digitala valet. Det är ännu oklart hur stort tillskottet blir och vilka delar av projektet som prioriteras.",
+      "lag": ["Alfa", "Regeringen"]
     }
   ],
   "hp": [],
-  "milstolpar": [
-    {
-      "lag": "Alfa",
-      "uppgift": "alfa_1",
-      "delta_hp": 10,
-      "orsak": "10 HP utvecklingsarbete kan tillgodoräknas på uppgiften."
-    }
-  ]
+  "milstolpar": []
 }

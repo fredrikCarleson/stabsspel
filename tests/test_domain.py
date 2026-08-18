@@ -654,6 +654,9 @@ class TestLlmForslag(unittest.TestCase):
         self.assertIn("alfa_1", text)
         self.assertIn("order_ref: Alfa-1", text)
         self.assertIn("Alfa-1: 44", text)
+        self.assertIn("inte att ordern måste få ett sannolikhetsutfall", text)
+        self.assertIn("BACKLOGARBETE ÄR INTE ETT SANNOLIKHETSSLAG", text)
+        self.assertIn("FALL A", text)
         self.assertIn('"utfall"', text)
         self.assertIn('"nyheter"', text)
         self.assertIn('"milstolpar"', text)
@@ -923,6 +926,237 @@ class TestLlmResolution(unittest.TestCase):
         self.assertNotIn("Alfa-1", dumped)
         self.assertNotIn("dubbelt så stor", dumped)
         self.assertNotIn("llm_forslag", public)
+
+
+class TestLlmDeterministicBacklog(unittest.TestCase):
+    def _submit(self, data, team, activities, runda=None):
+        runda = runda or data.get("runda") or 1
+        key = f"orders_round_{runda}"
+        orders = dict(data.get("team_orders") or {})
+        round_orders = dict(orders.get(key) or {})
+        round_orders[team] = order_record(activities, final=True)
+        orders[key] = round_orders
+        data["team_orders"] = orders
+        return data
+
+    def test_prompt_says_unused_rolls_must_be_ignored(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="Inloggning val", hp=10, backlog_selected="alfa_1")])
+        text = build_llm_export_text(data, data["team_orders"]["orders_round_1"], randint=lambda: 66)
+        self.assertIn("Alfa-1: 66", text)
+        self.assertIn("slumpvärdet ignoreras", text)
+        self.assertIn("10/20 färdig", text)
+        self.assertIn("base_progress", text)
+
+    def test_pure_backlog_work_imports_without_utfall(self):
+        data = create_game_state()
+        self._submit(data, "Bravo", [activity(
+            name="Grafisk visning valet - Design",
+            hp=10,
+            backlog_selected="bravo_1_Design",
+        )])
+        ensure_round_rolls(data, randint=lambda: 66)
+        parsed = parse_llm_forslag(json.dumps({
+            "runda": 1,
+            "utfall": [],
+            "nyheter": [],
+            "hp": [],
+            "milstolpar": [{
+                "lag": "Bravo",
+                "uppgift": "bravo_1_Design",
+                "delta_hp": 10,
+                "orsak": "10 HP designarbete. Inget slump.",
+            }],
+        }), data)
+        self.assertEqual(parsed["utfall"], [])
+        self.assertEqual(parsed["milstolpar"][0]["delta_hp"], 10)
+        self.assertEqual(get_round_rolls(data)["Bravo-1"], 66)
+        import_llm_forslag(data, json.dumps({
+            "utfall": [],
+            "milstolpar": [{
+                "lag": "Bravo",
+                "uppgift": "bravo_1_Design",
+                "delta_hp": 10,
+            }],
+        }))
+        self.assertEqual(get_round_utfall(data), [])
+        apply_llm_milestones(data)
+        design = next(
+            fas for fas in next(
+                item for item in data["backlog"]["Bravo"] if item["id"] == "bravo_1"
+            )["faser"]
+            if fas["namn"] == "Design"
+        )
+        self.assertEqual(design["spenderade_hp"], 10)
+
+    def test_full_remaining_milestone_needs_no_probability(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="Sökfunktion", hp=10, backlog_selected="alfa_3")])
+        ensure_round_rolls(data, randint=lambda: 12)
+        add_backlog_spend(data, "Alfa", "alfa_3", 10)
+        parsed = parse_llm_forslag(json.dumps({
+            "utfall": [],
+            "milstolpar": [{"lag": "Alfa", "uppgift": "alfa_3", "delta_hp": 10}],
+        }), data)
+        self.assertEqual(parsed["utfall"], [])
+        self.assertEqual(parsed["milstolpar"][0]["delta_hp"], 10)
+
+    def test_over_investment_is_capped_in_prompt_and_suggestion(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="Sökfunktion", hp=10, backlog_selected="alfa_3")])
+        ensure_round_rolls(data, randint=lambda: 8)
+        add_backlog_spend(data, "Alfa", "alfa_3", 15)
+        text = build_llm_export_text(data, data["team_orders"]["orders_round_1"], randint=lambda: 8)
+        self.assertIn("min(satsad_hp, återstående_hp)", text)
+        parsed = parse_llm_forslag(json.dumps({
+            "utfall": [],
+            "milstolpar": [{"lag": "Alfa", "uppgift": "alfa_3", "delta_hp": 5}],
+        }), data)
+        self.assertEqual(parsed["milstolpar"][0]["delta_hp"], 5)
+        import_llm_forslag(data, json.dumps({
+            "milstolpar": [{"lag": "Alfa", "uppgift": "alfa_3", "delta_hp": 5}],
+        }))
+        apply_llm_milestones(data)
+        task = next(item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_3")
+        self.assertEqual(task["spenderade_hp"], 20)
+
+    def test_backlog_plus_contested_outcome_keeps_progress_and_optional_delmal(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(
+            name="Sökfunktion",
+            hp=12,
+            backlog_selected="alfa_3",
+            syfte="Få sök i produktion före Bravo.",
+        )])
+        self._submit(data, "STT", [activity(
+            name="Vägra släppa Alfas sök utan motprestation",
+            hp=6,
+            paverkar=["Alfa"],
+        )])
+        seq = iter([100, 40])
+        ensure_round_rolls(data, randint=lambda: next(seq))
+        parsed = parse_llm_forslag(json.dumps({
+            "utfall": [{
+                "lag": "Alfa",
+                "order_ref": "Alfa-1",
+                "order": "Sökfunktion",
+                "delmal": "Få sökfunktionen produktionssatt",
+                "satsad_hp": 12,
+                "motstand_hp": 6,
+                "sannolikhet": 40,
+                "slump": 100,
+                "resultat": "misslyckande",
+                "motivering": "Utvecklingsarbetet går vidare, men STT blockerar produktionssättningen.",
+            }],
+            "milstolpar": [{
+                "lag": "Alfa",
+                "uppgift": "alfa_3",
+                "delta_hp": 12,
+                "orsak": "12 HP utvecklingsarbete. Produktionssättningen avgörs separat.",
+            }],
+        }), data)
+        self.assertEqual(parsed["milstolpar"][0]["delta_hp"], 12)
+        self.assertEqual(parsed["utfall"][0]["delmal"], "Få sökfunktionen produktionssatt")
+        self.assertEqual(parsed["utfall"][0]["resultat"], "misslyckande")
+
+    def test_sabotage_may_have_utfall_while_progress_depends_on_outcome(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name="Sökfunktion", hp=10, backlog_selected="alfa_3")])
+        self._submit(data, "STT", [activity(
+            name="Sabotera Search",
+            hp=5,
+            typ="forstora",
+            paverkar=["Alfa"],
+        )])
+        seq = iter([88, 20])
+        ensure_round_rolls(data, randint=lambda: next(seq))
+        parsed = parse_llm_forslag(json.dumps({
+            "utfall": [{
+                "lag": "STT",
+                "order_ref": "STT-1",
+                "order": "Sabotera Search",
+                "satsad_hp": 5,
+                "motstand_hp": 10,
+                "sannolikhet": 30,
+                "slump": 20,
+                "resultat": "delvis framgång",
+                "motivering": "Sabotaget stör delen av arbetet. Alfa får minskad progress.",
+            }],
+            "milstolpar": [{
+                "lag": "Alfa",
+                "uppgift": "alfa_3",
+                "delta_hp": 6,
+                "orsak": "10 HP arbete minskat till +6 efter delvis lyckat sabotage.",
+            }],
+        }), data)
+        refs = {item["order_ref"] for item in parsed["utfall"]}
+        self.assertEqual(refs, {"STT-1"})
+        self.assertEqual(parsed["milstolpar"][0]["delta_hp"], 6)
+        self.assertEqual(get_round_rolls(data)["Alfa-1"], 88)
+
+    def test_subset_of_orders_may_have_utfall(self):
+        data = create_game_state()
+        self._submit(data, "Alfa", [activity(name=f"A{i}", hp=1) for i in range(5)])
+        self._submit(data, "Bravo", [activity(name=f"B{i}", hp=1) for i in range(4)])
+        self._submit(data, "STT", [activity(name=f"S{i}", hp=1) for i in range(4)])
+        seq = iter(range(1, 14))
+        ensure_round_rolls(data, randint=lambda: next(seq))
+        self.assertEqual(len(get_round_rolls(data)), 13)
+        payload = {
+            "utfall": [
+                {
+                    "lag": "Alfa",
+                    "order_ref": "Alfa-2",
+                    "order": "A1",
+                    "satsad_hp": 1,
+                    "motstand_hp": 0,
+                    "sannolikhet": 10,
+                    "slump": 2,
+                    "resultat": "framgång",
+                    "motivering": "Osäker handling.",
+                },
+                {
+                    "lag": "Bravo",
+                    "order_ref": "Bravo-1",
+                    "order": "B0",
+                    "satsad_hp": 1,
+                    "motstand_hp": 0,
+                    "sannolikhet": 10,
+                    "slump": 6,
+                    "resultat": "misslyckande",
+                    "motivering": "Osäker handling.",
+                },
+                {
+                    "lag": "STT",
+                    "order_ref": "STT-3",
+                    "order": "S2",
+                    "satsad_hp": 1,
+                    "motstand_hp": 0,
+                    "sannolikhet": 10,
+                    "slump": 12,
+                    "resultat": "framgång",
+                    "motivering": "Osäker handling.",
+                },
+                {
+                    "lag": "Alfa",
+                    "order_ref": "Alfa-5",
+                    "order": "A4",
+                    "satsad_hp": 1,
+                    "motstand_hp": 0,
+                    "sannolikhet": 10,
+                    "slump": 5,
+                    "resultat": "delvis framgång",
+                    "motivering": "Osäker handling.",
+                },
+            ],
+            "nyheter": [],
+            "hp": [],
+            "milstolpar": [],
+        }
+        import_llm_forslag(data, json.dumps(payload))
+        self.assertEqual(len(get_round_utfall(data)), 4)
+        self.assertEqual(len(get_round_rolls(data)), 13)
+        self.assertEqual(get_round_rolls(data)["Alfa-1"], 1)
 
 
 class TestLlmJsonImportErrors(unittest.TestCase):

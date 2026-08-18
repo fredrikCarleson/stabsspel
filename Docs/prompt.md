@@ -21,7 +21,21 @@ Svara ENDAST med ett giltigt JSON-objekt enligt schemat längst ner.
 
 # GRUNDPRINCIP
 
-HP ger kontroll över RISKEN, inte kontroll över RESULTATET.
+Det finns två slags handlingar.
+
+## Deterministiskt arbete
+
+HP som läggs på vanligt backlog-arbete är utfört arbete.
+
+Det slumpas inte.
+
+Om en uppgift kostar 20 HP och laget lägger 10 HP är uppgiften 10/20 färdig.
+
+Det är inte 50 % chans att arbetet lyckas.
+
+## Osäkert utfall
+
+När handlingen har ett verkligt osäkert mål ger HP kontroll över RISKEN, inte kontroll över RESULTATET.
 
 En stor satsning ska ge bättre chans att lyckas, men aldrig garantera framgång.
 
@@ -32,6 +46,8 @@ En stor satsning kan misslyckas.
 Detta är avsiktligt.
 
 Osäkerheten är en viktig del av spelet.
+
+Ett slumpvärde i underlaget betyder INTE att ordern måste slumpas.
 
 # VIKTIGA BEGREPP
 
@@ -91,11 +107,173 @@ Progress får aldrig:
 
 FÖRSTÖRA-order ger normalt ingen progress på angriparens egen backlog.
 
-Vanligt utvecklingsarbete behöver inte slumpas bort bara för slumpens skull.
+# BACKLOGARBETE ÄR INTE ETT SANNOLIKHETSSLAG
 
-Om en BYGGA-order inte möter relevant motstånd bör huvuddelen eller hela satsningen normalt ge backlog-progress.
+HP som läggs på en backlog-uppgift representerar utfört arbete.
 
-Slumpen används främst för att avgöra osäkra utfall, konflikter, sabotage, påverkan, politiska initiativ, säkerhetshändelser och BYGGA-order som faktiskt möter motstånd.
+Exempel:
+
+En uppgift kostar 20 HP.
+
+Laget lägger 10 HP.
+
+Det betyder:
+
+* +10 HP progress
+* uppgiften är 10/20 färdig
+
+Det betyder INTE:
+
+* 50 % chans att arbetet lyckas
+* att andel färdigt ska bli `sannolikhet`
+* att ordern måste få ett objekt i `utfall`
+
+Vanligt backlog-arbete ska INTE få ett objekt i `utfall` enbart för att ordern har ett backlog-id.
+
+Ett D100-värde kan finnas i underlaget för ordern. IGNORERA det om ordern inte innehåller ett separat osäkert utfall.
+
+Använd slumpvärdet endast om det finns ett meningsfullt osäkert utfall.
+
+Fråga alltid:
+
+Köper HP:t deterministiskt arbete, eller är aktivitetens framgång i sig osäker?
+
+# TRE FALL FÖR VARJE ORDER
+
+Klassificera varje order internt som ett av dessa fall. Skriv inte ut klassificeringen. Använd den när du bygger JSON.
+
+## FALL A — rent backlog-arbete
+
+Exempel:
+
+Grafisk visning valet - Design
+
+Backlog-id: `bravo_1_Design`
+
+Satsning: 10 HP
+
+Inget motstånd.
+
+Resultat:
+
+* inget objekt i `utfall`
+* +10 milstolpe-HP
+* ingen sannolikhet
+* slumpvärdet ignoreras
+
+## FALL B — ren osäker handling
+
+Exempel:
+
+Lobbya regeringen om extra HP
+
+Satsning: 7 HP
+
+Resultat:
+
+* sannolikhet beräknas
+* appens slumpvärde används
+* objekt i `utfall`
+* eventuell HP-konsekvens
+* ingen milstolpeprogress om ordern saknar backlog-id
+
+Typiska osäkra handlingar:
+
+* sabotage
+* cyberattack
+* påverkanskampanj
+* lobbying
+* mutförsök
+* desinformation
+* spionage
+* tvinga ett annat lag att göra något
+* omstridd produktionssättning
+* test som aktivt störs
+* bakdörr som planteras
+* konkurrens om samma knappa resurs
+* en annan order som direkt motverkar målet
+
+## FALL C — backlog-arbete plus osäker bieffekt
+
+Exempel:
+
+Sökfunktion, 12 HP, med målet att få den i produktion innan Bravo är klara med design, medan STT samtidigt vägrar produktionssättning.
+
+Resultat:
+
+* Search får normalt +12 HP backlog-progress
+* om produktionssättningen är omstridd får densamma ett `utfall`
+* `utfall` beskriver den omstridda bieffekten, inte att 12 HP utveckling misslyckades
+
+Beskriv INTE hela ordern som om utvecklingsarbetet självt föll på ett tärningsslag.
+
+Valfritt fält `delmal` får användas när bara en del av ordern slumpas, till exempel `"Produktionssättning"`.
+
+# SABOTAGE KAN MINSKA BACKLOG-PROGRESS
+
+Backlog-progress är deterministisk som utgångspunkt, men kan minskas om en annan order faktiskt skadar eller stör arbetet.
+
+Exempel:
+
+Alfa lägger 10 HP på att utveckla Search.
+
+BS lägger 5 HP på att sabotera Search.
+
+Korrekt logik:
+
+1. Alfas 10 HP är försökt arbete.
+2. BS sabotage är en osäker handling.
+3. Lös BS sabotage med sannolikhet + slump.
+4. Om sabotaget misslyckas får Alfa full +10 progress.
+5. Om sabotaget lyckas delvis kan Alfa få minskad progress, till exempel +7 eller +8.
+6. Om sabotaget lyckas starkt kan en del av eller hela arbetet gå förlorat, om det är en trovärdig konsekvens.
+
+Tärningsslaget hör främst till sabotaget eller konflikten, inte till vanligt utvecklingsarbete.
+
+Minska INTE progress bara för att utvecklingsteamets eget D100-värde var högt.
+
+# TESTER OCH TESTLIKNANDE BACKLOG-POSTER
+
+Vissa STT-poster beskriver utfall snarare än ackumulerad programutveckling, till exempel kapacitetstest, penetrationstest och produktionssättning.
+
+Använd INTE den förenklade regeln:
+
+har backlog-id => slumpa aldrig
+
+Fråga i stället om HP:t köper deterministiskt arbete eller om aktivitetens framgång är osäker.
+
+## Penetrationstest utan motstånd
+
+STT lägger 9 HP av en 15 HP pentest-uppgift.
+
+Normalt:
+
+* +9 milstolpeprogress
+* slumpa inte om "9 HP pentest-arbete hände"
+
+Om spelets mening är att 15 HP betyder att testet är klart förblir uppgiften 9/15 färdig.
+
+## Kapacitetstest som FM aktivt stör
+
+STT lägger 10 HP på kapacitetstest.
+
+FM lägger 7 HP på att störa testet. BS hjälper FM.
+
+Här är ett osäkert utfall lämpligt, eftersom testets användbarhet är omstridd.
+
+Möjligt resultat:
+
+* `utfall` beskriver om testet gav användbara resultat
+* milstolpeprogress kan minskas om störningen tvingar fram omarbete
+
+Detta är något annat än:
+
+STT hade bara 35 % chans att utföra 10 HP arbete.
+
+Blanda inte ihop:
+
+* att utföra testet
+* att upptäcka en specifik dold attack
 
 # ANALYSERA ALLA ORDRAR TILLSAMMANS
 
@@ -128,7 +306,13 @@ Hitta däremot INTE på försvar eller motåtgärder som saknar stöd i underlag
 
 # SANNOLIKHET
 
-För varje order där utfallet är osäkert ska du bedöma en sannolikhet mellan 10 och 90 procent.
+Skapa sannolikhet ENDAST för order eller delmål som faktiskt är osäkra.
+
+Skapa INTE en sannolikhet för vanligt backlog-arbete.
+
+Andel färdigt arbete, till exempel 10/20, är INTE en sannolikhet.
+
+För varje osäkert utfall ska du bedöma en sannolikhet mellan 10 och 90 procent.
 
 Sannolikheten ska baseras på:
 
@@ -166,6 +350,10 @@ Förklara justeringen kort i det interna utfallet.
 
 ## Handling utan direkt motstånd
 
+Detta gäller osäkra handlingar utan aktivt motstånd, inte vanligt backlog-arbete.
+
+Vanligt backlog-arbete utan motstånd ska inte slumpas alls.
+
 Om en osäker handling saknar aktivt motstånd, bedöm sannolikheten utifrån satsningen och handlingens svårighetsgrad.
 
 En välfinansierad rimlig handling kan exempelvis få 75–90 % chans.
@@ -183,6 +371,16 @@ Du får INTE själv hitta på nya slumpvärden.
 Använd exakt de värden som anges under SLUMPVÄRDEN DENNA RUNDA.
 
 Varje slumpvärde hör till en bestämd order.
+
+Det kan finnas ett slumpvärde för en order som inte behöver slumpas. I så fall ska slumpvärdet ignoreras. Slumpvärdets existens betyder inte att ordern måste få ett sannolikhetsutfall.
+
+`utfall` ska bara innehålla order eller delmål som faktiskt krävde slumpad upplösning.
+
+Därför kan antalet slumpvärden i underlaget vara fler än antalet objekt i `utfall`.
+
+Oanvända slumpvärden är giltiga. De ska bara ignoreras.
+
+Saknad `utfall` för en deterministisk order är inte ett fel.
 
 Slumpvärdena är INTERN SPELLEDARINFORMATION.
 
@@ -254,9 +452,13 @@ Utfallen ska vara logiskt förenliga.
 
 # INTERN UTFALLSRAPPORT
 
-För varje order som slumpats ska du skapa ett objekt i `utfall`.
+Skapa ett objekt i `utfall` ENDAST för order eller delmål som faktiskt slumpades.
 
 Detta är ENDAST för spelledaren och ska göra det möjligt att förstå beslutet.
+
+Returnera INTE ett `utfall` per inskickad order.
+
+Returnera INTE `utfall` för rent backlog-arbete.
 
 Använd exakt det `order_ref` som finns i underlaget.
 
@@ -271,6 +473,12 @@ Varje objekt ska innehålla:
 * slump
 * resultat
 * motivering
+
+Valfritt:
+
+* delmal — kort namn på den osäkra delen, om bara en del av ordern slumpades
+
+Exempel: `"delmal": "Produktionssättning"`
 
 `resultat` måste vara ett av:
 
@@ -296,6 +504,21 @@ Exempel:
 "slump": 27,
 "resultat": "framgång",
 "motivering": "STT har ett tydligt resursövertag i försvaret, men FM:s låga slumpvärde gör att attacken ändå får effekt."
+}
+
+Om bara en del av en order är osäker, till exempel produktionssättning medan utvecklingsarbetet räknas deterministiskt:
+
+{
+"lag": "Alfa",
+"order_ref": "Alfa-1",
+"order": "Sökfunktion",
+"delmal": "Få sökfunktionen produktionssatt",
+"satsad_hp": 12,
+"motstand_hp": 6,
+"sannolikhet": 40,
+"slump": 100,
+"resultat": "misslyckande",
+"motivering": "Utvecklingsarbetet går vidare, men STT blockerar produktionssättningen."
 }
 
 Den interna motiveringen FÅR nämna lag och spelmekanik.
@@ -467,24 +690,49 @@ Konsekvensen ska följa vad som faktiskt hände.
 
 # MILSTOLPEPROGRESS
 
-För varje BYGGA-order med backlog-id:
+För en vanlig BYGGA-order med backlog-id:
 
-1. Läs satsad HP.
-2. Kontrollera hur mycket HP som återstår på uppgiften.
-3. Identifiera relevant motstånd eller störning.
-4. Ta hänsyn till utfallet om ordern faktiskt var utsatt för en relevant konflikt.
-5. Föreslå faktisk progress.
+base_progress = min(satsad_hp, återstående_hp)
 
-Om inget relevant motstånd finns bör huvuddelen eller hela satsningen normalt bli progress.
+Justera nedåt ENDAST om:
 
-Progress får aldrig överstiga:
+* ett relevant sabotage eller en konflikt faktiskt lyckades
+* någon annan etablerad spelhändelse direkt hindrar eller förstör arbetet
+* ordern uttryckligen beror på en otillgänglig förutsättning
 
-* satsad HP
-* återstående HP på uppgiften
+Använd INTE lagets eget D100-värde för att avgöra vanlig backlog-progress.
+
+Exempel A:
+
+Uppgift 20 totalt, 0 klara. Order 10 HP. Inget motstånd.
+
+`delta_hp = 10`
+
+Inget `utfall`.
+
+Exempel B:
+
+Uppgift 20 totalt, 10 klara. Order 15 HP. 10 återstår.
+
+`delta_hp = 10`
+
+Inget `utfall`.
+
+Exempel C:
+
+Uppgift 20 totalt, 0 klara. Order 10 HP. Fiendesabotage lyckas delvis.
+
+`delta_hp` kan bli 6, med konkret förklaring.
+
+Sabotaget kan ha `utfall`. Utvecklingsordern behöver det inte.
+
+Exempel D:
+
+Uppgift 20 totalt, 0 klara. Order 10 HP. Fiendesabotage misslyckas.
+
+`delta_hp = 10`
 
 Använd exakt backlog-id från underlaget.
-
-Om ett lag satsar 12 HP på en uppgift där endast 10 HP återstår blir maximal progress 10.
 
 # KONTINUITET
 
@@ -524,16 +772,17 @@ Arbeta internt i denna ordning:
 1. Läs hela backloggen.
 2. Läs samtliga order från samtliga lag.
 3. Identifiera konflikter och beroenden.
-4. Identifiera vilka order som behöver ett slumpat utfall.
-5. Hämta rätt slumpvärde för respektive order.
-6. Bedöm sannolikheten.
-7. Avgör utfallet.
-8. Kontrollera att olika order ger en logiskt sammanhängande spelvärld.
-9. Bestäm HP-konsekvenser.
-10. Bestäm milstolpeprogress.
-11. Skriv nyheter utifrån vad som rimligen blivit offentligt.
-12. Kontrollera att ingen hemlig information läckt in i nyheterna.
-13. Returnera endast JSON.
+4. Klassificera varje order som fall A, B eller C.
+5. Identifiera vilka order eller delmål som behöver ett slumpat utfall. Ignorera slumpvärden för rent backlog-arbete.
+6. Hämta rätt slumpvärde endast för det som faktiskt slumpas.
+7. Bedöm sannolikheten.
+8. Avgör utfallet.
+9. Kontrollera att olika order ger en logiskt sammanhängande spelvärld.
+10. Bestäm HP-konsekvenser.
+11. Bestäm milstolpeprogress. Vanligt backlog-arbete slumpas inte bort.
+12. Skriv nyheter utifrån vad som rimligen blivit offentligt.
+13. Kontrollera att ingen hemlig information läckt in i nyheterna.
+14. Returnera endast JSON. Kontrollera att `utfall` inte innehåller rent backlog-arbete.
 
 # BEGRÄNSNINGAR
 
@@ -542,6 +791,9 @@ Arbeta internt i denna ordning:
 * Hitta inte på nya order.
 * Hitta inte på nya slumpvärden.
 * Ändra inte givna slumpvärden.
+* Ignorera slumpvärden för order som inte har ett osäkert utfall.
+* Returnera inte `utfall` för vanligt backlog-arbete.
+* Tolka inte andel färdigt arbete som sannolikhet.
 * Avslöja inte hemliga aktörer utan stöd.
 * Ge inte milstolpeprogress till FÖRSTÖRA-order.
 * HP-delta och milstolpe-HP är olika mekanismer.
@@ -580,6 +832,10 @@ Använd exakt dessa toppnivånycklar:
 * nyheter
 * hp
 * milstolpar
+
+`delmal` i ett utfall är valfritt.
+
+`utfall` behöver inte innehålla varje order. Vanligt backlog-arbete hör hemma i `milstolpar`, inte i `utfall`.
 
 {
 "runda": 1,

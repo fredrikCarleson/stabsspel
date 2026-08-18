@@ -2173,7 +2173,7 @@ def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=26">
+            <link rel="stylesheet" href="/static/app.css?v=27">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{

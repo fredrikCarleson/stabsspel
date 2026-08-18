@@ -1808,6 +1808,13 @@ thead th {
   font-weight: 600;
 }
 
+.gm-utfall-delmal {
+  margin: -4px 0 8px;
+  color: var(--c-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .gm-utfall-headline {
   display: flex;
   flex-wrap: wrap;

@@ -602,6 +602,88 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("resursövertag", projector)
         self.assertNotIn("Alfa-1", projector)
 
+    def test_deterministic_backlog_is_not_shown_as_dice_outcome(self):
+        from gm_console import ensure_round_rolls, import_llm_forslag
+        from gm_console_ui import create_gm_console_html, create_projector_html
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {"activities": [{
+                        "aktivitet": "Sökfunktion",
+                        "syfte": "Utveckla sök och få den i produktion.",
+                        "hp": 12,
+                        "typ": "bygga",
+                        "backlog_selected": "alfa_3",
+                        "paverkar": ["STT"],
+                    }]},
+                },
+                "Bravo": {
+                    "final": True,
+                    "submitted_at": 2,
+                    "orders": {"activities": [{
+                        "aktivitet": "Grafisk visning valet - Design",
+                        "syfte": "Nästa vattenfallssteg.",
+                        "hp": 10,
+                        "typ": "bygga",
+                        "backlog_selected": "bravo_1_Design",
+                        "paverkar": ["Bravo"],
+                    }]},
+                },
+                "STT": {
+                    "final": True,
+                    "submitted_at": 3,
+                    "orders": {"activities": [{
+                        "aktivitet": "Vägra släppa Alfas sök utan motprestation",
+                        "syfte": "Blockera produktion.",
+                        "hp": 6,
+                        "typ": "bygga",
+                        "paverkar": ["Alfa"],
+                    }]},
+                },
+            }
+        }
+        seq = iter([100, 66, 39])
+        ensure_round_rolls(data, randint=lambda: next(seq))
+        import_llm_forslag(data, json.dumps({
+            "utfall": [{
+                "lag": "Alfa",
+                "order_ref": "Alfa-1",
+                "order": "Sökfunktion",
+                "delmal": "Få sökfunktionen produktionssatt",
+                "satsad_hp": 12,
+                "motstand_hp": 6,
+                "sannolikhet": 40,
+                "slump": 100,
+                "resultat": "misslyckande",
+                "motivering": "Utvecklingsarbetet går vidare, men STT blockerar produktionssättningen.",
+            }],
+            "milstolpar": [
+                {"lag": "Alfa", "uppgift": "alfa_3", "delta_hp": 12, "orsak": "Utveckling."},
+                {"lag": "Bravo", "uppgift": "bravo_1_Design", "delta_hp": 10, "orsak": "Designarbete."},
+            ],
+        }))
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Utfall och sannolikhet", html)
+        self.assertIn("Få sökfunktionen produktionssatt", html)
+        self.assertIn("40 %", html)
+        self.assertIn("Slag 100", html)
+        self.assertIn("Sökfunktion", html)
+        self.assertIn("+12 HP", html)
+        self.assertIn("+10 HP", html)
+        self.assertIn("Grafisk visning valet", html)
+        self.assertNotIn("Bravo · Order 1", html)
+        self.assertNotIn("90 %", html)
+        self.assertNotIn("Slag 66", html)
+        projector = create_projector_html("g1", data)
+        self.assertNotIn("Utfall och sannolikhet", projector)
+        self.assertNotIn("produktionssatt", projector)
+        self.assertNotIn("Slag 100", projector)
+
 
     def test_invalid_json_error_keeps_pasted_text_and_shows_snippet(self):
         from gm_console import format_json_error

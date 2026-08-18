@@ -105,7 +105,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Copy text is `Docs/prompt.md` filled with round, teams, backlog, orders (`order_ref` like `Alfa-1`), frozen 1–100 rolls, and previous `utfall`.
 - First copy for a round creates `llm_resolution.<runda>.rolls` and saves them. Copy/refresh/undo does not reroll. A new activity gets a new ref/roll only.
 - Paste or upload JSON on the export page or in Diplomatifas/Resultatfas. Stored as `llm_forslag` plus `llm_resolution.<runda>.result.utfall`. Not sent to the projector.
-- GM sees **Utfall och sannolikhet** (HP, chans, slag, resultat, motivering). News are copied to paper for the studio. **Tillämpa HP** and **Tillämpa milstolpar** are confirm + undo.
+- GM sees **Utfall och sannolikhet** only for probabilistically resolved outcomes (optional `delmal` when just part of an order was rolled). Ordinary backlog work belongs under milstolpar, not as a dice card. News are copied to paper for the studio. **Tillämpa HP** and **Tillämpa milstolpar** are confirm + undo.
 - Old JSON without `utfall` still imports. Example files: `testdata/llm-svar-exempel.json`, `testdata/llm-svar-utfall-exempel.json`.
 - Invalid JSON still fails on `json.loads` (no auto-repair). The console shows line/column, a snippet with a marker, and a short hint (citationstecken, kommatecken, text utanför JSON). One outer markdown fence around the whole payload is stripped. Pasted text stays in the textarea. **Kopiera fel** copies the message for pasting back to the LLM. Domain/`utfall` errors stay separate.
 
@@ -126,7 +126,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=26`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=27`, JS `gm-console.js?v=10`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 
