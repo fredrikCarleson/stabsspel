@@ -1,6 +1,6 @@
 # **Stabsspel Traineeprogrammet**
 
-Det här är **spelreglerna** (lag, HP, rundor, nyhetsstudio). Den digitala spelledarhjälpen — klocka, ordrar, projektor — beskrivs i [architecture.md](architecture.md). Starta appen med `python app.py` och öppna http://localhost:5000 (inte `flask app.py`).
+Det här är **spelreglerna** (lag, HP, rundor, nyhetsstudio). Den digitala spelledarhjälpen — klocka, ordrar, projektor, LLM-export — beskrivs i [architecture.md](architecture.md). Starta appen med `python app.py` och öppna http://localhost:5000 (inte `flask app.py`).
 
 Stabsspel Traineeprogrammet är ett spel där olika lag spelar med eller mot varandra för att uppnå sina egna eller gemensamma mål. Spelarna delas upp i lag som var och en har olika antal spelare, handlingspoäng och mål. Spelet sker i realtid och består huvudsakligen av följande faser
 
@@ -13,6 +13,8 @@ Under orderfasen skriver varje lag ner sina order och hur många handlingspoäng
 Under Diplomatifasen pratar teamen sig samman med sig själva samt andra team de har intresse eller behov att koordinera sig med. Innan diplomatifasen är slut måste varje team ha lämnat in sina order med antalet poäng till spelledarna.
 
 Spelledaren läser igenom alla order under diplomatifasen och bedömer sannolikheten att utfallet blir som önskat baserat på hur många handlingspoäng som satsats för eller emot att ett visst skeende ska hända. Efter diplomatifasen delges alla lagen resultatet av order som kommit in.
+
+I den digitala spelledarhjälpen kopieras ordrarna till en LLM. **Appen slår tärningen** (ett tal 1–100 per inskickad order). LLM:en får inte hitta på egna slag; den bedömer sannolikhet och tolkar utfallet. Spelledaren ser slagen och motiveringen i spelledarpanelen. Nyheterna skrivs ut på papper och läses i TV-studion — spelarna ser inte slagen.
 
 Spelet börjar med att ett scenario beskrivs nedan. Därefter får varje team bestämma hur de vill dela upp de komponenter eller uppgifter som ska göras. När uppgifterna har fördelats får alla spelarna gå in i sina rum där de dels får reda på sitt teams mål samt göra en plan för hur de ska klara sina uppgifter.
 

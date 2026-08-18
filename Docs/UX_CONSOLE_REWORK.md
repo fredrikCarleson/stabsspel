@@ -9,7 +9,7 @@ Related: [architecture.md](architecture.md), skills `.cursor/skills/ux-gui/SKILL
 
 A live crisis exercise. The GM should see **where we are, what needs attention, and the next action** in a few seconds. Phase screens focus on **that phase’s job**. Reference tools stay available but are not all unfolded at once.
 
-Do not add features unless they fix a clear UX problem. Do not redesign the whole app. No SPA. Swedish labels. News stay on paper for the studio (copy orders → LLM JSON → paste suggestions → paper → studio).
+Do not add features unless they fix a clear UX problem. Do not redesign the whole app. No SPA. Swedish labels. News stay on paper for the studio (copy orders → LLM JSON with app dice → paste suggestions → paper → studio). GM-only `utfall` (probability, roll, result) stays on the console.
 
 ## Agreed slices
 
@@ -18,8 +18,8 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 | Start screen | **Done** | Launch list, not a marketing landing page. Light `bf-frontpage.png` behind opaque rows. |
 | 1. Orderfas job | **Done** | Readiness chips, quieter attention, Start/Pause vs Nästa, extra controls under Mer, HP folded. |
 | Projector audio | **Done** | Room warnings at 5 min, 1 min, repeating alarm at 30 s. |
-| 3. Diplomatifas job | **Done** | Inbox + conflicts + LLM copy first. HP / backlog / log folded. |
-| Resultatfas job | **Done** | Körschema first, in-console quarter strip, HP / inbox / backlog / log folded. |
+| 3. Diplomatifas job | **Done** | Inbox + conflicts + LLM copy/import first (rolls + utfall). HP / backlog / log folded. |
+| Resultatfas job | **Done** | Körschema first, in-console quarter strip, HP / inbox / backlog / log folded. Utfall visible if imported. |
 | 2. Tab shell | **Done** | Sticky bar + four always-available views: Inkorg, Lag, Arbete, Historik. Changing phase lands on the phase job (Order/Diplo → Inkorg, Resultatfas → Lag with körschema above). Clock never lives in a tab. |
 | 4. One console | **Done** | Leftover **Kvartalsförlopp / Team översikt / Spelhistorik** no longer render under the console. Quarters stay in Resultatfas. Phase history sits in **Händelselogg**. Teamens arbete remains the backlog. |
 | Background images | **Trial** | Spelledarpanel: dimmed `bg-stabsrum.png`, no side banners. Startsida: `bf-frontpage.png`. Projector and team form stay plain. `bg-sverige.png` unused. |
@@ -45,7 +45,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 ### Diplomatifas
 
-- Order: attention (missing teams + conflicts) → **Kopiera ordrar till LLM** + paste JSON → **Orderinkorg** → folded HP / Teamens arbete / Händelselogg
+- Order: attention (missing teams + conflicts) → **Kopiera ordrar till LLM** + paste JSON → **Utfall och sannolikhet** (after import) → **Orderinkorg** → folded HP / Teamens arbete / Händelselogg
 - Conflict rows: `gm-conflict` + visible **Konflikt** label (not colour alone)
 - **Nästa: Resultatfas**
 
@@ -54,7 +54,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Job is the körschema: open projector, news on paper (from LLM-förslag), point at HP, point at quarters, next round / end
 - Compact quarter strip (Okt–Dec … Jul–Sep) lives **in the console**, current round marked. Körschema no longer points at leftover chrome below the panel
 - Folded: Orderinkorg, Lag och handlingspoäng, Teamens arbete, Händelselogg
-- LLM copy still available under the körschema
+- LLM copy/import and utfall still available under the körschema
 - Ended game shows **Spelet är slut** instead of the rundown
 
 ### Projector (`static/projector.js`, `create_projector_html`)

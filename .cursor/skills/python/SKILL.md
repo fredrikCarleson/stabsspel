@@ -31,9 +31,10 @@ Before implementing a change:
 
 | Change                                                            | Put it in                                        | Test in                                                        |
 | ----------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- |
-| Live rules: phase, HP, orders, backlog, undo, public/live payload | `gm_console.py`                                  | `tests/test_domain.py`                                         |
+| Live rules: phase, HP, orders, backlog, undo, LLM rolls/`utfall`, public/live payload | `gm_console.py`                                  | `tests/test_domain.py`                                         |
 | GM / projector HTML                                               | `gm_console_ui.py`                               | `tests/test_gm_console.py`                                     |
 | GM HTTP: auth, mutations, print/export                            | `admin_routes.py`, helpers in `admin_helpers.py` | `tests/test_admin_helpers.py`, `test_admin_routes.py` for HTTP |
+| LLM prompt text (export instructions)                             | `Docs/prompt.md`                                 | domain tests that the filled export contains expected placeholders |
 | Team briefs / QR                                                  | `team_routes.py`                                 | existing relevant tests                                        |
 | Order save / submit / withdraw                                    | `team_order_routes.py`                           | domain tests for rules, route tests where needed               |
 | JSON load/save, teams, passwords, backlog templates               | `models.py`                                      | `tests/test_domain.py`                                         |

@@ -17,13 +17,14 @@ The app’s job is to **keep the room on the clock** and hold **orders, HP, back
 - Create / resume a game, password-protect the GM panel, delete a game (password in a modal)
 - Run Order → Diplomacy → Result (four rounds), with timer, undo, and previous phase
 - Collect team orders (draft → submit → optional withdraw in Orderfas)
-- Show one GM console: inbox, HP strip, backlog spend, log
+- Show one GM console: inbox, HP strip, backlog spend, log, LLM copy/import
 - Project round, phase, time, and public HP to the room
 - Print activity cards, order cards, team briefs, QR links to order entry
+- Freeze 1–100 rolls per submitted order, import LLM JSON (`utfall`, news, HP, milestones)
 
 **Out of scope (intentional)**
 
-- In-app news, plot twists, or a “write headline” workflow
+- In-app headline editor / news CMS (studio still reads paper)
 - Player roster / spy seating as first-class state (spy drain is an HP transfer with a reason)
 - Multi-server or database-backed persistence
 
@@ -40,8 +41,8 @@ Spelledarpanel  ──────────────►  Spelarskärm  (/s
   GM console                       round, phase, clock, public HP
         │
         ├── Orderfas     teams type orders via token URL / QR
-        ├── Diplomatifas GM reads inbox, ticks HP/backlog, copies to LLM
-        └── Resultatfas  studio reads paper news; GM can apply LLM HP/milestones
+        ├── Diplomatifas GM reads inbox, copies to LLM (rolls freeze here)
+        └── Resultatfas  studio reads paper news; GM sees utfall, may apply HP/milestones
                 │
                 └── next round (or end after round 4)
 ```
@@ -100,7 +101,7 @@ flowchart TB
 | HTTP / process | `app.py`, `wsgi.py`, `config.py` | App entry, health, projector, home page |
 | GM HTTP | `admin_routes.py`, `admin_helpers.py` | Auth, panel, live JSON mutations, print/export |
 | Team HTTP | `team_routes.py`, `team_order_routes.py` | Briefs, QR, save/submit/withdraw orders |
-| Live domain | `gm_console.py`, `gm_console_ui.py` | Phases, HP, inbox, backlog, undo, public state, HTML |
+| Live domain | `gm_console.py`, `gm_console_ui.py` | Phases, HP, inbox, backlog, undo, LLM rolls/`utfall`, public state, HTML |
 | Persistence and catalogue | `models.py`, `game_management.py` | JSON load/save, teams, backlog templates, passwords |
 | Print extras | `orderkort.py` | Printable order cards |
 
@@ -110,7 +111,7 @@ flowchart TB
 2. Panel HTML is `create_gm_console_html` plus leftover overview/history below.
 3. `static/gm-console.js` polls `GET /admin/<id>/live` every 3s (inbox, HP, backlog).
 4. HP / backlog / inline order edits POST JSON; domain mutates the dict; `save_game_data` writes JSON under a per-game lock.
-5. Projector polls `GET /spelarskarm/<id>/live` — **public** snapshot only (no inbox, log, or testläge).
+5. Projector polls `GET /spelarskarm/<id>/live` — **public** snapshot only (no inbox, log, testläge, rolls, or `utfall`).
 
 ---
 
@@ -167,8 +168,8 @@ stabsspel/
 ├── static/                CSS, JS, and images
 │   └── backgrounds/       Page background images (`/static/backgrounds/...`)
 ├── teambeskrivning/       Per-team briefs (and optional images)
-├── testdata/              Editable Auto-fyll JSON per round (`testdataround1.json` …)
-├── Docs/                  Human docs (rules, architecture, ops notes)
+├── testdata/              Auto-fyll per round + example LLM JSON replies
+├── Docs/                  Human docs (rules, architecture, LLM prompt, ops notes)
 ├── tests/                 Preferred unit tests
 ├── speldata/              Live JSON games (not in git)
 ├── requirements.txt
@@ -177,6 +178,8 @@ stabsspel/
 ```
 
 There is **no** `templates/` directory. Most pages are strings in Python.
+
+`testdata/` holds `testdataround1.json`–`testdataround4.json` for Auto-fyll, plus example LLM replies (`llm-svar-exempel.json`, `llm-svar-utfall-exempel.json`). Do not put live rolls in `Docs/prompt.md`.
 
 ---
 
@@ -201,8 +204,8 @@ There is **no** `templates/` directory. Most pages are strings in Python.
 |------|---------|
 | `models.py` | `DATA_DIR`, `TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, roster size (5 vs 9 teams), STT base HP in large games, declaration period (round 3). |
 | `game_management.py` | `delete_game`, `nollstall_regeringsstod`, checkbox get/set (legacy checklists). Re-exports load/save. |
-| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack, GM log, `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
-| `gm_console_ui.py` | HTML for the sticky GM bar, attention list, team HP strip, transfer form, inbox, backlog board, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
+| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` validation), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
+| `gm_console_ui.py` | HTML for the sticky GM bar, attention list, team HP strip, transfer form, inbox, backlog board, LLM copy/import + **Utfall och sannolikhet**, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
 
 Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/test_domain.py`, not in route handlers.
 
@@ -226,6 +229,8 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `POST /admin/<id>/order_live` | Inline edit activity, withdraw to draft |
 | `POST /admin/<id>/test_mode` | Hide/show cheat controls |
 | `POST /admin/<id>/auto_fill_orders` | Testläge: fill this round from `testdata/testdataroundN.json` |
+| `POST /admin/<id>/llm_import` | Paste/upload LLM JSON (`utfall`, news, HP, milestones) |
+| `POST /admin/<id>/llm_apply` | Confirm apply of suggested HP or milestones (undoable) |
 | `POST /admin/<id>/reset` | Full game reset (under Mer, with confirm) |
 
 `GET /admin/<id>/live` is treated as **public like the panel** (the same information is already on the HTML page). Mutations require a valid GM session. Unauthenticated JSON mutations return 401.
@@ -234,7 +239,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 
 | Route | Role |
 |-------|------|
-| `/admin/<id>/order_summary` | Text dump to paste into an LLM |
+| `/admin/<id>/order_summary` | LLM export: fills `Docs/prompt.md`, freezes rolls, copy + paste/upload |
 | `/admin/<id>/aktivitetskort` | Print hidden agendas |
 | `/admin/<id>/orderkort` | Pick a round, then printable paper order cards for all teams |
 | `/admin/<id>/orderkort/<runda>` | HTML for that round |
@@ -279,8 +284,10 @@ Plain-text briefs, one file per team (`alfa.txt`, `bravo.txt`, `stt.txt`, `fm.tx
 
 | File | Purpose |
 |------|---------|
-| `prompt.md` | LLM export template. Filled at copy time; do not put live rolls in this file. |
+| `Stabsspel Traineeprogrammet.md` | The **game**: rules, teams, HP, rounds, how news work in the room. |
+| `prompt.md` | LLM export template. Filled at copy time with live orders and rolls; do not put live rolls in this file. |
 | `architecture.md` | This file: the **software**. |
+| `UX_CONSOLE_REWORK.md` | Working log for the live GM/projector UX pass. |
 | `DEPLOYMENT_GUIDE.md` | Render-oriented deploy notes. |
 | `PRODUCTION_CHECKLIST.md` | Production go-live checklist. |
 | `ORDERKORT_README.md` | Printable order-card notes. |
@@ -294,8 +301,8 @@ Root-level `README.md` stays at the repository root (quick start).
 
 | File | Purpose |
 |------|---------|
-| `tests/test_domain.py` | Phases, HP, budgets, undo, timers, roster, session, backlog spend, withdraw, public projector payload. |
-| `tests/test_gm_console.py` | Console helpers + HTML hooks (inbox, backlog, run-of-show, projector has no Start/Pausa). |
+| `tests/test_domain.py` | Phases, HP, budgets, undo, timers, roster, session, backlog spend, withdraw, public projector payload, LLM rolls/`utfall` import. |
+| `tests/test_gm_console.py` | Console helpers + HTML hooks (inbox, backlog, run-of-show, LLM utfall on GM only, projector has no Start/Pausa). |
 | `tests/test_admin_helpers.py` | Helper HTML/headers. |
 | `tests/test_basic_functionality.py` | Backlog clone, game shape. |
 | `tests/test_css_refactoring.py` | Helpers use CSS classes. |
@@ -353,10 +360,10 @@ Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **wri
 
 ## 10. Conventions for changes
 
-1. **Live rules** (phases, HP, orders, backlog, undo) → `gm_console.py` plus a test in `tests/test_domain.py`.
+1. **Live rules** (phases, HP, orders, backlog, undo, LLM rolls/`utfall`) → `gm_console.py` plus a test in `tests/test_domain.py`.
 2. **GM HTML** → `gm_console_ui.py` plus `static/gm-console.js` / `app.css`. Do not grow new live workflows as another full page if they can sit on the console.
-3. **Room-visible data** → `build_public_state` only. Never send inbox or `gm_log` to the projector.
-4. **News** stay on paper for the studio. LLM export asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor.
+3. **Room-visible data** → `build_public_state` only. Never send inbox, `gm_log`, `llm_forslag`, `llm_resolution`, rolls, or `utfall` to the projector.
+4. **News** stay on paper for the studio. LLM export fills `Docs/prompt.md` and asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). The app generates dice; the LLM must not. Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor.
 5. Prefer Swedish labels in the UI (the room is Swedish); keep code identifiers in the existing mix (`fas`, `runda`, `poang`, `regeringsstod`).
 
 ---
@@ -374,4 +381,5 @@ Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **wri
 | Change backlog templates | `models.BACKLOG` |
 | Change create-game / password | `models.skapa_nytt_spel`, `admin_start` |
 | Delete a saved game | Homepage `/` or `/admin` → Ta bort (game password) |
+| Change the LLM export prompt | `Docs/prompt.md` (placeholders `{LAGLISTA}`, `{RUNDA}`, `{FAS}`, `{BACKLOG}`, `{ORDRAR}`, `{SLUMPVARDEN}`, `{TIDIGARE_UTFALL}`) |
 | Understand the exercise | `Docs/Stabsspel Traineeprogrammet.md` |

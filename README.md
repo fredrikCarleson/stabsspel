@@ -2,7 +2,7 @@
 
 Digital spelledarhjälp för **Stabsspel Traineeprogrammet**: fyra rundor med Orderfas → Diplomatifas → Resultatfas, lag, handlingspoäng och en projektor till salen.
 
-Nyheter skrivs fortfarande utanför appen (kopiera ordrar till en LLM, papper, nyhetsstudio). Appens jobb är klocka, ordrar, HP och backlog.
+Nyheter skrivs fortfarande på papper och läses i TV-studion. Spelledaren kopierar ordrar till en LLM tillsammans med appens tärningsslag (1–100 per inskickad order), klistrar in JSON-svaret och kan då se utfall, nyhetsförslag samt föreslagen HP/milstolpe-progress. Projektor och spelare ser inte slagen eller sannolikheterna. Appens jobb i övrigt är klocka, ordrar, HP och backlog.
 
 ## Lokal utveckling
 
@@ -34,6 +34,8 @@ Lämna spellösenordet tomt vid skapande för att använda standardlösenordet (
 |-----|----------|
 | [Docs/Stabsspel Traineeprogrammet.md](Docs/Stabsspel%20Traineeprogrammet.md) | Spelet: regler, lag, HP, rundor |
 | [Docs/architecture.md](Docs/architecture.md) | Koden: mappar, routes, live-event |
+| [Docs/prompt.md](Docs/prompt.md) | LLM-exportens instruktioner (fylls med rundans order och slag) |
+| [Docs/UX_CONSOLE_REWORK.md](Docs/UX_CONSOLE_REWORK.md) | Spelledarpanelens UX-logg |
 | [Docs/DEPLOYMENT_GUIDE.md](Docs/DEPLOYMENT_GUIDE.md) | Render / produktion |
 | [Docs/PRODUCTION_CHECKLIST.md](Docs/PRODUCTION_CHECKLIST.md) | Go-live-checklista |
 | [Docs/ORDERKORT_README.md](Docs/ORDERKORT_README.md) | Utskrivbara pappersorderkort |
