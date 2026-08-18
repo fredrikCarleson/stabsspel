@@ -777,6 +777,41 @@ class TestLlmForslag(unittest.TestCase):
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
         self.assertFalse(get_llm_forslag(data)["hp_applied"])
 
+    def test_reimport_does_not_rearm_applied_consequences(self):
+        data = create_game_state()
+        payload = self._example_json()
+        import_llm_forslag(data, payload)
+        apply_llm_hp(data)
+        apply_llm_milestones(data)
+        hp_after_first_apply = data["poang"]["Alfa"]["aktuell"]
+        applied_hp = list(get_llm_forslag(data)["hp"])
+        applied_milestones = list(get_llm_forslag(data)["milstolpar"])
+        task_after_first_apply = next(
+            item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_1"
+        )["spenderade_hp"]
+
+        revised = json.loads(payload)
+        revised["hp"] = [{"lag": "Alfa", "delta": 99, "orsak": "Ska inte ersätta"}]
+        revised["milstolpar"] = [{
+            "lag": "Alfa", "uppgift": "alfa_1", "delta_hp": 1, "orsak": "Ska inte ersätta"
+        }]
+        import_llm_forslag(data, json.dumps(revised))
+
+        forslag = get_llm_forslag(data)
+        self.assertTrue(forslag["hp_applied"])
+        self.assertTrue(forslag["milestones_applied"])
+        self.assertEqual(forslag["hp"], applied_hp)
+        self.assertEqual(forslag["milstolpar"], applied_milestones)
+        self.assertTrue(any("HP är redan tillämpade" in item for item in forslag["warnings"]))
+        self.assertTrue(any("Milstolpar är redan tillämpade" in item for item in forslag["warnings"]))
+        with self.assertRaises(ValueError):
+            apply_llm_hp(data)
+        with self.assertRaises(ValueError):
+            apply_llm_milestones(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], hp_after_first_apply)
+        task = next(item for item in data["backlog"]["Alfa"] if item["id"] == "alfa_1")
+        self.assertEqual(task["spenderade_hp"], task_after_first_apply)
+
 
 class TestLlmResolution(unittest.TestCase):
     def _submit(self, data, team="Alfa", activities=None, runda=None):

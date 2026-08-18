@@ -289,7 +289,13 @@ def _home_game_row(game_data):
     fas = str(game_data.get("fas", "Orderfas") or "Orderfas")
     avslutat = bool(game_data.get("avslutat", False))
     teams = [str(name) for name in game_data.get("lag", []) if name]
-    status = "Avslutat" if avslutat else f"Runda {escape(str(runda))} · {escape(fas)}"
+    if avslutat:
+        status = '<span class="home-game-state">Avslutat</span>'
+    else:
+        status = (
+            '<span class="home-game-state is-active">Pågår</span>'
+            f'<span>Runda {escape(str(runda))} · {escape(fas)}</span>'
+        )
     finished_class = " is-finished" if avslutat else ""
     teams_html = ""
     if teams:
@@ -333,7 +339,7 @@ def startsida():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Stabsspelet - Krisledningssimulation</title>
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css?v=23">
+        <link rel="stylesheet" href="/static/app.css?v=29">
         <link rel="stylesheet" href="/static/print.css" media="print">
     </head>
     <body class="home-page">

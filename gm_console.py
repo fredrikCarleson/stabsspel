@@ -1171,6 +1171,10 @@ class LlmJsonSyntaxError(ValueError):
         super().__init__(self.formatted.get("message") or "Ogiltig JSON")
 
 
+class LlmSuggestionAlreadyApplied(ValueError):
+    """A repeated apply request that must not mutate game state again."""
+
+
 _JSON_FENCE_RE = re.compile(
     r"^```(?:json)?\s*(.*)```\s*$",
     re.IGNORECASE | re.DOTALL,
@@ -1540,6 +1544,23 @@ def _clamp_milestone_delta(data, team, task_id, phase, requested):
 
 def import_llm_forslag(data, raw):
     parsed = parse_llm_forslag(raw, data)
+    previous = get_llm_forslag(data, parsed["runda"]) or {}
+    # Re-importing must not re-arm consequences already committed this round.
+    # Undo restores the pre-apply snapshot and is the explicit revision path.
+    if previous.get("hp_applied"):
+        if parsed.get("hp") != previous.get("hp"):
+            parsed["warnings"].append(
+                "HP är redan tillämpade. De tillämpade HP-värdena behölls; ångra först för att ändra dem."
+            )
+        parsed["hp"] = list(previous.get("hp") or [])
+        parsed["hp_applied"] = True
+    if previous.get("milestones_applied"):
+        if parsed.get("milstolpar") != previous.get("milstolpar"):
+            parsed["warnings"].append(
+                "Milstolpar är redan tillämpade. De tillämpade milstolparna behölls; ångra först för att ändra dem."
+            )
+        parsed["milstolpar"] = list(previous.get("milstolpar") or [])
+        parsed["milestones_applied"] = True
     has_utfall_key = parsed.pop("has_utfall_key", False)
     utfall = list(parsed.get("utfall") or [])
     store = dict(data.get("llm_forslag") or {})
@@ -1569,7 +1590,7 @@ def apply_llm_hp(data):
     if not forslag:
         raise ValueError("Inga LLM-förslag för den här rundan.")
     if forslag.get("hp_applied"):
-        raise ValueError("HP-förslagen är redan tillämpade.")
+        raise LlmSuggestionAlreadyApplied("HP-förslagen är redan tillämpade.")
     items = list(forslag.get("hp") or [])
     if not items:
         raise ValueError("Inga HP-förslag att tillämpa.")
@@ -1597,7 +1618,7 @@ def apply_llm_milestones(data):
     if not forslag:
         raise ValueError("Inga LLM-förslag för den här rundan.")
     if forslag.get("milestones_applied"):
-        raise ValueError("Milstolpeförslagen är redan tillämpade.")
+        raise LlmSuggestionAlreadyApplied("Milstolpeförslagen är redan tillämpade.")
     items = list(forslag.get("milstolpar") or [])
     if not items:
         raise ValueError("Inga milstolpeförslag att tillämpa.")

@@ -727,8 +727,37 @@ TEAM_ORDER_TEMPLATE = """
         }
         
         .hp-display {
-            font-size: 1.2rem;
-            font-weight: bold;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .hp-stat {
+            min-width: 92px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.65);
+        }
+
+        .hp-stat small {
+            display: block;
+            color: #6c757d;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .hp-stat strong {
+            display: block;
+            font-size: 1.25rem;
+            line-height: 1.25;
+        }
+
+        .hp-stat.is-primary {
+            background: white;
+            box-shadow: inset 0 0 0 2px currentColor;
         }
         
         .hp-remaining {
@@ -885,6 +914,45 @@ TEAM_ORDER_TEMPLATE = """
         
         /* Responsive adjustments for team overview */
         @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header,
+            .order-form {
+                padding: 14px;
+            }
+
+            .header h1 {
+                font-size: 1.45rem;
+            }
+
+            .game-info {
+                justify-content: center;
+            }
+
+            .hp-summary {
+                padding: 10px;
+            }
+
+            .hp-summary h4 {
+                margin-bottom: 6px;
+            }
+
+            .hp-display {
+                gap: 5px;
+            }
+
+            .hp-stat {
+                flex: 1;
+                min-width: 0;
+                padding: 5px;
+            }
+
+            .submit-section :is(.save-btn, .submit-btn, .withdraw-btn) {
+                width: 100%;
+            }
+
             .team-overview-grid {
                 grid-template-columns: 1fr;
                 gap: 12px;
@@ -925,9 +993,9 @@ TEAM_ORDER_TEMPLATE = """
         <div class="hp-summary" id="hp-summary">
             <h4>Handlingspoäng</h4>
             <div class="hp-display">
-                Max: <span id="max-hp">{{ team_max_hp }}</span> |
-                Använt: <span id="used-hp">0</span> |
-                Kvar: <span id="remaining-hp" class="hp-remaining">{{ team_max_hp }}</span>
+                <span class="hp-stat"><small>Max</small><strong id="max-hp">{{ team_max_hp }}</strong></span>
+                <span class="hp-stat"><small>Använt</small><strong id="used-hp">0</strong></span>
+                <span class="hp-stat is-primary"><small>Kvar</small><strong id="remaining-hp" class="hp-remaining">{{ team_max_hp }}</strong></span>
             </div>
         </div>
         </div>
@@ -984,7 +1052,7 @@ TEAM_ORDER_TEMPLATE = """
         </div>
         {% endif %}
         
-        <div id="status-message"></div>
+        <div id="status-message" aria-live="polite" aria-atomic="true"></div>
     </div>
     
     <script>

@@ -109,6 +109,18 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Old JSON without `utfall` still imports. Example files: `testdata/llm-svar-exempel.json`, `testdata/llm-svar-utfall-exempel.json`.
 - Invalid JSON still fails on `json.loads` (no auto-repair). The console shows line/column, a snippet with a marker, and a short hint (citationstecken, kommatecken, text utanför JSON). One outer markdown fence around the whole payload is stripped. Pasted text stays in the textarea. **Kopiera fel** copies the message for pasting back to the LLM. Domain/`utfall` errors stay separate.
 
+### Focused polish pass (2026-08-18)
+
+- Timerstatus is Swedish and pairs text with a status dot: **Inte startad / Pågår / Pausad**.
+- Team cards make **Kvar att använda** the primary HP value; available, spent, base and transferable HP remain subordinate.
+- LLM work reads as **Kopiera → Skicka → Klistra in**. After a successful import, the paste field folds under **Ersätt LLM-svar** instead of occupying the result view.
+- `utfall` cards emphasize **Chans → Slag → Utfall** with text and symbols as well as colour. News, HP consequences and milestones are separate quiet sections rather than one long blue block.
+- Resultatfas keeps the whole LLM result available under the folded **LLM-underlag och konsekvenser**, so the rundown and Lag view stay operationally dominant.
+- Long LLM output now uses four internal tabs: **Utfall / Nyheter / HP / Milstolpar**. Only one result type is expanded at a time, with counts and applied checkmarks in the tabs.
+- HP and milestone suggestions are single-apply operations: the submit button disables immediately, the server rejects/reconciles repeated POSTs, re-import cannot re-arm an applied consequence, and the applied tab shows a persistent **✓ … är tillämpade** state. Undo is the explicit revision path.
+- Backlog rows show `spenderat / totalt HP`, remaining effort, and a compact progress bar. Repeating work does not get a completion bar.
+- The start list explicitly marks active games as **Pågår**. The mobile team form gives **Kvar** visual priority and stacks save/submit actions into full-width touch targets.
+
 ## Still to do (priority)
 
 1. Optional later: delete unused checklist / `create_timer_html` builders in `admin_routes.py`.
@@ -126,7 +138,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=27`, JS `gm-console.js?v=11`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=29`, JS `gm-console.js?v=13`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 

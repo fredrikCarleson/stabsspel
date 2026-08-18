@@ -70,6 +70,14 @@ def _clock_warn_class(remaining):
     return ""
 
 
+def _timer_status_label(status):
+    return {
+        "running": "Pågår",
+        "paused": "Pausad",
+        "stopped": "Inte startad",
+    }.get(status, status or "")
+
+
 def attention_items(state):
     items = []
     fas = state.get("fas")
@@ -150,16 +158,18 @@ def _utfall_card_html(item):
         f'<p class="gm-utfall-delmal">{escape(delmal)}</p>' if delmal else ""
     )
     return (
-        f'<article class="gm-utfall-card">'
+        f'<article class="gm-utfall-card {tone}">'
         f'<p class="gm-utfall-meta">{escape(item.get("lag") or team)} · {order_no}</p>'
         f'<p class="gm-utfall-order">{escape(item.get("order") or "")}</p>'
         f"{delmal_html}"
         f'<p class="gm-utfall-hp">{satsad} HP mot {motstand} HP</p>'
-        f'<p class="gm-utfall-headline">'
-        f'<span>{sannolikhet} %</span>'
-        f'<span>Slag {slump}</span>'
-        f'<span class="gm-utfall-result {tone}">{escape(mark)} {escape(label)}</span>'
-        f"</p>"
+        f'<div class="gm-utfall-headline" aria-label="Chans {sannolikhet} procent, Slag {slump}, Utfall {escape(label.lower())}">'
+        f'<span class="gm-utfall-metric"><small>Chans</small><strong>{sannolikhet} %</strong></span>'
+        f'<span class="gm-utfall-arrow" aria-hidden="true">→</span>'
+        f'<span class="gm-utfall-metric"><small>Slag</small><strong>{slump}</strong></span>'
+        f'<span class="gm-utfall-arrow" aria-hidden="true">→</span>'
+        f'<span class="gm-utfall-metric gm-utfall-result {tone}"><small>Utfall</small><strong>{escape(mark)} {escape(label)}</strong></span>'
+        f"</div>"
         f'<p class="gm-utfall-why">{escape(item.get("motivering") or "")}</p>'
         f"</article>"
     )
@@ -202,7 +212,37 @@ def _llm_import_error_html(llm_import):
     return ""
 
 
-def _llm_block_html(spel_id, state, llm_import=None):
+def _llm_result_tabs_html(panels, default_tab):
+    """Compact one-at-a-time views for potentially long LLM results."""
+    buttons = []
+    bodies = []
+    for key, label, count, applied, body in panels:
+        selected = key == default_tab
+        done = (
+            '<span class="gm-llm-tab-done" aria-label="Tillämpat">✓</span>'
+            if applied else ""
+        )
+        buttons.append(
+            f'<button type="button" class="gm-llm-tab" role="tab" '
+            f'id="gm-llm-tab-{key}" data-tab="{key}" '
+            f'aria-controls="gm-llm-panel-{key}" '
+            f'aria-selected="{"true" if selected else "false"}">'
+            f'{escape(label)} <span class="gm-llm-tab-count">{int(count)}</span>{done}</button>'
+        )
+        hidden = "" if selected else " hidden"
+        bodies.append(
+            f'<div class="gm-llm-tabpanel" role="tabpanel" '
+            f'id="gm-llm-panel-{key}" aria-labelledby="gm-llm-tab-{key}"{hidden}>'
+            f'{body}</div>'
+        )
+    return (
+        '<div class="gm-llm-tabs" data-gm-tabs>'
+        '<div class="gm-llm-tablist" role="tablist" aria-label="LLM-resultat">'
+        f'{"".join(buttons)}</div>{"".join(bodies)}</div>'
+    )
+
+
+def _llm_block_html(spel_id, state, llm_import=None, default_result_tab=None):
     fas = state.get("fas")
     llm_import = llm_import or {}
     has_import_error = bool(
@@ -214,38 +254,53 @@ def _llm_block_html(spel_id, state, llm_import=None):
         return ""
     sid = escape(spel_id)
     llm = state.get("llm")
+    has_import = bool(
+        llm
+        and (
+            llm.get("importerad")
+            or llm.get("nyheter")
+            or llm.get("hp")
+            or llm.get("milstolpar")
+            or llm.get("utfall")
+        )
+    )
     copy_row = f'''
         <div class="gm-llm">
-            <div>Kopiera ordrar till LLM. Klistra in JSON-svaret. Nyheter skrivs på papper till studion.</div>
-            <a href="/admin/{sid}/order_summary" target="_blank" class="primary">Kopiera ordrar till LLM</a>
+            <div>
+              <strong>LLM-underlag</strong>
+              <p class="gm-llm-steps"><span>1 Kopiera</span><span>2 Skicka till LLM</span><span>3 Klistra in svar</span></p>
+            </div>
+            <a href="/admin/{sid}/order_summary" target="_blank" class="primary">Kopiera till LLM</a>
         </div>
     '''
     error_html = _llm_import_error_html(llm_import)
     draft = escape(llm_import.get("text") or "")
     invalid = ' aria-invalid="true"' if error_html else ""
     rows = 8 if error_html else 4
-    import_form = f'''
+    import_form_body = f'''
       <form method="post" action="/admin/{sid}/llm_import" enctype="multipart/form-data" class="gm-llm-import">
         {error_html}
-        <label class="gm-section-help" for="gm-llm-json">Klistra in JSON från LLM, eller ladda upp en fil.</label>
+        <label class="gm-section-help" for="gm-llm-json">3. Klistra in JSON-svaret, eller välj en fil.</label>
         <textarea id="gm-llm-json" name="json" rows="{rows}"{invalid} placeholder='{{"nyheter": [], "hp": [], "milstolpar": []}}'>{draft}</textarea>
         <div class="gm-llm-import-actions">
           <input type="file" name="fil" accept=".json,application/json,text/plain">
-          <button type="submit" class="secondary">Importera LLM-svar</button>
+          <button type="submit" class="secondary">Importera svar</button>
         </div>
       </form>
     '''
+    if has_import and not has_import_error:
+        import_form = (
+            '<p class="gm-llm-imported" role="status">✓ LLM-svar importerat</p>'
+            '<details class="gm-llm-reimport">'
+            '<summary>Ersätt LLM-svar</summary>'
+            f'{import_form_body}</details>'
+        )
+    else:
+        import_form = import_form_body
     if not llm:
         return f'<div class="gm-llm-panel">{copy_row}{import_form}</div>'
 
     utfall_html = _utfall_section_html(llm)
-    has_import = bool(
-        llm.get("importerad")
-        or llm.get("nyheter")
-        or llm.get("hp")
-        or llm.get("milstolpar")
-        or llm.get("utfall")
-    )
     if not has_import:
         extra = f'<div class="gm-llm-forslag">{utfall_html}</div>' if utfall_html else ""
         return f'<div class="gm-llm-panel">{copy_row}{import_form}{extra}</div>'
@@ -289,10 +344,15 @@ def _llm_block_html(spel_id, state, llm_import=None):
         )
     hp_html = "".join(hp_items) or "<li>Inga HP-förslag.</li>"
     if llm.get("hp_applied"):
-        hp_action = '<p class="gm-muted">HP tillämpade. Ångra i listen om det blev fel.</p>'
+        hp_action = (
+            '<div class="gm-llm-applied" role="status">'
+            '<strong>✓ HP är tillämpade</strong>'
+            '<span>Kan inte tillämpas igen. Ångra i listen om utfallet ska göras om.</span>'
+            '</div>'
+        )
     elif llm.get("hp"):
         hp_action = (
-            f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline" '
+            f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline gm-single-submit" '
             f"onsubmit=\"return confirm('Tillämpa HP-förslagen? Går att ångra.');\">"
             f'<input type="hidden" name="op" value="hp">'
             f'<button type="submit" class="success sm">Tillämpa HP</button>'
@@ -312,10 +372,15 @@ def _llm_block_html(spel_id, state, llm_import=None):
         )
     mile_html = "".join(mile_items) or "<li>Inga milstolpeförslag.</li>"
     if llm.get("milestones_applied"):
-        mile_action = '<p class="gm-muted">Milstolpar tillämpade. Ångra i listen om det blev fel.</p>'
+        mile_action = (
+            '<div class="gm-llm-applied" role="status">'
+            '<strong>✓ Milstolpar är tillämpade</strong>'
+            '<span>Kan inte tillämpas igen. Ångra i listen om utfallet ska göras om.</span>'
+            '</div>'
+        )
     elif llm.get("milstolpar"):
         mile_action = (
-            f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline" '
+            f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline gm-single-submit" '
             f"onsubmit=\"return confirm('Tillämpa milstolpeförslagen? Går att ångra.');\">"
             f'<input type="hidden" name="op" value="milstolpar">'
             f'<button type="submit" class="success sm">Tillämpa milstolpar</button>'
@@ -324,20 +389,34 @@ def _llm_block_html(spel_id, state, llm_import=None):
     else:
         mile_action = ""
 
+    result_default = (
+        default_result_tab
+        if default_result_tab in {"utfall", "nyheter", "hp", "milstolpar"}
+        else ("utfall" if llm.get("utfall") else "nyheter")
+    )
+    result_tabs = _llm_result_tabs_html(
+        (
+            ("utfall", "Utfall", len(llm.get("utfall") or []), False, utfall_html or '<p class="gm-muted">Inga sannolikhetsutfall.</p>'),
+            ("nyheter", "Nyheter", len(llm.get("nyheter") or []), False, f'''
+              <section class="gm-llm-section">
+                <h4>Nyheter till studion</h4>{news_html}{news_copy_btn}
+              </section>'''),
+            ("hp", "HP", len(llm.get("hp") or []), bool(llm.get("hp_applied")), f'''
+              <section class="gm-llm-section">
+                <h4>HP-konsekvenser</h4><ul class="gm-llm-list">{hp_html}</ul>{hp_action}
+              </section>'''),
+            ("milstolpar", "Milstolpar", len(llm.get("milstolpar") or []), bool(llm.get("milestones_applied")), f'''
+              <section class="gm-llm-section">
+                <h4>Backlog och milstolpar</h4><ul class="gm-llm-list">{mile_html}</ul>{mile_action}
+              </section>'''),
+        ),
+        result_default,
+    )
     forslag = f'''
-      <div class="gm-llm-forslag">
+      <div class="gm-llm-forslag" id="gm-llm-results">
         {warning_html}
-        {utfall_html}
-        <h3 class="gm-section-title">LLM-förslag</h3>
-        <h4>Nyheter till studion</h4>
-        {news_html}
-        {news_copy_btn}
-        <h4>HP</h4>
-        <ul class="gm-llm-list">{hp_html}</ul>
-        {hp_action}
-        <h4>Milstolpar</h4>
-        <ul class="gm-llm-list">{mile_html}</ul>
-        {mile_action}
+        <h3 class="gm-section-title">LLM-resultat</h3>
+        {result_tabs}
       </div>
     '''
     return f'<div class="gm-llm-panel">{copy_row}{import_form}{forslag}</div>'
@@ -441,7 +520,7 @@ def _tab_shell_html(default_tab, panels):
             f'aria-labelledby="gm-tab-{key}"{hidden}>{panels[key]}</div>'
         )
     return (
-        f'<div class="gm-tabs" data-default="{escape(default_tab)}">'
+        f'<div class="gm-tabs" data-gm-tabs data-default="{escape(default_tab)}">'
         f'<div class="gm-tablist" role="tablist" aria-label="Konsolvyer">'
         f"{''.join(buttons)}</div>"
         f"{''.join(bodies)}</div>"
@@ -494,7 +573,7 @@ def live_html_fragments(spel_id, state):
     }
 
 
-def create_gm_console_html(spel_id, data, llm_import=None):
+def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
     state = build_live_state(data)
     runda = state["runda"]
     fas = state["fas"]
@@ -548,7 +627,9 @@ def create_gm_console_html(spel_id, data, llm_import=None):
     clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_section_html(state.get("history") or [], state["log"])
-    llm_note = _llm_block_html(spel_id, state, llm_import=llm_import)
+    llm_note = _llm_block_html(
+        spel_id, state, llm_import=llm_import, default_result_tab=llm_view
+    )
 
     result_note = ""
     if fas == "Resultatfas" and avslutat:
@@ -624,7 +705,8 @@ def create_gm_console_html(spel_id, data, llm_import=None):
     elif fas == "Diplomatifas":
         job_block = f"{llm_note}{tabs}"
     else:
-        job_block = f"{result_note}{llm_note}{tabs}"
+        llm_reference = _fold_html("LLM-underlag och konsekvenser", llm_note)
+        job_block = f"{result_note}{llm_reference}{tabs}"
 
     test_checked = "checked" if test_mode else ""
     test_class = "is-on" if test_mode else ""
@@ -647,7 +729,7 @@ def create_gm_console_html(spel_id, data, llm_import=None):
           <div class="gm-round">Runda {runda}/{MAX_RUNDA}</div>
           <div class="gm-phase" data-fas="{escape(fas)}">{escape(fas)}</div>
           <div class="gm-clock{clock_class}" id="gm-clock">{_fmt_time(remaining)}</div>
-          <span class="gm-timer-badge" id="gm-timer-badge">{escape(timer_status)}</span>
+          <span class="gm-timer-badge is-{escape(timer_status)}" id="gm-timer-badge">{escape(_timer_status_label(timer_status))}</span>
         </div>
         <form method="post" action="/admin/{escape(spel_id)}/timer" class="gm-bar-time">
           <button name="action" value="start" class="success" {timer_disabled} {start_hidden}>Starta</button>
@@ -744,9 +826,10 @@ def _team_strip_html(spel_id, teams, fas):
             <span class="gm-status {_status_class(t["status"])}">{escape(t["status_label"])}</span>
           </div>
           <div class="gm-hp {remaining_class}">
-            <span class="gm-hp-now">{t["effective"]}</span>
-            <span class="gm-hp-sub gm-hp-aktuell">aktuell {t["aktuell"]}{bonus}</span>
-            <span class="gm-hp-sub gm-hp-budget">lagt {t["spent"]} · kvar {t["remaining"]}</span>
+            <span class="gm-hp-label">Kvar att använda</span>
+            <span class="gm-hp-now">{t["remaining"]}</span>
+            <span class="gm-hp-sub gm-hp-budget">{t["effective"]} tillgängligt · {t["spent"]} lagt</span>
+            <span class="gm-hp-sub gm-hp-aktuell">grundvärde {t["aktuell"]}{bonus}</span>
             <span class="gm-hp-sub gm-hp-transferable">{escape(transferable)}</span>
           </div>
           <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-actions">
@@ -942,6 +1025,27 @@ def _spend_buttons(team, task_id, phase="", disabled=""):
     )
 
 
+def _backlog_progress_html(spent, estimated, label):
+    try:
+        spent = max(0, int(spent or 0))
+        estimated = max(0, int(estimated or 0))
+    except (TypeError, ValueError):
+        spent = estimated = 0
+    percent = min(100, round(100 * spent / estimated)) if estimated else 0
+    return (
+        f'<span class="gm-backlog-progress" role="progressbar" '
+        f'aria-label="{escape(label)}: {spent} av {estimated} HP" '
+        f'aria-valuemin="0" aria-valuemax="{estimated}" aria-valuenow="{min(spent, estimated)}">'
+        f'<span style="width:{percent}%"></span></span>'
+    )
+
+
+def _backlog_count_html(spent, estimated):
+    remaining = max(0, int(estimated or 0) - int(spent or 0))
+    suffix = "klar" if estimated and remaining == 0 else f"{remaining} kvar"
+    return f'{int(spent or 0)} / {int(estimated or 0)} HP <small>{suffix}</small>'
+
+
 def _backlog_html(board, avslutat=False):
     if not board:
         return '<p class="gm-empty">Inga utvecklingsteam med backlog i det här spelet.</p>'
@@ -956,31 +1060,36 @@ def _backlog_html(board, avslutat=False):
                 rows.append(
                     f'<div class="gm-backlog-item{done_class}">'
                     f'<div class="gm-backlog-parent"><span class="gm-backlog-name">'
-                    f'<strong>{escape(item["name"])}</strong></span>'
-                    f'<span class="gm-backlog-count">{item["spent"]}/{item["estimated"]}</span></div>'
+                    f'<strong>{escape(item["name"])}</strong>'
+                    f'{_backlog_progress_html(item["spent"], item["estimated"], item["name"])}</span>'
+                    f'<span class="gm-backlog-count">{_backlog_count_html(item["spent"], item["estimated"])}</span></div>'
                 )
                 for phase in item.get("phases") or []:
                     phase_done = " is-done" if phase.get("done") else ""
                     rows.append(
                         f'<div class="gm-backlog-row gm-backlog-phase{phase_done}">'
-                        f'<span class="gm-backlog-name">{escape(phase["name"])}</span>'
-                        f'<span class="gm-backlog-count">{phase["spent"]}/{phase["estimated"]}</span>'
+                        f'<span class="gm-backlog-name">{escape(phase["name"])}'
+                        f'{_backlog_progress_html(phase["spent"], phase["estimated"], phase["name"])}</span>'
+                        f'<span class="gm-backlog-count">{_backlog_count_html(phase["spent"], phase["estimated"])}</span>'
                         f'<span class="gm-backlog-btns">{_spend_buttons(team["team"], item["id"], phase["name"], disabled)}</span>'
                         f'</div>'
                     )
                 rows.append("</div>")
             else:
+                progress = "" if item.get("recurring") else _backlog_progress_html(
+                    item["spent"], item["estimated"], item["name"]
+                )
                 rows.append(
                     f'<div class="gm-backlog-row{done_class}">'
-                    f'<span class="gm-backlog-name">{escape(item["name"])}{recurring}</span>'
-                    f'<span class="gm-backlog-count">{item["spent"]}/{item["estimated"]}</span>'
+                    f'<span class="gm-backlog-name">{escape(item["name"])}{recurring}{progress}</span>'
+                    f'<span class="gm-backlog-count">{_backlog_count_html(item["spent"], item["estimated"])}</span>'
                     f'<span class="gm-backlog-btns">{_spend_buttons(team["team"], item["id"], "", disabled)}</span>'
                     f'</div>'
                 )
         cards.append(
             f'<section class="gm-backlog-team" data-team="{escape(team["team"])}">'
             f'<h4>{escape(team["team"])} '
-            f'<span class="gm-hp-sub">{team["spent"]}/{team["estimated"]} HP</span></h4>'
+            f'<span class="gm-hp-sub">{_backlog_count_html(team["spent"], team["estimated"])}</span></h4>'
             f'<label class="gm-backlog-stepper">HP per klick '
             f'<input type="number" min="1" value="1" class="gm-amount gm-backlog-amount" '
             f'data-team="{escape(team["team"])}" {disabled} aria-label="HP per klick {escape(team["team"])}">'

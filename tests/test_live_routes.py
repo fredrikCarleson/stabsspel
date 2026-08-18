@@ -203,6 +203,52 @@ class TestLiveRoutes(unittest.TestCase):
         self.assertEqual(restored["llm_forslag"]["1"]["nyheter"][0]["rubrik"], "Gammal")
         self.assertEqual(restored["timer_bonus"], 90)
 
+    def test_repeated_llm_apply_posts_only_change_state_once(self):
+        data = self._read_game()
+        data["fas"] = "Diplomatifas"
+        data["llm_forslag"] = {
+            "1": {
+                "runda": 1,
+                "nyheter": [],
+                "utfall": [],
+                "warnings": [],
+                "hp": [{"lag": "Alfa", "delta": -5, "orsak": "Test"}],
+                "milstolpar": [{
+                    "lag": "Alfa",
+                    "uppgift": "alfa_1",
+                    "fas": None,
+                    "delta_hp": 5,
+                    "orsak": "Test",
+                }],
+                "hp_applied": False,
+                "milestones_applied": False,
+            }
+        }
+        self._write_game(data)
+        client = self._admin_client()
+
+        first_hp = client.post(f"/admin/{self.spel_id}/llm_apply", data={"op": "hp"})
+        second_hp = client.post(f"/admin/{self.spel_id}/llm_apply", data={"op": "hp"})
+        first_mile = client.post(
+            f"/admin/{self.spel_id}/llm_apply", data={"op": "milstolpar"}
+        )
+        second_mile = client.post(
+            f"/admin/{self.spel_id}/llm_apply", data={"op": "milstolpar"}
+        )
+
+        self.assertEqual(first_hp.status_code, 303)
+        self.assertEqual(second_hp.status_code, 303)
+        self.assertEqual(first_mile.status_code, 303)
+        self.assertEqual(second_mile.status_code, 303)
+        self.assertIn("llm_view=hp", first_hp.headers["Location"])
+        self.assertIn("#gm-llm-results", first_hp.headers["Location"])
+        saved = self._read_game()
+        self.assertEqual(saved["poang"]["Alfa"]["aktuell"], 20)
+        task = next(item for item in saved["backlog"]["Alfa"] if item["id"] == "alfa_1")
+        self.assertEqual(task["spenderade_hp"], 5)
+        self.assertTrue(saved["llm_forslag"]["1"]["hp_applied"])
+        self.assertTrue(saved["llm_forslag"]["1"]["milestones_applied"])
+
 
 if __name__ == "__main__":
     unittest.main()

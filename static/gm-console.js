@@ -19,6 +19,11 @@
     submitted: "gm-status-submitted",
     changed: "gm-status-changed",
   };
+  var TIMER_LABELS = {
+    running: "Pågår",
+    paused: "Pausad",
+    stopped: "Inte startad",
+  };
   var live = null;
   var inflight = false;
   var lastPaint = "";
@@ -52,7 +57,10 @@
     if (remaining <= GM_DANGER_S) clock.classList.add("is-danger");
     else if (remaining <= GM_WARN_S) clock.classList.add("is-warning");
     var badge = document.getElementById("gm-timer-badge");
-    if (badge && live.timer_status) badge.textContent = live.timer_status;
+    if (badge && live.timer_status) {
+      badge.textContent = TIMER_LABELS[live.timer_status] || live.timer_status;
+      badge.className = "gm-timer-badge is-" + live.timer_status;
+    }
     var hint = document.getElementById("gm-clock-hint");
     if (hint) {
       hint.classList.remove("is-warning", "is-danger");
@@ -163,24 +171,54 @@
 
   function showConsoleTab(root, name) {
     if (!root || !name) return;
+    var activePanelId = "";
     root.querySelectorAll("[role=tab]").forEach(function (tab) {
       var on = tab.getAttribute("data-tab") === name;
       tab.setAttribute("aria-selected", on ? "true" : "false");
+      if (on) activePanelId = tab.getAttribute("aria-controls") || "";
     });
     root.querySelectorAll("[role=tabpanel]").forEach(function (panel) {
-      var on = panel.id === "gm-panel-" + name;
+      var on = panel.id === activePanelId;
       if (on) panel.removeAttribute("hidden");
       else panel.setAttribute("hidden", "hidden");
     });
   }
 
   function bindTabs() {
-    var root = document.querySelector(".gm-tabs");
-    if (!root) return;
-    root.addEventListener("click", function (event) {
-      var tab = event.target.closest("[role=tab]");
-      if (!tab || !root.contains(tab)) return;
-      showConsoleTab(root, tab.getAttribute("data-tab"));
+    document.querySelectorAll("[data-gm-tabs]").forEach(function (root) {
+      root.addEventListener("click", function (event) {
+        var tab = event.target.closest("[role=tab]");
+        if (!tab || !root.contains(tab)) return;
+        showConsoleTab(root, tab.getAttribute("data-tab"));
+      });
+      root.addEventListener("keydown", function (event) {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        var tabs = Array.prototype.slice.call(root.querySelectorAll("[role=tab]"));
+        var index = tabs.indexOf(event.target.closest("[role=tab]"));
+        if (index < 0 || !tabs.length) return;
+        event.preventDefault();
+        var step = event.key === "ArrowRight" ? 1 : -1;
+        var next = tabs[(index + step + tabs.length) % tabs.length];
+        showConsoleTab(root, next.getAttribute("data-tab"));
+        next.focus();
+      });
+    });
+  }
+
+  function bindSingleSubmitForms() {
+    document.addEventListener("submit", function (event) {
+      var form = event.target.closest && event.target.closest("form.gm-single-submit");
+      if (!form || event.defaultPrevented) return;
+      if (form.getAttribute("data-submitting") === "true") {
+        event.preventDefault();
+        return;
+      }
+      form.setAttribute("data-submitting", "true");
+      var button = event.submitter || form.querySelector('button[type="submit"]');
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Tillämpar…";
+      }
     });
   }
 
@@ -204,11 +242,11 @@
       var hp = card.querySelector(".gm-hp");
       if (hp) hp.classList.toggle("gm-hp-over", t.remaining < 0);
       var now = card.querySelector(".gm-hp-now");
-      if (now) now.textContent = t.effective;
+      if (now) now.textContent = t.remaining;
       var aktuell = card.querySelector(".gm-hp-aktuell");
-      if (aktuell) aktuell.textContent = "aktuell " + t.aktuell + (t.regeringsstod ? " +10" : "");
+      if (aktuell) aktuell.textContent = "grundvärde " + t.aktuell + (t.regeringsstod ? " +10" : "");
       var budget = card.querySelector(".gm-hp-budget");
-      if (budget) budget.textContent = "lagt " + t.spent + " · kvar " + t.remaining;
+      if (budget) budget.textContent = t.effective + " tillgängligt · " + t.spent + " lagt";
       var xfer = card.querySelector(".gm-hp-transferable");
       if (xfer) {
         xfer.textContent = t.regeringsstod
@@ -596,6 +634,7 @@
   if (!live) return;
   bindTestMode();
   bindTabs();
+  bindSingleSubmitForms();
   document.addEventListener("click", closeOpenMenus);
   tickClock();
   setInterval(poll, POLL_MS);

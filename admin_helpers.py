@@ -102,7 +102,7 @@ def create_script_references():
     """Skapa referenser till externa JavaScript-filer"""
     return '''
     <script src="/static/admin.js"></script>
-    <script src="/static/gm-console.js?v=11"></script>
+    <script src="/static/gm-console.js?v=13"></script>
     '''
 
 def create_delete_game_button(spel_id, label, css_class="danger sm"):

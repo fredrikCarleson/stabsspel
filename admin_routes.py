@@ -31,6 +31,7 @@ from gm_console import (
     hp_delta_from_fields,
     import_llm_forslag,
     LlmJsonSyntaxError,
+    LlmSuggestionAlreadyApplied,
     push_undo,
     reset_timer_fields,
     set_regeringsstod,
@@ -2188,7 +2189,12 @@ def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
     lag_html = ', '.join([
         f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
     ])
-    console_html = create_gm_console_html(spel_id, data, llm_import=llm_import)
+    console_html = create_gm_console_html(
+        spel_id,
+        data,
+        llm_import=llm_import,
+        llm_view=(request.args.get("llm_view") or "").strip(),
+    )
     html_content = f'''
         <!DOCTYPE html>
         <html lang="sv">
@@ -2199,7 +2205,7 @@ def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=27">
+            <link rel="stylesheet" href="/static/app.css?v=29">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -2308,10 +2314,16 @@ def llm_apply(spel_id):
             apply_llm_milestones(data)
         else:
             raise ValueError("Okänd LLM-åtgärd.")
+    except LlmSuggestionAlreadyApplied:
+        # Double clicks and replayed forms return to the authoritative applied
+        # state; the domain guard ensures no consequence is added twice.
+        target = url_for("admin.admin_panel", spel_id=spel_id, llm_view=op)
+        return redirect(f"{target}#gm-llm-results", code=303)
     except ValueError as exc:
         return _llm_error_page(spel_id, str(exc))
     save_game_data(spel_id, data)
-    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+    target = url_for("admin.admin_panel", spel_id=spel_id, llm_view=op)
+    return redirect(f"{target}#gm-llm-results", code=303)
 
 @admin_bp.route("/admin/<spel_id>/auto_fill_orders", methods=["POST"])
 def auto_fill_orders(spel_id):
