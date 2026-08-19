@@ -93,6 +93,112 @@ def attention_items(state):
     return items
 
 
+_HEROICONS = {
+    "bars-3": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>'
+    ),
+    "beaker": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.169.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.131 3.601-1.14.181-2.345.271-3.571.271-3.044 0-5.952-.725-8.429-2.004"/>'
+    ),
+    "table-cells": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.25m11.25 0h-4m4 0a1.125 1.125 0 0 0 1.125-1.125M20.625 19.5V5.625m0 0A1.125 1.125 0 0 0 19.5 4.5h-15a1.125 1.125 0 0 0-1.125 1.125m16.25 0v5.625m-16.25-5.625v13.75m0-13.75A1.125 1.125 0 0 1 4.5 4.5h6.375v16m6.25-16H19.5a1.125 1.125 0 0 1 1.125 1.125v5.625m-7.5 8.125h7.5"/>'
+    ),
+    "queue-list": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/>'
+    ),
+    "identification": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.665 6.721 6.721 0 0 1-3.168-.665 3.375 3.375 0 0 1 6.338 0Z"/>'
+    ),
+    "arrow-up-tray": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>'
+    ),
+    "squares-2x2": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 8.25 20.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/>'
+    ),
+    "arrow-path": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>'
+    ),
+}
+
+
+def _heroicon(name):
+    return (
+        f'<svg class="gm-menu-icon" viewBox="0 0 24 24" fill="none" '
+        f'stroke="currentColor" stroke-width="1.5" aria-hidden="true">'
+        f"{_HEROICONS[name]}</svg>"
+    )
+
+
+def _gm_menu_item(href, icon, label, extra=""):
+    return (
+        f'<a class="gm-menu-item" role="menuitem" href="{href}"{extra}>'
+        f"{_heroicon(icon)}{escape(label)}</a>"
+    )
+
+
+def gm_app_menu_html(spel_id, test_mode=False):
+    """Classic top-left overflow: tools and risky actions, not live phase controls."""
+    sid = escape(spel_id)
+    test_checked = "checked" if test_mode else ""
+    test_class = "is-on" if test_mode else ""
+    return (
+        f'<details class="gm-menu gm-app-menu">'
+        f'<summary aria-haspopup="menu" aria-label="Meny">'
+        f'{_heroicon("bars-3")}<span>Meny</span></summary>'
+        f'<div class="gm-mer-menu" role="menu">'
+        f'<form method="post" action="/admin/{sid}/test_mode" id="gm-test-form" class="gm-test-form">'
+        f'<input type="hidden" name="enabled" id="gm-test-enabled" value="{"1" if test_mode else "0"}">'
+        f'<label class="gm-test gm-menu-item {test_class}">'
+        f'{_heroicon("beaker")}'
+        f'<input type="checkbox" id="gm-test-mode" {test_checked} '
+        f"onchange=\"this.form.querySelector('[name=enabled]').value=this.checked?'1':'0'; this.form.submit();\">"
+        f"Testläge</label></form>"
+        f'{_gm_menu_item(f"/admin/{sid}/poang", "table-cells", "HP-tabell")}'
+        f'{_gm_menu_item(f"/admin/{sid}/backlog", "queue-list", "Backlog")}'
+        f'{_gm_menu_item(f"/admin/{sid}/aktivitetskort", "identification", "Aktivitetskort", " target=_blank")}'
+        f'{_gm_menu_item(f"/admin/{sid}/order_summary", "arrow-up-tray", "LLM-export", " target=_blank")}'
+        f'{_gm_menu_item("/admin", "squares-2x2", "Alla spel")}'
+        f'<form method="post" action="/admin/{sid}/reset" class="gm-menu-danger" '
+        f"onsubmit=\"return confirm('Återställ HELA spelet till runda 1? Detta går att ångra en gång, men raderar rundor och ordrar.');\">"
+        f'<button type="submit" class="danger gm-menu-item" role="menuitem">'
+        f'{_heroicon("arrow-path")}Återställ spel</button></form>'
+        f"</div></details>"
+    )
+
+
+def _gm_panel_header_html(spel_id, data, test_mode=False):
+    bits = []
+    if data.get("datum"):
+        bits.append(escape(str(data["datum"])))
+    if data.get("plats"):
+        bits.append(escape(str(data["plats"])))
+    if data.get("antal_spelare"):
+        bits.append(f'{escape(str(data["antal_spelare"]))} spelare')
+    lag_html = ", ".join(
+        f'<a href="/team/{escape(spel_id)}/{escape(lag)}" target="_blank" '
+        f'class="link-light underline fw-semibold">{escape(lag)}</a>'
+        for lag in data.get("lag") or []
+    )
+    if lag_html:
+        bits.append(lag_html)
+    meta = f'<p class="gm-meta">{" · ".join(bits)}</p>' if bits else ""
+    return (
+        f'<div class="admin-panel-header">'
+        f"{gm_app_menu_html(spel_id, test_mode)}"
+        f'<div class="admin-panel-header-main">'
+        f"<h1>Spelledarpanel</h1>{meta}"
+        f"</div></div>"
+    )
+
+
 def _signed_delta(n):
     n = int(n or 0)
     return f"+{n}" if n > 0 else str(n)
@@ -590,7 +696,7 @@ def live_html_fragments(spel_id, state):
     }
 
 
-def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
+def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None, banner=""):
     state = build_live_state(data)
     runda = state["runda"]
     fas = state["fas"]
@@ -601,6 +707,7 @@ def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
     can_back = state["can_go_back"]
     undo_ok = state["undo_available"]
     test_mode = state["test_mode"]
+    header_html = _gm_panel_header_html(spel_id, data, test_mode)
 
     next_label = "Nästa fas"
     next_action = "next_fas"
@@ -743,9 +850,6 @@ def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
         llm_reference = _fold_html("LLM-underlag och konsekvenser", llm_note)
         job_block = f"{result_note}{llm_reference}{tabs}"
 
-    test_checked = "checked" if test_mode else ""
-    test_class = "is-on" if test_mode else ""
-
     state_json = _json_for_script({
         "spel_id": spel_id,
         "remaining": remaining,
@@ -757,6 +861,8 @@ def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
     })
 
     return f'''
+    {header_html}
+    {banner}
     <div class="gm-console" id="gm-console">
       <script type="application/json" id="gm-state">{state_json}</script>
       <div class="gm-bar">
@@ -771,6 +877,8 @@ def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
           <button name="action" value="pause" class="warning" {timer_disabled} {pause_hidden}>Pausa</button>
           <button name="action" value="add_min" class="secondary" {timer_disabled}>+1 min</button>
           <button name="action" value="sub_min" class="secondary" {timer_disabled}>−1 min</button>
+          <button name="action" value="reset" class="secondary" {timer_disabled}
+            onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
           <button type="button" class="secondary" onclick="openTimerWindow('{escape(spel_id)}')">Spelarskärm</button>
           <span class="gm-keys">Space starta/pausa · N nästa</span>
         </form>
@@ -784,32 +892,6 @@ def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None):
           <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
             <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
           </form>
-          <details class="gm-menu">
-            <summary aria-haspopup="menu">Meny</summary>
-            <div class="gm-mer-menu" role="menu">
-              <form method="post" action="/admin/{escape(spel_id)}/timer">
-                <button name="action" value="reset" class="secondary" {timer_disabled}
-                  onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
-              </form>
-              <form method="post" action="/admin/{escape(spel_id)}/test_mode" id="gm-test-form" class="gm-test-form">
-                <input type="hidden" name="enabled" id="gm-test-enabled" value="{"1" if test_mode else "0"}">
-                <label class="gm-test {test_class}">
-                  <input type="checkbox" id="gm-test-mode" {test_checked}
-                    onchange="this.form.querySelector('[name=enabled]').value=this.checked?'1':'0'; this.form.submit();">
-                  Testläge
-                </label>
-              </form>
-              <a href="/admin/{escape(spel_id)}/poang">HP-tabell</a>
-              <a href="/admin/{escape(spel_id)}/backlog">Backlog</a>
-              <a href="/admin/{escape(spel_id)}/aktivitetskort" target="_blank">Aktivitetskort</a>
-              <a href="/admin/{escape(spel_id)}/order_summary" target="_blank">LLM-export</a>
-              <a href="/admin">Alla spel</a>
-              <form method="post" action="/admin/{escape(spel_id)}/reset"
-                onsubmit="return confirm('Återställ HELA spelet till runda 1? Detta går att ångra en gång, men raderar rundor och ordrar.');">
-                <button type="submit" class="danger">Återställ spel</button>
-              </form>
-            </div>
-          </details>
         </div>
       </div>
 

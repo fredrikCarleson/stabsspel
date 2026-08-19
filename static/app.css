@@ -609,13 +609,16 @@ thead th {
 .admin-panel-header {
     background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
   color: white;
-  padding: 36px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 28px;
   border-radius: 20px;
   margin-bottom: 32px;
-  text-align: center;
+  text-align: left;
   box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(255,255,255,0.1);
 }
 .admin-panel-header::before {
@@ -623,15 +626,17 @@ thead th {
     position: absolute; inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
   pointer-events: none;
+  border-radius: inherit;
 }
-.admin-panel-header h1 {
-  margin: 0 0 16px;
-  color: white;
-  font-size: clamp(24px, 4vw, 36px);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    position: relative; z-index: 1;
+.admin-panel-header-main {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+.admin-panel-header .gm-meta {
+  color: rgba(255, 255, 255, 0.88);
 }
 .admin-panel-subtitle {
     margin: 8px 0; font-size: 16px; opacity: 0.95; font-weight: 500;
@@ -2782,24 +2787,26 @@ button.gm-icon-btn:active {
 
 .gm-menu {
   position: relative;
+  z-index: 2;
 }
 .gm-menu > summary {
   list-style: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 8px 14px;
-  border: 1px solid var(--c-secondary);
-  border-radius: 6px;
-  background-color: var(--c-secondary);
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: var(--radius-8);
+  background: rgba(255,255,255,0.12);
+  box-shadow: none;
   color: #fff;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 14px;
   line-height: 1.2;
   cursor: pointer;
-  opacity: 0.85;
+  opacity: 1;
   white-space: nowrap;
 }
 .gm-menu > summary::-webkit-details-marker {
@@ -2808,29 +2815,36 @@ button.gm-icon-btn:active {
 .gm-menu > summary::marker {
   content: "";
 }
-.gm-menu > summary::after {
-  content: "▾";
-  font-size: 12px;
-  line-height: 1;
-}
+.gm-menu > summary:hover,
+.gm-menu > summary:active,
 .gm-menu[open] > summary {
-  opacity: 1;
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.5);
+  color: #fff;
+  box-shadow: none;
 }
-.gm-menu[open] > summary::after {
-  content: "▴";
+.gm-menu > summary:focus-visible {
+  outline: 3px solid rgba(255,255,255,0.7);
+  outline-offset: 2px;
+}
+.gm-menu-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 .gm-mer-menu {
   display: none;
 }
 .gm-menu[open] > .gm-mer-menu {
   position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  top: calc(100% + 8px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 220px;
-  padding: 12px;
+  gap: 2px;
+  min-width: 240px;
+  padding: 8px;
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-8);
@@ -2841,9 +2855,54 @@ button.gm-icon-btn:active {
   display: block;
   margin: 0;
 }
-.gm-mer-menu :is(a, button) {
+.gm-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   width: 100%;
-  justify-content: center;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-6);
+  background: transparent;
+  box-shadow: none;
+  color: var(--c-text);
+  font-weight: 600;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+}
+.gm-mer-menu a.gm-menu-item:hover,
+.gm-mer-menu button.gm-menu-item:hover,
+.gm-mer-menu .gm-menu-item:hover {
+  background: var(--c-bg);
+  color: var(--c-text);
+  box-shadow: none;
+}
+.gm-mer-menu .gm-test {
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.gm-mer-menu .gm-test.is-on {
+  color: var(--note-warning-fg);
+  background: var(--note-warning-bg);
+}
+.gm-menu-danger {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--c-border);
+}
+.gm-mer-menu button.danger.gm-menu-item {
+  background: transparent;
+  border: 0;
+  color: var(--note-error-fg);
+  justify-content: flex-start;
+}
+.gm-mer-menu button.danger.gm-menu-item:hover {
+  background: var(--note-error-bg);
+  color: var(--note-error-fg);
 }
 
 .gm-inbox-actions {

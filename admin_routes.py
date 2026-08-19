@@ -2187,14 +2187,12 @@ def _llm_json_from_request():
 
 def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
     runda = data.get("runda", 1)
-    lag_html = ', '.join([
-        f'<a href="/team/{spel_id}/{lag}" target="_blank" class="link-light underline fw-semibold">{lag}</a>' for lag in data['lag']
-    ])
     console_html = create_gm_console_html(
         spel_id,
         data,
         llm_import=llm_import,
         llm_view=(request.args.get("llm_view") or "").strip(),
+        banner=create_declaration_warning(runda),
     )
     html_content = f'''
         <!DOCTYPE html>
@@ -2206,7 +2204,7 @@ def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=31">
+            <link rel="stylesheet" href="/static/app.css?v=32">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -2225,11 +2223,6 @@ def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
         </head>
         <body class="gm-page">
             <div class="container">
-            <div class="admin-panel-header">
-                <h1>Spelledarpanel</h1>
-                <p class="gm-meta">{data["datum"]} · {data["plats"]} · {data["antal_spelare"]} spelare · {lag_html}</p>
-            </div>
-            {create_declaration_warning(runda)}
             {console_html}
         </div>
         {create_script_references()}

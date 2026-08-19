@@ -37,7 +37,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 ### Orderfas (`gm_console_ui.py`)
 
-- Sticky bar: clock, **Starta** XOR **Pausa**, ±1 min, Spelarskärm, **Nästa** as `primary` (not a second green), **Föregående** next to it, **Ångra**, **Meny** (Nollställ, Testläge, exports, reset)
+- Sticky bar: clock, **Starta** XOR **Pausa**, ±1 min, **Nollställ timer**, Spelarskärm, **Nästa** as `primary` (not a second green), **Föregående** next to it, **Ångra**. **Meny** sits top-left in the panel header (hamburger + label, Heroicons on items).
 - Readiness chips: Saknas / Utkast / Inne + HP. Completeness notes (saknar HP, inte låst)
 - Yellow **Kräver uppmärksamhet** hidden unless there is a real exception (not a repeat of the missing-team list)
 - **Lag och handlingspoäng** collapsed in `<details class="gm-fold">`
@@ -69,7 +69,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - **Testläge** is saved on the server (form POST + JSON). The checkbox is no longer a client-only lie; Auto-fyll testdata stays behind Testläge.
 - Auto-fyll loads `testdata/testdataroundN.json` for the current round. Round 1 is the old built-in set; rounds 2–4 follow each team’s goals (declaration freeze in round 3, production/election in round 4). Edit the JSON and fill again.
 - **Redigera order** is always available in Orderfas and Diplomatifas (team cards + inbox). It opens the team form so the GM can revise before LLM. **Ändra** remains the inline HP/text edit.
-- Overflow control is a button-styled **Meny** next to Nästa/Föregående/Ångra, not a pale triangle under the round label.
+- Overflow control is a classic **Meny** in the top-left of the dark panel header, with Heroicons on each item. **Nollställ timer** sits with +1/−1 min.
 - **Föregående** sits beside **Nästa**. No confirm that claims you cannot go back. Confirm remains for missing orders, next round, and end game.
 
 ### One console (slice 4)
@@ -140,7 +140,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=31`, JS `gm-console.js?v=14`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=32`, JS `gm-console.js?v=14`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 
