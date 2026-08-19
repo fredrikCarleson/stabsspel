@@ -2240,7 +2240,7 @@ def _spelledarpanel_response(spel_id, data, status=200):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=32">
+            <link rel="stylesheet" href="/static/app.css?v=34">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -2340,7 +2340,8 @@ def llm_import(spel_id):
             status=400,
         )
     save_game_data(spel_id, data)
-    return redirect(url_for("admin.admin_panel", spel_id=spel_id))
+    target = url_for("admin.admin_panel", spel_id=spel_id, llm_view="llm")
+    return redirect(f"{target}#gm-llm-results")
 
 
 @admin_bp.route("/admin/<spel_id>/llm_apply", methods=["POST"])
@@ -2917,7 +2918,7 @@ LLM_WORKFLOW_TEMPLATE = """
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>LLM-underlag – Stabsspel</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/app.css?v=33">
+    <link rel="stylesheet" href="/static/app.css?v=34">
 </head>
 <body class="llm-workflow-page">
     <main class="llm-workflow-shell">
@@ -2930,16 +2931,16 @@ LLM_WORKFLOW_TEMPLATE = """
             </div>
         </header>
 
-        <section class="llm-workflow-card" data-llm-workflow>
-            <div class="llm-workflow-tabs" role="tablist" aria-label="LLM-flöde">
-                <button type="button" class="llm-workflow-tab" role="tab"
+        <section class="app-tabs llm-workflow-card" data-llm-workflow>
+            <div class="app-tablist llm-workflow-tabs" role="tablist" aria-label="LLM-flöde">
+                <button type="button" class="app-tab llm-workflow-tab" role="tab"
                         id="llm-tab-copy" data-tab="copy"
                         aria-controls="llm-panel-copy"
                         aria-selected="{{ 'true' if active_tab == 'copy' else 'false' }}"
                         tabindex="{{ '0' if active_tab == 'copy' else '-1' }}">
                     1. Kopiera till LLM
                 </button>
-                <button type="button" class="llm-workflow-tab" role="tab"
+                <button type="button" class="app-tab llm-workflow-tab" role="tab"
                         id="llm-tab-import" data-tab="import"
                         aria-controls="llm-panel-import"
                         aria-selected="{{ 'true' if active_tab == 'import' else 'false' }}"
@@ -2948,7 +2949,7 @@ LLM_WORKFLOW_TEMPLATE = """
                 </button>
             </div>
 
-            <div class="llm-workflow-panel" role="tabpanel" id="llm-panel-copy"
+            <div class="app-tabpanel llm-workflow-panel" role="tabpanel" id="llm-panel-copy"
                  aria-labelledby="llm-tab-copy"{% if active_tab != 'copy' %} hidden{% endif %}>
                 <div class="llm-workflow-panel-head">
                     <div>
@@ -2964,7 +2965,7 @@ LLM_WORKFLOW_TEMPLATE = """
                 </div>
             </div>
 
-            <div class="llm-workflow-panel" role="tabpanel" id="llm-panel-import"
+            <div class="app-tabpanel llm-workflow-panel" role="tabpanel" id="llm-panel-import"
                  aria-labelledby="llm-tab-import"{% if active_tab != 'import' %} hidden{% endif %}>
                 <div class="llm-workflow-panel-head">
                     <div>

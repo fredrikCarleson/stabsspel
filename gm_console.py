@@ -749,8 +749,33 @@ def apply_activity_hp_to_backlog(data, team, activity_index):
     if hp <= 0:
         raise ValueError("Aktiviteten har 0 HP")
     owner = backlog_owner_for_ref(selected)
-    add_backlog_spend(data, owner, selected, hp, log_actor=team)
+    uppgift, fas = _find_backlog_task(data, owner, selected)
+    target = fas if fas is not None else uppgift
+    estimated = max(0, int(target.get("estimaterade_hp") or 0))
+    before = max(0, int(target.get("spenderade_hp") or 0))
+    remaining = max(0, estimated - before)
+    applied = min(hp, remaining)
+    if applied:
+        add_backlog_spend(data, owner, selected, applied, log_actor=team)
+    wasted = hp - applied
+    if wasted:
+        label = uppgift.get("namn") or selected
+        if fas is not None:
+            label = f"{label} ({fas.get('namn')})"
+        append_gm_log(
+            data,
+            "backlog",
+            f"{team}: {wasted} HP förbrukades utan ytterligare progress på "
+            f"{owner} / {label}; uppgiften hade bara {remaining} HP kvar.",
+            {
+                "team": team,
+                "task_id": uppgift.get("id"),
+                "wasted": wasted,
+                "applied": applied,
+            },
+        )
     activity["backlog_applied"] = True
+    _sync_llm_milestones_from_inbox(data)
     return data
 
 
@@ -1722,12 +1747,88 @@ def apply_llm_hp(data):
     return applied
 
 
+def _milestone_selected_refs(item):
+    task_id = str((item or {}).get("uppgift") or "").strip()
+    phase = str((item or {}).get("fas") or "").strip()
+    refs = {task_id} if task_id else set()
+    if task_id and phase:
+        refs.add(f"{task_id}_{phase}")
+    return refs
+
+
+def _activity_matches_milestone(activity, item):
+    selected = str((activity or {}).get("backlog_selected") or "").strip()
+    return bool(selected and selected in _milestone_selected_refs(item))
+
+
+def _round_activities(data):
+    for team in data.get("lag") or []:
+        record = _team_order_record(data, team)
+        activities = ((record or {}).get("orders") or {}).get("activities") or []
+        for activity in activities:
+            if isinstance(activity, dict):
+                yield activity
+
+
+def llm_milestone_manual_status(data, forslag=None):
+    """Return none/partial/all for milestone work already handled in Inbox."""
+    forslag = forslag if forslag is not None else get_llm_forslag(data)
+    items = list((forslag or {}).get("milstolpar") or [])
+    if not items:
+        return "none"
+
+    activities = list(_round_activities(data))
+    matched = []
+    has_unmatched_suggestion = False
+    for item in items:
+        item_matches = [
+            activity for activity in activities
+            if _activity_matches_milestone(activity, item)
+        ]
+        if not item_matches:
+            has_unmatched_suggestion = True
+        matched.extend(item_matches)
+
+    if not matched or not any(activity.get("backlog_applied") for activity in matched):
+        return "none"
+    if not has_unmatched_suggestion and all(activity.get("backlog_applied") for activity in matched):
+        return "all"
+    return "partial"
+
+
+def _mark_milestone_activities_applied(data, item):
+    for activity in _round_activities(data):
+        if _activity_matches_milestone(activity, item):
+            activity["backlog_applied"] = True
+
+
+def _sync_llm_milestones_from_inbox(data):
+    forslag = get_llm_forslag(data)
+    if not forslag or forslag.get("milestones_applied"):
+        return False
+    if llm_milestone_manual_status(data, forslag) != "all":
+        return False
+    forslag["milestones_applied"] = True
+    forslag["milestones_applied_via"] = "inbox"
+    append_gm_log(data, "llm", "Milstolpeförslagen hanterades färdigt i Inkorg")
+    return True
+
+
 def apply_llm_milestones(data):
     forslag = get_llm_forslag(data)
     if not forslag:
         raise ValueError("Inga LLM-förslag för den här rundan.")
     if forslag.get("milestones_applied"):
         raise LlmSuggestionAlreadyApplied("Milstolpeförslagen är redan tillämpade.")
+    manual_status = llm_milestone_manual_status(data, forslag)
+    if manual_status == "all":
+        _sync_llm_milestones_from_inbox(data)
+        raise LlmSuggestionAlreadyApplied("Milstolpeförslagen är redan hanterade i Inkorg.")
+    if manual_status == "partial":
+        raise ValueError(
+            "Milstolparna är delvis hanterade i Inkorg. Slutför dem där eller ångra "
+            "innan LLM-förslaget tillämpas, så att HP inte räknas två gånger."
+        )
     items = list(forslag.get("milstolpar") or [])
     if not items:
         raise ValueError("Inga milstolpeförslag att tillämpa.")
@@ -1744,12 +1845,14 @@ def apply_llm_milestones(data):
                 item.get("fas"),
                 item.get("orsak") or "LLM-förslag",
             )
+            _mark_milestone_activities_applied(data, item)
             applied += 1
         except ValueError:
             continue
     if applied == 0:
         raise ValueError("Kunde inte tillämpa någon milstolpe.")
     forslag["milestones_applied"] = True
+    forslag["milestones_applied_via"] = "llm"
     store = dict(data.get("llm_forslag") or {})
     store[str(forslag.get("runda") or data.get("runda") or 1)] = forslag
     data["llm_forslag"] = store
@@ -1784,6 +1887,8 @@ def llm_forslag_view(data, runda=None):
         row = dict(item)
         row["etikett"] = _milestone_etikett(data, item)
         milstolpar.append(row)
+    manual_status = llm_milestone_manual_status(data, forslag)
+    milestones_applied = bool((forslag or {}).get("milestones_applied"))
     return {
         "runda": (forslag or {}).get("runda") or (runda if runda is not None else data.get("runda")),
         "importerad": (forslag or {}).get("importerad"),
@@ -1793,7 +1898,10 @@ def llm_forslag_view(data, runda=None):
         "utfall": utfall,
         "rolls": rolls,
         "hp_applied": bool((forslag or {}).get("hp_applied")),
-        "milestones_applied": bool((forslag or {}).get("milestones_applied")),
+        "milestones_applied": milestones_applied,
+        "milestones_handled": milestones_applied or manual_status == "all",
+        "milestones_applied_via": (forslag or {}).get("milestones_applied_via"),
+        "milestones_manual_status": manual_status,
         "warnings": list((forslag or {}).get("warnings") or []),
     }
 
@@ -1805,6 +1913,34 @@ def build_live_state(data):
     log = list(reversed(data.get("gm_log") or []))[:12]
     undo_stack = data.get("gm_undo") or []
     previous = get_previous_phase(data.get("fas"), data.get("runda", 1))
+    llm = llm_forslag_view(data)
+    llm_milestones = list((llm or {}).get("milstolpar") or [])
+    llm_imported = bool(
+        llm and (
+            llm.get("importerad")
+            or llm.get("nyheter")
+            or llm.get("hp")
+            or llm_milestones
+            or llm.get("utfall")
+        )
+    )
+    milestones_pending = bool(
+        llm_milestones and not (llm or {}).get("milestones_handled")
+    )
+    manual_status = (llm or {}).get("milestones_manual_status") or "none"
+    inbox_action_count = 0
+    for row in inbox:
+        matches_llm = any(
+            _activity_matches_milestone(row, item) for item in llm_milestones
+        )
+        row["llm_milestone"] = matches_llm
+        row["backlog_action"] = "done" if row.get("backlog_applied") else "manual"
+        if row.get("can_apply_backlog"):
+            if matches_llm and milestones_pending and manual_status == "none":
+                row["backlog_action"] = "llm"
+            else:
+                inbox_action_count += 1
+
     return {
         "runda": data.get("runda", 1),
         "max_runda": MAX_RUNDA,
@@ -1816,6 +1952,8 @@ def build_live_state(data):
         "inbox": inbox,
         "backlog": build_backlog_board(data),
         "conflict_count": len({row["conflict_key"] for row in conflicts}),
+        "conflicts_require_review": bool(conflicts and not llm_imported),
+        "inbox_action_count": inbox_action_count,
         "missing_teams": missing,
         "log": log,
         "history": list(data.get("fashistorik") or []),
@@ -1825,7 +1963,7 @@ def build_live_state(data):
         "previous_label": f"{previous[0]} (runda {previous[1]})" if previous else None,
         "faser": FASER,
         "test_mode": bool(data.get("test_mode")),
-        "llm": llm_forslag_view(data),
+        "llm": llm,
     }
 
 

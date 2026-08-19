@@ -340,9 +340,12 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Peka på kvartalen här", html)
         self.assertNotIn("under den här panelen", html)
         self.assertIn("gm-tabs", html)
-        self.assertIn("LLM-underlag och konsekvenser", html)
-        self.assertIn('<details class="gm-fold">', html)
-        self.assertIn('aria-selected="true">Lag</button>', html)
+        self.assertIn('class="app-tabs gm-tabs"', html)
+        self.assertIn('class="app-tab gm-tab', html)
+        self.assertIn('id="gm-tab-llm"', html)
+        self.assertNotIn("LLM-underlag och konsekvenser", html)
+        self.assertNotIn('<details class="gm-fold">', html)
+        self.assertIn('aria-selected="true" tabindex="0">Lag</button>', html)
         self.assertIn('id="gm-panel-inkorg" aria-labelledby="gm-tab-inkorg" hidden', html)
         self.assertIn("Starta nästa runda", html)
         self.assertLess(html.find("Resultatfas — körschema"), html.find("gm-tabs"))
@@ -394,7 +397,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Arbete", html)
         self.assertIn("Historik", html)
         self.assertIn('id="gm-tab-inkorg"', html)
-        self.assertIn('aria-selected="true">Inkorg</button>', html)
+        self.assertIn('aria-selected="true" tabindex="0">Inkorg</button>', html)
         self.assertIn("gm-mer-menu", html)
         self.assertIn("gm-app-menu", html)
         self.assertIn(">Meny</span></summary>", html)
@@ -412,7 +415,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Redigera order", html)
         self.assertNotIn("Ange order", html)
         self.assertIn('id="gm-test-form"', html)
-        self.assertIn('class="gm-autofill" hidden', html)
+        self.assertIn('class="gm-autofill gm-menu-autofill" hidden', html)
         self.assertIn('id="gm-attention" hidden', html)
         self.assertIn('value="next_fas" class="primary"', html)
         self.assertIn('value="start" class="success"', html)
@@ -475,8 +478,10 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn('value="prev_fas" class="secondary" disabled', html)
         self.assertIn("Orderinkorg", html)
         self.assertIn("gm-tabs", html)
+        self.assertEqual(html.count('role="tablist"'), 1)
         self.assertIn('id="gm-tab-inkorg"', html)
-        self.assertIn('aria-selected="true">Inkorg', html)
+        self.assertIn('id="gm-tab-llm"', html)
+        self.assertIn('aria-selected="true" tabindex="0">Inkorg', html)
         self.assertIn('class="gm-tab-alert"', html)
         self.assertIn("Att göra", html)
         self.assertLess(html.find("Kopiera till LLM"), html.find("gm-tabs"))
@@ -528,15 +533,17 @@ class TestGmConsoleHtml(unittest.TestCase):
         html = create_gm_console_html("g1", data)
         self.assertIn("Redigera order", html)
         self.assertNotIn("Ange order", html)
-        self.assertIn('class="gm-autofill" hidden', html)
+        self.assertIn('class="gm-autofill gm-menu-autofill" hidden', html)
+        self.assertNotIn("gm-autofill", html[html.find('id="gm-inbox-root"'):])
         self.assertNotIn("cheat-link", html)
         self.assertNotIn("Importera svar", html)
 
         data["test_mode"] = True
         html = create_gm_console_html("g1", data)
         self.assertIn("Redigera order", html)
-        self.assertNotIn('class="gm-autofill" hidden', html)
-        self.assertIn("Auto-fyll testdata", html)
+        self.assertNotIn('class="gm-autofill gm-menu-autofill" hidden', html)
+        self.assertIn("Fyll med testdata", html)
+        self.assertLess(html.find("Fyll med testdata"), html.find("gm-bar"))
 
         data["fas"] = "Diplomatifas"
         data["test_mode"] = False
@@ -564,7 +571,8 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn(">Redigera</a>", fragments["inbox"])
         self.assertIn('aria-label="Ändra"', fragments["inbox"])
         self.assertNotIn("Öppna för laget", fragments["inbox"])
-        self.assertIn('class="gm-autofill" hidden', fragments["inbox"])
+        self.assertNotIn("gm-autofill", fragments["inbox"])
+        self.assertIn("Ersätt med testdata…", html)
 
         data["fas"] = "Resultatfas"
         html = create_gm_console_html("g1", data)
@@ -602,11 +610,10 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Att göra", html)
         self.assertIn("Tillämpa milstolpar", html)
         self.assertIn("Kopiera nyheter till papper", html)
-        self.assertIn('aria-label="LLM-resultat"', html)
-        self.assertIn('id="gm-llm-tab-nyheter"', html)
-        self.assertIn('id="gm-llm-tab-hp"', html)
-        self.assertIn('id="gm-llm-tab-milstolpar"', html)
-        self.assertIn('id="gm-llm-panel-hp" aria-labelledby="gm-llm-tab-hp" hidden', html)
+        self.assertIn('id="gm-tab-llm"', html)
+        self.assertIn('class="gm-llm-summary"', html)
+        self.assertIn('class="gm-llm-result-section"', html)
+        self.assertNotIn('class="gm-llm-tablist"', html)
         self.assertIn("gm-single-submit", html)
 
         data["llm_forslag"]["1"]["hp_applied"] = True
@@ -618,12 +625,56 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn(">Tillämpa HP</button>", applied)
         self.assertNotIn(">Tillämpa milstolpar</button>", applied)
         self.assertIn(
-            'id="gm-llm-tab-hp" data-tab="hp" aria-controls="gm-llm-panel-hp" aria-selected="true"',
+            'id="gm-tab-llm" data-tab="llm" aria-controls="gm-panel-llm" aria-selected="true"',
             applied,
         )
-        self.assertIn(
-            'id="gm-llm-panel-hp" aria-labelledby="gm-llm-tab-hp">', applied
-        )
+        self.assertIn('id="gm-panel-llm" aria-labelledby="gm-tab-llm">', applied)
+
+    def test_llm_milestones_have_one_action_and_clear_inbox_badge_when_handled(self):
+        from gm_console import apply_activity_hp_to_backlog, import_llm_forslag
+        from gm_console_ui import create_gm_console_html, live_html_fragments
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        data["lag"] = ["Alfa"]
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {"activities": [{
+                        "aktivitet": "Inloggning val",
+                        "syfte": "Bygg klart",
+                        "hp": 10,
+                        "typ": "bygga",
+                        "paverkar": ["Alfa"],
+                        "backlog_selected": "alfa_1",
+                    }]},
+                }
+            }
+        }
+        import_llm_forslag(data, json.dumps({
+            "milstolpar": [
+                {"lag": "Alfa", "uppgift": "alfa_1", "delta_hp": 10}
+            ]
+        }))
+
+        pending = create_gm_console_html("g1", data)
+        self.assertEqual(pending.count(">Tillämpa milstolpar</button>"), 1)
+        self.assertLess(pending.find("Tillämpa milstolpar"), pending.find("Utfall och sannolikhet"))
+        self.assertIn("Hantera i LLM-resultat", pending)
+        inkorg_tab = pending[pending.find('id="gm-tab-inkorg"'):pending.find('id="gm-tab-llm"')]
+        self.assertNotIn("Att göra", inkorg_tab)
+
+        apply_activity_hp_to_backlog(data, "Alfa", 0)
+        handled = create_gm_console_html("g1", data)
+        self.assertIn("✓ Milstolpar är hanterade i Inkorg", handled)
+        self.assertIn("Tillagd", handled)
+        self.assertNotIn(">Tillämpa milstolpar</button>", handled)
+        self.assertNotIn("Att göra", handled)
+        fragments = live_html_fragments("g1", build_live_state(data))
+        self.assertIn("✓ Milstolpar är hanterade i Inkorg", fragments["llm"])
+        self.assertNotIn(">Tillämpa milstolpar</button>", fragments["llm"])
 
     def test_gm_shows_utfall_probability_roll_and_reason(self):
         from gm_console import ensure_round_rolls, import_llm_forslag

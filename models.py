@@ -239,10 +239,10 @@ AKTIVITETSKORT = {
     "Alfa": [
         {
             "titel": "Infiltratören (Spion från Brottssyndikatet)",
-            "uppdrag": "Du tillhör egentligen Brottssyndikatet. En gång per runda måste du diskret överlämna en fysisk lapp med Alfas planer till Främmande Makt. Lappen får inte lämnas öppet utan måste överlämnas personligen eller lämnas på en gemensam plats som spelledaren anvisar.",
+            "uppdrag": "Du tillhör egentligen Brottssyndikatet. En gång per runda måste du diskret överlämna en fysisk lapp med Alfas planer till Brottssyndikatet. Lappen får inte lämnas öppet utan måste överlämnas personligen eller lämnas på en gemensam plats som spelledaren anvisar.",
             "mål": "Dela Team Alfas order eller strategier med Brottssyndikatet.",
             "belöning": "Varje diplomatifas du lyckas får Brottssyndikatet +5 handlingspoäng och Alfa förlorar -5 handlingspoäng.",
-            "risk": "Om du blir upptäckt kan SÄPO försöka utesluta dig eller frysa dina handlingspoäng och Brottssyndikatet förlorar 5 poäng."
+            "risk": "Om du blir upptäckt stoppas framtida överlämningar och Brottssyndikatet kan inte längre få bonusen på 5 HP. SÄPO kan också försöka utesluta dig eller frysa dina handlingspoäng."
         },
         {
             "titel": "Påverkaren",
@@ -282,9 +282,9 @@ AKTIVITETSKORT = {
     "FM": [
         {
             "titel": "Kontaktpersonen",
-            "uppdrag": "Hitta infiltratören i Team Alfa. Du vet att en spion finns, men inte vem. Hota att avslöja spelaren om ni inte får Alfas planer via en fysisk lapp.",
-            "mål": "Skapa en säker kommunikationskanal och börja styra spionen.",
-            "belöning": "Varje gång ni får Alfas planer via fysisk lapp får ni +5 handlingspoäng.",
+            "uppdrag": "Ni vet att Brottssyndikatet har en spion i Team Alfa, men inte vem. Förhandla med Brottssyndikatet för att få tillgång till information från spionen.",
+            "mål": "Få del av Alfas planer genom en överenskommelse med Brottssyndikatet.",
+            "belöning": "Information från spionen kan ge er ett övertag, men spionens bonus på 5 HP tillhör Brottssyndikatet.",
             "bonus": "Om ni samtidigt lyckas få SÄPO att sätta dit en spion i Team Bravo får ni +5 extra handlingspoäng."
         },
         {

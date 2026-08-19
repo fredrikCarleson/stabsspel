@@ -101,11 +101,30 @@ BYGGA-order med giltigt backlog-id kan ge progress.
 
 Progress får aldrig:
 
-* överstiga HP som satsats på ordern
 * överstiga vad som återstår på uppgiften
 * vara negativ
 
+Ett lag får överinvestera i en backlog-uppgift, till exempel satsa 15 HP när
+bara 10 HP återstår. Det kan vara rimligt för att stå emot sabotage eller
+konkurrerande order. Endast återstående HP registreras som progress; överskottet
+är förbrukat och går förlorat.
+
+Flera lag får hjälpa samma backlog-uppgift. Deras bidrag räknas samman, men
+uppgiften kan aldrig få mer progress än sitt maxvärde. Om två lag satsar 10 HP
+vardera på en uppgift där 10 HP återstår registreras därför endast 10 HP.
+
 FÖRSTÖRA-order ger normalt ingen progress på angriparens egen backlog.
+
+## Spionen i Team Alfa
+
+Spionen tillhör Brottssyndikatet (BS) och lämnar den fysiska lappen till BS.
+FM vet att BS har en spion i Alfa, men vet inte vem och kan försöka köpa eller
+förhandla till sig informationen från BS.
+
+En lyckad överlämning kan föreslås som två balanserade HP-konsekvenser: Alfa
+−5 HP och BS +5 HP. Det är alltid spelledaren som i den fysiska övningen
+bekräftar om överlämningen lyckades. Om spionen har avslöjats ska BS inte få
+framtida bonuspoäng. Bonusen ska aldrig ges till FM.
 
 # BACKLOGARBETE ÄR INTE ETT SANNOLIKHETSSLAG
 

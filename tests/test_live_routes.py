@@ -259,6 +259,8 @@ class TestLiveRoutes(unittest.TestCase):
         compact = " ".join(html.split())
 
         self.assertEqual(response.status_code, 200)
+        self.assertIn('class="app-tabs llm-workflow-card"', html)
+        self.assertIn('class="app-tab llm-workflow-tab"', html)
         self.assertIn("1. Kopiera till LLM", html)
         self.assertIn("2. Klistra in LLM-svar", html)
         self.assertIn(f'action="/admin/{self.spel_id}/llm_import"', html)
@@ -320,7 +322,10 @@ class TestLiveRoutes(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], f"/admin/{self.spel_id}")
+        self.assertEqual(
+            response.headers["Location"],
+            f"/admin/{self.spel_id}?llm_view=llm#gm-llm-results",
+        )
         self.assertTrue(self._read_game()["llm_forslag"]["1"]["importerad"])
 
 

@@ -62,6 +62,7 @@ from gm_console import (
     withdraw_order,
 )
 from models import (
+    AKTIVITETSKORT,
     MAX_RUNDA,
     SESSION_TIMEOUT_SECONDS,
     create_game_session,
@@ -413,6 +414,14 @@ class TestUndo(unittest.TestCase):
 
 
 class TestRosterAndCalendar(unittest.TestCase):
+    def test_spy_belongs_to_bs_and_fm_only_knows_about_it(self):
+        infiltrator = AKTIVITETSKORT["Alfa"][0]
+        fm_contact = AKTIVITETSKORT["FM"][0]
+        self.assertIn("lapp med Alfas planer till Brottssyndikatet", infiltrator["uppdrag"])
+        self.assertIn("Brottssyndikatet +5", infiltrator["belöning"])
+        self.assertIn("vet att Brottssyndikatet har en spion", fm_contact["uppdrag"])
+        self.assertIn("bonus på 5 HP tillhör Brottssyndikatet", fm_contact["belöning"])
+
     def test_small_games_have_five_teams_large_games_have_nine(self):
         self.assertEqual(len(suggest_teams(20)), 5)
         self.assertEqual(len(suggest_teams(27)), 9)
@@ -521,6 +530,58 @@ class TestBacklogSpend(unittest.TestCase):
         }
         apply_activity_hp_to_backlog(data, "Bravo", 0)
         self.assertEqual(data["backlog"]["Bravo"][0]["faser"][0]["spenderade_hp"], 10)
+
+    def test_manual_backlog_apply_marks_matching_llm_milestone_handled(self):
+        data = create_game_state(fas="Diplomatifas")
+        data["lag"] = ["Alfa"]
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([
+                    activity("Inloggning val", hp=8, backlog_selected="alfa_1")
+                ], final=True)
+            }
+        }
+        import_llm_forslag(data, json.dumps({
+            "milstolpar": [
+                {"lag": "Alfa", "uppgift": "alfa_1", "delta_hp": 8}
+            ]
+        }))
+
+        apply_activity_hp_to_backlog(data, "Alfa", 0)
+
+        forslag = get_llm_forslag(data)
+        self.assertTrue(forslag["milestones_applied"])
+        self.assertEqual(forslag["milestones_applied_via"], "inbox")
+        state = build_live_state(data)
+        self.assertEqual(state["inbox_action_count"], 0)
+        self.assertTrue(state["llm"]["milestones_handled"])
+
+    def test_two_teams_can_spend_on_same_milestone_and_excess_is_wasted(self):
+        data = create_game_state(fas="Diplomatifas")
+        data["lag"] = ["Alfa", "Bravo"]
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([
+                    activity("Hjälp Bravo", hp=10, backlog_selected="bravo_1_Krav")
+                ], final=True),
+                "Bravo": order_record([
+                    activity("Kravarbete", hp=10, backlog_selected="bravo_1_Krav")
+                ], final=True),
+            }
+        }
+
+        apply_activity_hp_to_backlog(data, "Alfa", 0)
+        apply_activity_hp_to_backlog(data, "Bravo", 0)
+
+        krav = data["backlog"]["Bravo"][0]["faser"][0]
+        self.assertEqual(krav["spenderade_hp"], 10)
+        activities = [
+            data["team_orders"]["orders_round_1"][team]["orders"]["activities"][0]
+            for team in ("Alfa", "Bravo")
+        ]
+        self.assertTrue(all(item["backlog_applied"] for item in activities))
+        self.assertTrue(any("förbrukades utan ytterligare progress" in item["message"] for item in data["gm_log"]))
+        self.assertEqual(build_live_state(data)["inbox_action_count"], 0)
 
     def test_custom_activity_cannot_be_applied(self):
         data = create_game_state()
@@ -826,6 +887,36 @@ class TestLlmForslag(unittest.TestCase):
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
         self.assertFalse(pending_hp_totals(data))
         self.assertFalse(get_llm_forslag(data)["hp_applied"])
+
+    def test_llm_milestone_apply_marks_matching_inbox_activity(self):
+        data = create_game_state(fas="Diplomatifas")
+        data["lag"] = ["Alfa"]
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record([
+                    activity("Inloggning val", hp=8, backlog_selected="alfa_1")
+                ], final=True)
+            }
+        }
+        import_llm_forslag(data, json.dumps({
+            "milstolpar": [
+                {"lag": "Alfa", "uppgift": "alfa_1", "delta_hp": 8}
+            ]
+        }))
+
+        before = build_live_state(data)
+        self.assertEqual(before["inbox"][0]["backlog_action"], "llm")
+        self.assertEqual(before["inbox_action_count"], 0)
+
+        apply_llm_milestones(data)
+
+        activity_data = data["team_orders"]["orders_round_1"]["Alfa"]["orders"]["activities"][0]
+        self.assertTrue(activity_data["backlog_applied"])
+        after = build_live_state(data)
+        self.assertTrue(after["llm"]["milestones_handled"])
+        self.assertEqual(after["inbox"][0]["backlog_action"], "done")
+        with self.assertRaises(ValueError):
+            apply_activity_hp_to_backlog(data, "Alfa", 0)
 
     def test_llm_hp_changes_wallet_on_new_round(self):
         data = create_game_state()

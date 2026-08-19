@@ -144,11 +144,18 @@ def _gm_menu_item(href, icon, label, extra=""):
     )
 
 
-def gm_app_menu_html(spel_id, test_mode=False):
+def gm_app_menu_html(spel_id, test_mode=False, runda=1, has_orders=False):
     """Classic top-left overflow: tools and risky actions, not live phase controls."""
     sid = escape(spel_id)
     test_checked = "checked" if test_mode else ""
     test_class = "is-on" if test_mode else ""
+    autofill_hidden = "" if test_mode else " hidden"
+    autofill_label = "Ersätt med testdata…" if has_orders else "Fyll med testdata"
+    autofill_confirm = (
+        f"Ersätt alla ordrar för runda {int(runda)} med testdata?"
+        if has_orders
+        else f"Fyll alla lag med testdata för runda {int(runda)}?"
+    )
     return (
         f'<details class="gm-menu gm-app-menu">'
         f'<summary aria-haspopup="menu" aria-label="Meny">'
@@ -161,6 +168,11 @@ def gm_app_menu_html(spel_id, test_mode=False):
         f'<input type="checkbox" id="gm-test-mode" {test_checked} '
         f"onchange=\"this.form.querySelector('[name=enabled]').value=this.checked?'1':'0'; this.form.submit();\">"
         f"Testläge</label></form>"
+        f'<form method="post" action="/admin/{sid}/auto_fill_orders" '
+        f'class="gm-autofill gm-menu-autofill"{autofill_hidden} '
+        f'onsubmit="return confirm(\'{escape(autofill_confirm)}\');">'
+        f'<button type="submit" class="gm-menu-item" role="menuitem">'
+        f'{_heroicon("beaker")}{escape(autofill_label)}</button></form>'
         f'{_gm_menu_item(f"/admin/{sid}/poang", "table-cells", "HP-tabell")}'
         f'{_gm_menu_item(f"/admin/{sid}/backlog", "queue-list", "Backlog")}'
         f'{_gm_menu_item(f"/admin/{sid}/aktivitetskort", "identification", "Aktivitetskort", " target=_blank")}'
@@ -190,9 +202,11 @@ def _gm_panel_header_html(spel_id, data, test_mode=False):
     if lag_html:
         bits.append(lag_html)
     meta = f'<p class="gm-meta">{" · ".join(bits)}</p>' if bits else ""
+    runda = int(data.get("runda") or 1)
+    round_orders = (data.get("team_orders") or {}).get(f"orders_round_{runda}") or {}
     return (
         f'<div class="admin-panel-header">'
-        f"{gm_app_menu_html(spel_id, test_mode)}"
+        f"{gm_app_menu_html(spel_id, test_mode, runda, bool(round_orders))}"
         f'<div class="admin-panel-header-main">'
         f"<h1>Spelledarpanel</h1>{meta}"
         f"</div></div>"
@@ -222,14 +236,15 @@ def _split_order_ref(ref):
     return team, number
 
 
-def _utfall_section_html(llm):
+def _utfall_section_html(llm, show_heading=True):
     utfall = (llm or {}).get("utfall") or []
     rolls = (llm or {}).get("rolls") or {}
     if utfall:
         cards = "".join(_utfall_card_html(item) for item in utfall)
+        heading = '<h3 class="gm-section-title">Utfall och sannolikhet</h3>' if show_heading else ""
         return (
             f'<div class="gm-utfall">'
-            f'<h3 class="gm-section-title">Utfall och sannolikhet</h3>'
+            f'{heading}'
             f"{cards}"
             f"</div>"
         )
@@ -290,45 +305,8 @@ def _tab_alert_html(text):
     )
 
 
-def _llm_result_tabs_html(panels, default_tab):
-    """Compact one-at-a-time views for potentially long LLM results."""
-    buttons = []
-    bodies = []
-    for key, label, count, applied, body in panels:
-        selected = key == default_tab
-        needs = (not applied) and count > 0 and key in ("hp", "milstolpar")
-        done = (
-            '<span class="gm-llm-tab-done" aria-label="Tillämpat">✓</span>'
-            if applied else ""
-        )
-        alert = _tab_alert_html("Tillämpa förslaget") if needs else ""
-        buttons.append(
-            f'<button type="button" class="gm-llm-tab{" needs-action" if needs else ""}" role="tab" '
-            f'id="gm-llm-tab-{key}" data-tab="{key}" '
-            f'aria-controls="gm-llm-panel-{key}" '
-            f'aria-selected="{"true" if selected else "false"}">'
-            f'{escape(label)} <span class="gm-llm-tab-count">{int(count)}</span>{done}{alert}</button>'
-        )
-        hidden = "" if selected else " hidden"
-        bodies.append(
-            f'<div class="gm-llm-tabpanel" role="tabpanel" '
-            f'id="gm-llm-panel-{key}" aria-labelledby="gm-llm-tab-{key}"{hidden}>'
-            f'{body}</div>'
-        )
-    return (
-        '<div class="gm-llm-tabs" data-gm-tabs>'
-        '<div class="gm-llm-tablist" role="tablist" aria-label="LLM-resultat">'
-        f'{"".join(buttons)}</div>{"".join(bodies)}</div>'
-    )
-
-
-def _llm_block_html(spel_id, state, default_result_tab=None):
-    fas = state.get("fas")
-    if fas not in ("Diplomatifas", "Resultatfas"):
-        return ""
-    sid = escape(spel_id)
-    llm = state.get("llm")
-    has_import = bool(
+def _has_llm_import(llm):
+    return bool(
         llm
         and (
             llm.get("importerad")
@@ -338,26 +316,48 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
             or llm.get("utfall")
         )
     )
-    copy_row = f'''
-        <div class="gm-llm">
-            <div>
-              <strong>LLM-underlag</strong>
-              <p class="gm-llm-steps"><span>1 Kopiera</span><span>2 Skicka till LLM</span><span>3 Klistra in svar</span></p>
-            </div>
-            <a href="/admin/{sid}/order_summary" class="primary">Kopiera till LLM</a>
-        </div>
-    '''
-    import_status = (
-        '<p class="gm-llm-imported" role="status">✓ LLM-svar importerat</p>'
-        if has_import else ""
-    )
-    if not llm:
-        return f'<div class="gm-llm-panel">{copy_row}</div>'
 
-    utfall_html = _utfall_section_html(llm)
+
+def _llm_statusbar_html(spel_id, state):
+    if state.get("fas") not in ("Diplomatifas", "Resultatfas"):
+        return ""
+    has_import = _has_llm_import(state.get("llm") or {})
+    status_class = " is-imported" if has_import else ""
+    status = "✓ LLM-svar importerat" if has_import else "LLM-svar saknas"
+    help_text = (
+        "Resultatet finns under fliken LLM-resultat."
+        if has_import else "Kopiera underlaget och importera svaret på nästa sida."
+    )
+    action_class = "secondary" if has_import else "primary"
+    action_label = "Öppna LLM-underlag" if has_import else "Kopiera till LLM"
+    return f'''
+      <div class="gm-llm-statusbar{status_class}">
+        <div class="gm-llm-state">
+          <strong>{status}</strong>
+          <span>{help_text}</span>
+        </div>
+        <a href="/admin/{escape(spel_id)}/order_summary" class="{action_class}">{action_label}</a>
+      </div>
+    '''
+
+
+def _llm_block_html(spel_id, state, default_result_tab=None):
+    fas = state.get("fas")
+    if fas not in ("Diplomatifas", "Resultatfas"):
+        return ""
+    sid = escape(spel_id)
+    llm = state.get("llm") or {}
+    has_import = _has_llm_import(llm)
     if not has_import:
-        extra = f'<div class="gm-llm-forslag">{utfall_html}</div>' if utfall_html else ""
-        return f'<div class="gm-llm-panel">{copy_row}{extra}</div>'
+        return (
+            '<div class="gm-llm-empty" id="gm-llm-results">'
+            '<h3>Inget LLM-svar importerat</h3>'
+            '<p>Kopiera först rundans underlag och importera sedan JSON-svaret.</p>'
+            f'<a href="/admin/{sid}/order_summary" class="primary">Kopiera till LLM</a>'
+            '</div>'
+        )
+
+    utfall_html = _utfall_section_html(llm, show_heading=False)
 
     warnings = "".join(
         f"<li>{escape(item)}</li>" for item in (llm.get("warnings") or [])
@@ -397,15 +397,17 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
             f'{escape(_signed_delta(item.get("delta")))} HP{extra}</li>'
         )
     hp_html = "".join(hp_items) or "<li>Inga HP-förslag.</li>"
+    hp_primary_action = ""
     if llm.get("hp_applied"):
-        hp_action = (
+        hp_status = (
             '<div class="gm-llm-applied" role="status">'
             '<strong>✓ HP är schemalagda till nästa runda</strong>'
             '<span>Den här rundans kassa är oförändrad. Ångra i listen om utfallet ska göras om.</span>'
             '</div>'
         )
     elif llm.get("hp"):
-        hp_action = (
+        hp_status = ""
+        hp_primary_action = (
             f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline gm-single-submit" '
             f"onsubmit=\"return confirm('Tillämpa HP till nästa runda? Går att ångra.');\">"
             f'<input type="hidden" name="op" value="hp">'
@@ -413,7 +415,7 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
             f"</form>"
         )
     else:
-        hp_action = ""
+        hp_status = ""
 
     mile_items = []
     for item in llm.get("milstolpar") or []:
@@ -425,15 +427,31 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
             f'+{int(item.get("delta_hp") or 0)} HP{extra}</li>'
         )
     mile_html = "".join(mile_items) or "<li>Inga milstolpeförslag.</li>"
-    if llm.get("milestones_applied"):
-        mile_action = (
+    milestones_handled = bool(llm.get("milestones_handled") or llm.get("milestones_applied"))
+    manual_status = llm.get("milestones_manual_status") or "none"
+    mile_primary_action = ""
+    if milestones_handled:
+        handled_in_inbox = llm.get("milestones_applied_via") == "inbox" or (
+            not llm.get("milestones_applied") and manual_status == "all"
+        )
+        heading = "✓ Milstolpar är hanterade i Inkorg" if handled_in_inbox else "✓ Milstolpar är tillämpade"
+        mile_status = (
             '<div class="gm-llm-applied" role="status">'
-            '<strong>✓ Milstolpar är tillämpade</strong>'
+            f'<strong>{heading}</strong>'
             '<span>Kan inte tillämpas igen. Ångra i listen om utfallet ska göras om.</span>'
             '</div>'
         )
+    elif manual_status == "partial":
+        mile_status = (
+            '<div class="gm-llm-partial" role="status">'
+            '<strong>Milstolpar är delvis hanterade i Inkorg</strong>'
+            '<span>Slutför återstående aktiviteter där. Samlad tillämpning är avstängd för att undvika dubbelräkning.</span>'
+            '<button type="button" class="secondary sm" data-show-tab="inkorg">Öppna Inkorg</button>'
+            '</div>'
+        )
     elif llm.get("milstolpar"):
-        mile_action = (
+        mile_status = ""
+        mile_primary_action = (
             f'<form method="post" action="/admin/{sid}/llm_apply" class="d-inline gm-single-submit" '
             f"onsubmit=\"return confirm('Tillämpa milstolpeförslagen? Går att ångra.');\">"
             f'<input type="hidden" name="op" value="milstolpar">'
@@ -441,41 +459,55 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
             f"</form>"
         )
     else:
-        mile_action = ""
+        mile_status = ""
 
-    result_default = (
-        default_result_tab
-        if default_result_tab in {"utfall", "nyheter", "hp", "milstolpar"}
-        else ("utfall" if llm.get("utfall") else "nyheter")
+    primary_actions = "".join((hp_primary_action, mile_primary_action))
+    action_bar = (
+        '<div class="gm-llm-actions" aria-label="Åtgärder för LLM-resultat">'
+        '<strong>Nästa steg</strong>'
+        f'<div>{primary_actions}</div>'
+        '</div>'
+        if primary_actions else ""
     )
-    result_tabs = _llm_result_tabs_html(
-        (
-            ("utfall", "Utfall", len(llm.get("utfall") or []), False, utfall_html or '<p class="gm-muted">Inga sannolikhetsutfall.</p>'),
-            ("nyheter", "Nyheter", len(llm.get("nyheter") or []), False, f'''
-              <section class="gm-llm-section">
-                <h4>Nyheter till studion</h4>{news_html}{news_copy_btn}
-              </section>'''),
-            ("hp", "HP", len(llm.get("hp") or []), bool(llm.get("hp_applied")), f'''
-              <section class="gm-llm-section">
-                <h4>HP-konsekvenser</h4>
-                <p class="gm-section-help">Ändrar kassan från nästa runda, inte den här rundans kvarvarande HP.</p>
-                <ul class="gm-llm-list">{hp_html}</ul>{hp_action}
-              </section>'''),
-            ("milstolpar", "Milstolpar", len(llm.get("milstolpar") or []), bool(llm.get("milestones_applied")), f'''
-              <section class="gm-llm-section">
-                <h4>Backlog och milstolpar</h4><ul class="gm-llm-list">{mile_html}</ul>{mile_action}
-              </section>'''),
-        ),
-        result_default,
+
+    counts = (
+        ("Utfall", len(llm.get("utfall") or []), ""),
+        ("Nyheter", len(llm.get("nyheter") or []), ""),
+        ("HP", len(llm.get("hp") or []), "is-action" if llm.get("hp") and not llm.get("hp_applied") else ""),
+        ("Milstolpar", len(llm.get("milstolpar") or []), "is-action" if llm.get("milstolpar") and not milestones_handled else ""),
     )
-    forslag = f'''
-      <div class="gm-llm-forslag" id="gm-llm-results">
+    summary = "".join(
+        f'<span class="gm-llm-summary-item {tone}"><strong>{count}</strong>{escape(label)}</span>'
+        for label, count, tone in counts
+    )
+    hp_open = " open" if llm.get("hp") and not llm.get("hp_applied") else ""
+    mile_open = " open" if llm.get("milstolpar") and not milestones_handled else ""
+    return f'''
+      <div class="gm-llm-results" id="gm-llm-results">
         {warning_html}
-        <h3 class="gm-section-title">LLM-resultat</h3>
-        {result_tabs}
+        <div class="gm-llm-summary" aria-label="Sammanfattning av LLM-resultat">{summary}</div>
+        {action_bar}
+        <section class="gm-llm-result-section is-primary">
+          <div class="gm-llm-result-heading"><h4>Utfall och sannolikhet</h4><span>{len(llm.get("utfall") or [])}</span></div>
+          {utfall_html or '<p class="gm-muted">Inga sannolikhetsutfall.</p>'}
+        </section>
+        <details class="gm-llm-result-section">
+          <summary><span>Nyheter till studion</span><span class="gm-llm-section-count">{len(llm.get("nyheter") or [])}</span></summary>
+          <div class="gm-llm-result-body">{news_html}{news_copy_btn}</div>
+        </details>
+        <details class="gm-llm-result-section"{hp_open}>
+          <summary><span>HP-konsekvenser</span><span class="gm-llm-section-count">{len(llm.get("hp") or [])}</span>{_tab_alert_html("Tillämpa förslaget") if hp_open else ""}</summary>
+          <div class="gm-llm-result-body">
+            <p class="gm-section-help">Ändrar kassan från nästa runda, inte den här rundans kvarvarande HP.</p>
+            <ul class="gm-llm-list">{hp_html}</ul>{hp_status}
+          </div>
+        </details>
+        <details class="gm-llm-result-section"{mile_open}>
+          <summary><span>Backlog och milstolpar</span><span class="gm-llm-section-count">{len(llm.get("milstolpar") or [])}</span>{_tab_alert_html("Tillämpa förslaget") if mile_primary_action else ""}</summary>
+          <div class="gm-llm-result-body"><ul class="gm-llm-list">{mile_html}</ul>{mile_status}</div>
+        </details>
       </div>
     '''
-    return f'<div class="gm-llm-panel">{copy_row}{import_status}{forslag}</div>'
 
 
 def _chip_issue(team, inbox):
@@ -551,37 +583,46 @@ def _fold_html(title, body):
 
 CONSOLE_TABS = (
     ("inkorg", "Inkorg"),
+    ("llm", "LLM-resultat"),
     ("lag", "Lag"),
     ("arbete", "Arbete"),
     ("historik", "Historik"),
 )
 
 
-def _tab_shell_html(default_tab, panels, alerts=None):
+def _tab_shell_html(default_tab, panels, alerts=None, counts=None):
     """Always-available views. Clock stays outside. No new URLs."""
     if default_tab not in panels:
         default_tab = "inkorg"
     alerts = alerts or {}
+    counts = counts or {}
     buttons = []
     bodies = []
     for key, label in CONSOLE_TABS:
+        if key not in panels:
+            continue
         selected = key == default_tab
         needs = bool(alerts.get(key))
         alert = _tab_alert_html(alerts.get(key))
+        count = (
+            f'<span class="gm-tab-count">{int(counts[key])}</span>'
+            if key in counts else ""
+        )
         extra = " needs-action" if needs else ""
         buttons.append(
-            f'<button type="button" class="gm-tab{extra}" role="tab" id="gm-tab-{key}" '
+            f'<button type="button" class="app-tab gm-tab{extra}" role="tab" id="gm-tab-{key}" '
             f'data-tab="{key}" aria-controls="gm-panel-{key}" '
-            f'aria-selected="{"true" if selected else "false"}">{escape(label)}{alert}</button>'
+            f'aria-selected="{"true" if selected else "false"}" tabindex="{0 if selected else -1}">'
+            f'{escape(label)}{count}{alert}</button>'
         )
         hidden = "" if selected else " hidden"
         bodies.append(
-            f'<div class="gm-tabpanel" role="tabpanel" id="gm-panel-{key}" '
+            f'<div class="app-tabpanel gm-tabpanel" role="tabpanel" id="gm-panel-{key}" '
             f'aria-labelledby="gm-tab-{key}"{hidden}>{panels[key]}</div>'
         )
     return (
-        f'<div class="gm-tabs" data-gm-tabs data-default="{escape(default_tab)}">'
-        f'<div class="gm-tablist" role="tablist" aria-label="Konsolvyer">'
+        f'<div class="app-tabs gm-tabs" data-gm-tabs data-default="{escape(default_tab)}">'
+        f'<div class="app-tablist gm-tablist" role="tablist" aria-label="Konsolvyer">'
         f"{''.join(buttons)}</div>"
         f"{''.join(bodies)}</div>"
     )
@@ -629,6 +670,7 @@ def live_html_fragments(spel_id, state):
             state.get("runda") or 1,
         ),
         "backlog": _backlog_html(state.get("backlog") or [], state.get("avslutat")),
+        "llm": _llm_block_html(spel_id, state),
         "log": _log_section_html(state.get("history") or [], state.get("log") or []),
     }
 
@@ -689,6 +731,7 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_section_html(state.get("history") or [], state["log"])
     llm_note = _llm_block_html(spel_id, state, default_result_tab=llm_view)
+    llm_status = _llm_statusbar_html(spel_id, state)
 
     result_note = ""
     if fas == "Resultatfas" and avslutat:
@@ -759,31 +802,45 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     tab_alerts = {}
     if fas == "Diplomatifas" and missing:
         tab_alerts["inkorg"] = "Lag utan inskickad order"
-    elif state.get("conflict_count"):
-        tab_alerts["inkorg"] = "Konflikter i inkorgen"
-    if any(int(t.get("pending_next") or 0) for t in state.get("teams") or []):
-        tab_alerts["lag"] = "HP schemalagt till nästa runda"
-    elif llm.get("hp") and not llm.get("hp_applied"):
-        tab_alerts["lag"] = "HP-förslag att tillämpa"
-    if llm.get("milstolpar") and not llm.get("milestones_applied"):
-        tab_alerts["arbete"] = "Milstolpar att tillämpa"
+    elif state.get("inbox_action_count"):
+        tab_alerts["inkorg"] = f"{state['inbox_action_count']} aktiviteter har HP att lägga"
+    elif state.get("conflicts_require_review"):
+        tab_alerts["inkorg"] = "Konflikter behöver bedömas"
+    llm_actions = []
+    if llm.get("hp") and not llm.get("hp_applied"):
+        llm_actions.append("HP")
+    if llm.get("milstolpar") and not llm.get("milestones_handled"):
+        llm_actions.append("milstolpar")
+    if llm_actions:
+        tab_alerts["llm"] = " och ".join(llm_actions) + " att tillämpa"
+    tab_panels = {
+        "inkorg": f'<h3 class="gm-section-title">Orderinkorg</h3>{inbox_inner}',
+        "lag": f'<h3 class="gm-section-title">Lag och handlingspoäng</h3>{hp_body}',
+        "arbete": f'<h3 class="gm-section-title">Teamens arbete</h3>{backlog_body}',
+        "historik": f'<h3 class="gm-section-title">Händelselogg</h3>{log_body}',
+    }
+    tab_counts = {}
+    if fas in ("Diplomatifas", "Resultatfas"):
+        tab_panels["llm"] = llm_note
+        if _has_llm_import(llm):
+            tab_counts["llm"] = sum(
+                len(llm.get(key) or []) for key in ("utfall", "nyheter", "hp", "milstolpar")
+            )
+    default_tab = "lag" if fas == "Resultatfas" else "inkorg"
+    if llm_view and "llm" in tab_panels:
+        default_tab = "llm"
     tabs = _tab_shell_html(
-        "lag" if fas == "Resultatfas" else "inkorg",
-        {
-            "inkorg": f'<h3 class="gm-section-title">Orderinkorg</h3>{inbox_inner}',
-            "lag": f'<h3 class="gm-section-title">Lag och handlingspoäng</h3>{hp_body}',
-            "arbete": f'<h3 class="gm-section-title">Teamens arbete</h3>{backlog_body}',
-            "historik": f'<h3 class="gm-section-title">Händelselogg</h3>{log_body}',
-        },
+        default_tab,
+        tab_panels,
         tab_alerts,
+        tab_counts,
     )
     if fas == "Orderfas":
         job_block = tabs
     elif fas == "Diplomatifas":
-        job_block = f"{llm_note}{tabs}"
+        job_block = f"{llm_status}{tabs}"
     else:
-        llm_reference = _fold_html("LLM-underlag och konsekvenser", llm_note)
-        job_block = f"{result_note}{llm_reference}{tabs}"
+        job_block = f"{result_note}{llm_status}{tabs}"
 
     state_json = _json_for_script({
         "spel_id": spel_id,
@@ -834,8 +891,11 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
       {start_hint}
 
       <div class="gm-attention" id="gm-attention"{attention_hidden}>
-        <h3>Kräver uppmärksamhet</h3>
-        <ul id="gm-attention-list">{attention_html}</ul>
+        <div class="gm-attention-copy">
+          <strong>Kräver uppmärksamhet</strong>
+          <ul id="gm-attention-list">{attention_html}</ul>
+        </div>
+        <button type="button" class="secondary sm" data-show-tab="inkorg">Visa i Inkorg</button>
       </div>
 
       <div id="gm-readiness-root">{readiness_html}</div>
@@ -969,19 +1029,10 @@ def _inbox_hp_html(row):
 
 
 def _inbox_html(spel_id, inbox, fas, test_mode, runda=1):
-    hidden_fill = "" if test_mode else "hidden"
-    autofill = (
-        f'<form method="post" action="/admin/{escape(spel_id)}/auto_fill_orders" '
-        f'class="gm-autofill" {hidden_fill} '
-        f'''onsubmit="return confirm('Ersätt alla ordrar för runda {int(runda)} med testdata?');">'''
-        f'<button type="submit" class="warning">Auto-fyll testdata (runda {int(runda)})</button>'
-        f'</form>'
-    )
     if not inbox:
         return (
             f'<div class="gm-inbox-wrap">'
-            f'<p class="gm-empty">Inga ordrar ännu. Utkast dyker upp här när ett lag börjar skriva.</p>'
-            f'{autofill}</div>'
+            f'<p class="gm-empty">Inga ordrar ännu. Utkast dyker upp här när ett lag börjar skriva.</p></div>'
         )
     can_edit = fas in ("Orderfas", "Diplomatifas")
     show_apply = fas in ("Diplomatifas", "Resultatfas")
@@ -1019,7 +1070,12 @@ def _inbox_html(spel_id, inbox, fas, test_mode, runda=1):
             typ_class = "is-break" if row["typ"] == "forstora" else "is-build"
             targets = ", ".join(row["paverkar"]) if row["paverkar"] else "—"
             actions = ""
-            if show_apply and row.get("can_apply_backlog"):
+            if show_apply and row.get("can_apply_backlog") and row.get("backlog_action") == "llm":
+                actions += (
+                    '<button type="button" class="secondary gm-mini" data-show-tab="llm">'
+                    'Hantera i LLM-resultat</button>'
+                )
+            elif show_apply and row.get("can_apply_backlog"):
                 actions += (
                     f'<button type="button" class="success gm-mini" data-backlog-apply '
                     f'data-team="{escape(row["team"])}" data-index="{row["index"]}">'
@@ -1063,7 +1119,6 @@ def _inbox_html(spel_id, inbox, fas, test_mode, runda=1):
           {"".join(rows)}
         </tbody>
       </table>
-      {autofill}
     </div>
     '''
 

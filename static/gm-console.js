@@ -175,6 +175,7 @@
     root.querySelectorAll("[role=tab]").forEach(function (tab) {
       var on = tab.getAttribute("data-tab") === name;
       tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
       if (on) activePanelId = tab.getAttribute("aria-controls") || "";
     });
     root.querySelectorAll("[role=tabpanel]").forEach(function (panel) {
@@ -192,16 +193,30 @@
         showConsoleTab(root, tab.getAttribute("data-tab"));
       });
       root.addEventListener("keydown", function (event) {
-        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
         var tabs = Array.prototype.slice.call(root.querySelectorAll("[role=tab]"));
         var index = tabs.indexOf(event.target.closest("[role=tab]"));
         if (index < 0 || !tabs.length) return;
+        var next = null;
+        if (event.key === "ArrowRight") next = tabs[(index + 1) % tabs.length];
+        if (event.key === "ArrowLeft") next = tabs[(index - 1 + tabs.length) % tabs.length];
+        if (event.key === "Home") next = tabs[0];
+        if (event.key === "End") next = tabs[tabs.length - 1];
+        if (!next) return;
         event.preventDefault();
-        var step = event.key === "ArrowRight" ? 1 : -1;
-        var next = tabs[(index + step + tabs.length) % tabs.length];
         showConsoleTab(root, next.getAttribute("data-tab"));
         next.focus();
       });
+    });
+
+    document.addEventListener("click", function (event) {
+      var trigger = event.target.closest("[data-show-tab]");
+      if (!trigger) return;
+      var root = document.querySelector("[data-gm-tabs]");
+      if (!root) return;
+      showConsoleTab(root, trigger.getAttribute("data-show-tab"));
+      var active = root.querySelector('[role=tab][aria-selected="true"]');
+      if (active) active.focus();
+      root.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -252,25 +267,22 @@
     var inkorg = "";
     if (fas === "Diplomatifas" && missing.length) {
       inkorg = "Lag utan inskickad order";
-    } else if (state.conflict_count) {
-      inkorg = "Konflikter i inkorgen";
+    } else if (state.inbox_action_count) {
+      inkorg = state.inbox_action_count + " aktiviteter har HP att lägga";
+    } else if (state.conflicts_require_review) {
+      inkorg = "Konflikter behöver bedömas";
     }
     setTabAlert("gm-tab-inkorg", inkorg);
 
-    var pending = (state.teams || []).some(function (t) {
-      return parseInt(t.pending_next, 10);
-    });
     var llm = state.llm || {};
-    var lag = "";
-    if (pending) lag = "HP schemalagt till nästa runda";
-    else if (llm.hp && llm.hp.length && !llm.hp_applied) lag = "HP-förslag att tillämpa";
-    setTabAlert("gm-tab-lag", lag);
-
-    var arbete = "";
-    if (llm.milstolpar && llm.milstolpar.length && !llm.milestones_applied) {
-      arbete = "Milstolpar att tillämpa";
+    var actions = [];
+    if (llm.hp && llm.hp.length && !llm.hp_applied) actions.push("HP");
+    if (llm.milstolpar && llm.milstolpar.length && !llm.milestones_handled) {
+      actions.push("milstolpar");
     }
-    setTabAlert("gm-tab-arbete", arbete);
+    setTabAlert("gm-tab-llm", actions.length ? actions.join(" och ") + " att tillämpa" : "");
+    setTabAlert("gm-tab-lag", "");
+    setTabAlert("gm-tab-arbete", "");
   }
 
   function paintTeams(teams) {
@@ -394,6 +406,8 @@
       log: state.log,
       undo: state.undo_available,
       conflicts: state.conflict_count,
+      conflictsRequireReview: !!state.conflicts_require_review,
+      inboxActions: state.inbox_action_count,
       test_mode: !!state.test_mode,
       llm: state.llm,
     });
@@ -412,6 +426,7 @@
     }
     if (html.readiness != null) setHtml("gm-readiness-root", html.readiness);
     setHtml("gm-inbox-root", html.inbox);
+    if (html.llm != null) setHtml("gm-panel-llm", html.llm);
     var backlogAmounts = readBacklogAmounts();
     if (!backlogAmountFocused()) {
       setHtml("gm-backlog-root", html.backlog);

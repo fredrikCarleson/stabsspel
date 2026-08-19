@@ -211,6 +211,8 @@ Brottssyndikatet strävar hela tiden efter att påverka och få in personer på 
 
 Främmande makt vet att personen i Alpha är infiltrerad. Varje runda spionen är med förlorar team Alfa fem handlingspoäng och BS får fem poäng. **Observera att detta enbart sker om spionen fysiskt besöker Brottsyndikatets teamyta och pratar med dem.** Tidtagaren är bäst lämpad att observera om detta skett. Annars får spelledaren fråga Brottssyndikatet om de fått information.
 
+Spionen tillhör BS och lämnar sin information till BS. Främmande makt vet att BS har en spion i Alfa, men vet inte vem och kan försöka förhandla med BS om att få del av informationen. Om spionen avslöjas stoppas framtida överlämningar och BS kan inte längre få bonusen på fem handlingspoäng.
+
 Om det går för bra för spionen kan spelledare eller tidtagare informera team Alfa att SÄPO har fått indikationer på att de har en spion i sitt team.
 
 ## **Deklarationstider**

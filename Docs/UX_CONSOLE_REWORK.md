@@ -66,8 +66,8 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 ### Testläge, order edit, Meny (2026-08-17)
 
-- **Testläge** is saved on the server (form POST + JSON). The checkbox is no longer a client-only lie; Auto-fyll testdata stays behind Testläge.
-- Auto-fyll loads `testdata/testdataroundN.json` for the current round. Round 1 is the old built-in set; rounds 2–4 follow each team’s goals (declaration freeze in round 3, production/election in round 4). Edit the JSON and fill again.
+- **Testläge** is saved on the server (form POST + JSON). The checkbox is no longer a client-only lie; testdataåtgärden stays behind Testläge in **Meny** instead of occupying the order inbox.
+- **Fyll med testdata** loads `testdata/testdataroundN.json` for the current round. When orders already exist, the menu action is labelled **Ersätt med testdata…**. Round 1 is the old built-in set; rounds 2–4 follow each team’s goals (declaration freeze in round 3, production/election in round 4).
 - **Redigera order** is always available in Orderfas and Diplomatifas (team cards + inbox). It opens the team form so the GM can revise before LLM. **Ändra** remains the inline HP/text edit.
 - Overflow control is a classic **Meny** in the top-left of the dark panel header, with Heroicons on each item. **Nollställ timer** sits with +1/−1 min.
 - **Föregående** sits beside **Nästa**. No confirm that claims you cannot go back. Confirm remains for missing orders, next round, and end game.
@@ -113,7 +113,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 - **Kopiera till LLM** and Meny → **LLM-export** now open in the current browser tab.
 - The paste/upload form lives only on the export page. Import errors stay on that page with the pasted JSON preserved; a successful import returns to the spelledarpanel.
-- Diplomatifas/Resultatfas keeps the compact LLM status and imported results, without a second competing paste form.
+- Diplomatifas/Resultatfas keeps a compact LLM status/action row. Imported output lives in the ordinary **LLM-resultat** console tab, without a second competing paste form or nested result tabs.
 - The export page is now a focused two-tab workspace: **1. Kopiera till LLM** and **2. Klistra in LLM-svar**. Normal visits open tab 1; import errors reopen tab 2.
 - The legacy **Detaljerad översikt** with repeated team/activity cards was removed from this page. Orders remain in the console inbox and still feed the generated LLM prompt.
 
@@ -123,13 +123,14 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - Team cards make **Kvar att använda** the primary HP value; available, spent, base and transferable HP remain subordinate.
 - LLM work reads as **Kopiera → Skicka → Klistra in**. After a successful import, the paste field folds under **Ersätt LLM-svar** instead of occupying the result view.
 - `utfall` cards emphasize **Chans → Slag → Utfall** with text and symbols as well as colour. News, HP consequences and milestones are separate quiet sections rather than one long blue block.
-- Resultatfas keeps the whole LLM result available under the folded **LLM-underlag och konsekvenser**, so the rundown and Lag view stay operationally dominant.
-- Long LLM output now uses four internal tabs: **Utfall / Nyheter / HP / Milstolpar**. Only one result type is expanded at a time, with counts and applied checkmarks in the tabs.
+- Resultatfas keeps the whole LLM result available in the same **LLM-resultat** console tab as Diplomatifas, while Lag remains the default view.
+- LLM output has a four-part count summary. Utfall stays visible; Nyheter, HP and Milstolpar are expandable sections. Pending HP/milestone actions open automatically and mark the main LLM tab with **Att göra**.
 - HP and milestone suggestions are single-apply operations: the submit button disables immediately, the server rejects/reconciles repeated POSTs, re-import cannot re-arm an applied consequence, and the applied tab shows a persistent **✓ … är tillämpade** state. Undo is the explicit revision path.
 - Backlog rows show `spenderat / totalt HP`, remaining effort, and a compact progress bar split into **förra rundan** / **tillagt** / **draget**. Repeating work does not get a completion bar. Klar is written as text, not as a green bar.
-- Console and LLM result controls are real tabs (bordered tablist, selected surface). Tabs that need a GM action show the word **Att göra**, not only a color.
+- Console and the focused LLM export/import workspace use the same shared tab component: blue selected state, selected underline, uniform counts, focus state and keyboard navigation. Tabs that need a GM action show the word **Att göra**, not only a color.
 - **Tillämpa HP** schedules wallet changes for the next round. The Lag card shows **Nästa runda ±N** until **Starta nästa runda**.
 - The start list explicitly marks active games as **Pågår**. The mobile team form gives **Kvar** visual priority and stacks save/submit actions into full-width touch targets.
+- Milstolpar har nu en väg: när LLM-förslag finns ligger den samlade åtgärden högst upp i **LLM-resultat** och Inkorg hänvisar dit. Tillämpning i endera vyn synkas till den andra i live-uppdateringen, så **Att göra** och knappar försvinner när arbetet är klart och samma progress inte kan räknas två gånger.
 
 ## Still to do (priority)
 
