@@ -131,6 +131,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - **Tillämpa HP** schedules wallet changes for the next round. The Lag card shows **Nästa runda ±N** until **Starta nästa runda**.
 - The start list explicitly marks active games as **Pågår**. The mobile team form gives **Kvar** visual priority and stacks save/submit actions into full-width touch targets.
 - Milstolpar har nu en väg: när LLM-förslag finns ligger den samlade åtgärden högst upp i **LLM-resultat** och Inkorg hänvisar dit. Tillämpning i endera vyn synkas till den andra i live-uppdateringen, så **Att göra** och knappar försvinner när arbetet är klart och samma progress inte kan räknas två gånger.
+- Spelledarpanelens tidigare stora titelblock är ersatt av en kompakt tvådelad kontrollheader. Runda, fas, timer, spelmetadata och spelarskärm ligger överst; fas- och timeråtgärder samt den fullständiga **Meny**-dropdownen ligger på en smal åtgärdsrad under.
 
 ## Still to do (priority)
 
@@ -149,7 +150,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=32`, JS `gm-console.js?v=14`. Bump when CSS/JS changes. |
+| Cache-bust | Console CSS is `app.css?v=35`, JS `gm-console.js?v=14`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 

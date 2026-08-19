@@ -405,10 +405,14 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Nollställ timer", html)
         self.assertIn("Föregående", html)
         self.assertIn('value="prev_fas"', html)
-        self.assertLess(html.find("gm-app-menu"), html.find("gm-bar"))
+        self.assertGreater(html.find("gm-app-menu"), html.find('class="gm-bar"'))
+        self.assertIn('class="gm-bar-main"', html)
+        self.assertNotIn('class="admin-panel-header"', html)
+        self.assertNotIn("<h1>Spelledarpanel</h1>", html)
         self.assertLess(html.find('value="sub_min"'), html.find('value="reset"'))
-        self.assertLess(html.find('value="reset"'), html.find("Spelarskärm"))
-        menu_html = html[html.find("gm-mer-menu"):html.find("gm-bar")]
+        self.assertLess(html.find("Spelarskärm"), html.find('value="reset"'))
+        menu_start = html.find('<details class="gm-menu gm-app-menu">')
+        menu_html = html[menu_start:html.find("</details>", menu_start)]
         self.assertNotIn("Nollställ timer", menu_html)
         self.assertNotIn("Gå till nästa fas? Det går att ångra.", html)
         self.assertIn("Testläge", html)
@@ -543,7 +547,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Redigera order", html)
         self.assertNotIn('class="gm-autofill gm-menu-autofill" hidden', html)
         self.assertIn("Fyll med testdata", html)
-        self.assertLess(html.find("Fyll med testdata"), html.find("gm-bar"))
+        self.assertLess(html.find("Fyll med testdata"), html.find('id="gm-inbox-root"'))
 
         data["fas"] = "Diplomatifas"
         data["test_mode"] = False

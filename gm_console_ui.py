@@ -186,7 +186,7 @@ def gm_app_menu_html(spel_id, test_mode=False, runda=1, has_orders=False):
     )
 
 
-def _gm_panel_header_html(spel_id, data, test_mode=False):
+def _gm_game_meta_html(spel_id, data):
     bits = []
     if data.get("datum"):
         bits.append(escape(str(data["datum"])))
@@ -196,21 +196,12 @@ def _gm_panel_header_html(spel_id, data, test_mode=False):
         bits.append(f'{escape(str(data["antal_spelare"]))} spelare')
     lag_html = ", ".join(
         f'<a href="/team/{escape(spel_id)}/{escape(lag)}" target="_blank" '
-        f'class="link-light underline fw-semibold">{escape(lag)}</a>'
+        f'class="gm-meta-link">{escape(lag)}</a>'
         for lag in data.get("lag") or []
     )
     if lag_html:
         bits.append(lag_html)
-    meta = f'<p class="gm-meta">{" · ".join(bits)}</p>' if bits else ""
-    runda = int(data.get("runda") or 1)
-    round_orders = (data.get("team_orders") or {}).get(f"orders_round_{runda}") or {}
-    return (
-        f'<div class="admin-panel-header">'
-        f"{gm_app_menu_html(spel_id, test_mode, runda, bool(round_orders))}"
-        f'<div class="admin-panel-header-main">'
-        f"<h1>Spelledarpanel</h1>{meta}"
-        f"</div></div>"
-    )
+    return f'<p class="gm-meta">{" · ".join(bits)}</p>' if bits else ""
 
 
 def _signed_delta(n):
@@ -686,7 +677,14 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     can_back = state["can_go_back"]
     undo_ok = state["undo_available"]
     test_mode = state["test_mode"]
-    header_html = _gm_panel_header_html(spel_id, data, test_mode)
+    game_meta_html = _gm_game_meta_html(spel_id, data)
+    round_orders = (data.get("team_orders") or {}).get(f"orders_round_{runda}") or {}
+    app_menu_html = gm_app_menu_html(
+        spel_id,
+        test_mode,
+        runda,
+        bool(round_orders),
+    )
 
     next_label = "Nästa fas"
     next_action = "next_fas"
@@ -853,39 +851,58 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     })
 
     return f'''
-    {header_html}
-    {banner}
     <div class="gm-console" id="gm-console">
       <script type="application/json" id="gm-state">{state_json}</script>
       <div class="gm-bar">
-        <div class="gm-bar-now">
-          <div class="gm-round">Runda {runda}/{MAX_RUNDA}</div>
-          <div class="gm-phase" data-fas="{escape(fas)}">{escape(fas)}</div>
-          <div class="gm-clock{clock_class}" id="gm-clock">{_fmt_time(remaining)}</div>
-          <span class="gm-timer-badge is-{escape(timer_status)}" id="gm-timer-badge">{escape(_timer_status_label(timer_status))}</span>
+        <div class="gm-bar-main">
+          <div class="gm-bar-now">
+            <div class="gm-header-stat gm-header-round">
+              <span class="gm-header-label">Runda</span>
+              <strong class="gm-round">{runda}/{MAX_RUNDA}</strong>
+            </div>
+            <div class="gm-header-stat gm-header-phase">
+              <span class="gm-header-label">Fas</span>
+              <strong class="gm-phase" data-fas="{escape(fas)}">{escape(fas)}</strong>
+            </div>
+            <div class="gm-header-stat gm-header-timer">
+              <span class="gm-header-label">Timer</span>
+              <span class="gm-header-timer-line">
+                <strong class="gm-clock{clock_class}" id="gm-clock">{_fmt_time(remaining)}</strong>
+                <span class="gm-timer-badge is-{escape(timer_status)}" id="gm-timer-badge">{escape(_timer_status_label(timer_status))}</span>
+              </span>
+            </div>
+          </div>
+          <div class="gm-bar-context">{game_meta_html}</div>
+          <button type="button" class="secondary gm-player-screen" onclick="openTimerWindow('{escape(spel_id)}')">Spelarskärm</button>
         </div>
-        <form method="post" action="/admin/{escape(spel_id)}/timer" class="gm-bar-time">
-          <button name="action" value="start" class="success" {timer_disabled} {start_hidden}>Starta</button>
-          <button name="action" value="pause" class="warning" {timer_disabled} {pause_hidden}>Pausa</button>
-          <button name="action" value="add_min" class="secondary" {timer_disabled}>+1 min</button>
-          <button name="action" value="sub_min" class="secondary" {timer_disabled}>−1 min</button>
-          <button name="action" value="reset" class="secondary" {timer_disabled}
-            onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
-          <button type="button" class="secondary" onclick="openTimerWindow('{escape(spel_id)}')">Spelarskärm</button>
-          <span class="gm-keys">Space starta/pausa · N nästa</span>
-        </form>
-        <div class="gm-bar-phase">
-          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" id="gm-next-form" data-next-action="{next_action}" {next_confirm}>
-            <button name="action" value="{next_action}" class="primary" {next_disabled}>{escape(next_label)}</button>
-          </form>
-          <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
-            <button name="action" value="prev_fas" class="secondary" {back_disabled}>Föregående</button>
-          </form>
-          <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
-            <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
-          </form>
+        <div class="gm-bar-actions">
+          <div class="gm-bar-phase">
+            <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" id="gm-next-form" data-next-action="{next_action}" {next_confirm}>
+              <button name="action" value="{next_action}" class="primary" {next_disabled}>{escape(next_label)}</button>
+            </form>
+            <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
+              <button name="action" value="prev_fas" class="secondary" {back_disabled}>Föregående</button>
+            </form>
+            <form method="post" action="/admin/{escape(spel_id)}/undo" class="d-inline">
+              <button type="submit" class="secondary" data-gm-undo {undo_disabled}>Ångra</button>
+            </form>
+          </div>
+          <div class="gm-bar-tools">
+            <form method="post" action="/admin/{escape(spel_id)}/timer" class="gm-bar-time">
+              <button name="action" value="start" class="success" {timer_disabled} {start_hidden}>Starta</button>
+              <button name="action" value="pause" class="warning" {timer_disabled} {pause_hidden}>Pausa</button>
+              <button name="action" value="add_min" class="secondary" {timer_disabled}>+1 min</button>
+              <button name="action" value="sub_min" class="secondary" {timer_disabled}>−1 min</button>
+              <button name="action" value="reset" class="secondary" {timer_disabled}
+                onclick="return confirm('Nollställ timern till fasens fulla längd?');">Nollställ timer</button>
+              <span class="gm-keys">Space starta/pausa · N nästa</span>
+            </form>
+            {app_menu_html}
+          </div>
         </div>
       </div>
+
+      {banner}
 
       <p class="gm-clock-hint" id="gm-clock-hint" hidden></p>
       {start_hint}
