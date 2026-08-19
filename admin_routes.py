@@ -2185,12 +2185,48 @@ def _llm_json_from_request():
     return request.form.get("json") or ""
 
 
-def _spelledarpanel_response(spel_id, data, llm_import=None, status=200):
+def _llm_import_error_html(llm_import):
+    info = llm_import or {}
+    json_error = info.get("json_error")
+    domain_error = info.get("domain_error")
+    if json_error:
+        snippet = escape(json_error.get("snippet") or "")
+        pointer = escape(json_error.get("pointer") or "")
+        copy_text = escape(json_error.get("copy_text") or "")
+        copy_btn = ""
+        if json_error.get("copy_text"):
+            copy_btn = (
+                '<textarea id="llm-json-error-copy" readonly hidden>'
+                f"{copy_text}</textarea>"
+                '<button type="button" class="secondary sm" '
+                "onclick=\"navigator.clipboard.writeText(document.getElementById('llm-json-error-copy').value)\">"
+                "Kopiera fel</button>"
+            )
+        return (
+            '<div class="notification error llm-json-error" id="llm-json-error" role="alert">'
+            "<strong>Ogiltig JSON</strong>"
+            f'<p>{escape(json_error.get("message") or "")}</p>'
+            f'<p class="llm-json-error-detail">{escape(json_error.get("detail") or "")}</p>'
+            f'<pre class="llm-json-error-snippet">{snippet}\n{pointer}</pre>'
+            f'<p class="llm-json-error-hint">{escape(json_error.get("hint") or "")}</p>'
+            f"{copy_btn}"
+            "</div>"
+        )
+    if domain_error:
+        return (
+            '<div class="notification error llm-json-error" id="llm-json-error" role="alert">'
+            "<strong>Kunde inte importera</strong>"
+            f"<p>{escape(domain_error)}</p>"
+            "</div>"
+        )
+    return ""
+
+
+def _spelledarpanel_response(spel_id, data, status=200):
     runda = data.get("runda", 1)
     console_html = create_gm_console_html(
         spel_id,
         data,
-        llm_import=llm_import,
         llm_view=(request.args.get("llm_view") or "").strip(),
         banner=create_declaration_warning(runda),
     )
@@ -2240,6 +2276,29 @@ def _llm_error_page(spel_id, message):
         f'<p><a href="/admin/{escape(spel_id)}/order_summary">Tillbaka till LLM-export</a></p>'
     ), 400
 
+
+def _order_summary_response(spel_id, data, llm_import=None, status=200):
+    orders_key = f"orders_round_{data.get('runda', 1)}"
+    all_orders = data.get("team_orders", {}).get(orders_key, {})
+    formatted_text = build_llm_export_text(data, all_orders)
+    save_game_data(spel_id, data)
+    error_html = _llm_import_error_html(llm_import)
+    response = make_response(
+        render_template_string(
+            LLM_WORKFLOW_TEMPLATE,
+            spel_id=spel_id,
+            data=data,
+            formatted_text=formatted_text,
+            import_text=(llm_import or {}).get("text") or "",
+            import_error=Markup(error_html),
+            import_invalid=bool(error_html),
+            active_tab="import" if error_html else "copy",
+        ),
+        status,
+    )
+    return add_no_cache_headers(response)
+
+
 @admin_bp.route("/admin/<spel_id>/order_summary")
 def order_summary(spel_id):
     """Visa sammanfattning av alla teams order för ChatGPT"""
@@ -2247,19 +2306,8 @@ def order_summary(spel_id):
         data = load_game_data(spel_id)
         if not data:
             return "Spelet hittades inte.", 404
-        
-        orders_key = f"orders_round_{data['runda']}"
-        all_orders = data.get("team_orders", {}).get(orders_key, {})
-        
-        # Formatera order för ChatGPT
-        formatted_text = build_llm_export_text(data, all_orders)
-        save_game_data(spel_id, data)
-        
-        return render_template_string(ORDER_SUMMARY_TEMPLATE, 
-                                      spel_id=spel_id,
-                                      data=data,
-                                      all_orders=all_orders,
-                                      formatted_text=formatted_text)
+
+        return _order_summary_response(spel_id, data)
     except Exception as e:
         return f"Fel: {str(e)}", 500
 
@@ -2272,20 +2320,20 @@ def llm_import(spel_id):
     try:
         raw = _llm_json_from_request()
     except ValueError as exc:
-        return _spelledarpanel_response(
+        return _order_summary_response(
             spel_id, data, llm_import={"text": "", "domain_error": str(exc)}, status=400
         )
     try:
         import_llm_forslag(data, raw)
     except LlmJsonSyntaxError as exc:
-        return _spelledarpanel_response(
+        return _order_summary_response(
             spel_id,
             data,
             llm_import={"text": raw, "json_error": exc.formatted},
             status=400,
         )
     except ValueError as exc:
-        return _spelledarpanel_response(
+        return _order_summary_response(
             spel_id,
             data,
             llm_import={"text": raw, "domain_error": str(exc)},
@@ -2859,560 +2907,151 @@ def upload_game():
             print(f"Error uploading game: {e}")
             return f"Error uploading game: {e}", 500
 
-# HTML Template för order sammanfattning för ChatGPT
-ORDER_SUMMARY_TEMPLATE = """
+# Fokuserad arbetsyta för att kopiera underlag och importera LLM-svar.
+LLM_WORKFLOW_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Sammanfattning - LLM</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
-            color: #2c3e50;
-            line-height: 1.6;
-            padding: 20px;
-        }7371
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            border: 1px solid #e8e9ea;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
-            color: white;
-            padding: 36px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.1);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .header::before {
-            content: '';
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-            pointer-events: none;
-        }
-        
-        .header h1 {
-            font-size: clamp(24px, 4vw, 36px);
-            margin-bottom: 16px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            position: relative;
-            z-index: 1;
-        }
-        
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.95;
-            font-weight: 500;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .game-info {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 24px 28px;
-            border-bottom: 1px solid #e8e9ea;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        
-        .game-info span {
-            background: white;
-            padding: 10px 18px;
-            border-radius: 20px;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e8e9ea;
-            color: #2c3e50;
-            font-size: 14px;
-        }
-        
-        .content {
-            padding: 32px;
-        }
-        
-        .copy-section {
-            background: #f8f9fa;
-            border: 1px solid #e8e9ea;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 32px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-        
-        .copy-section h3 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.3em;
-            font-weight: 600;
-        }
-        
-        .copy-text {
-            background: white;
-            border: 1px solid #e8e9ea;
-            border-radius: 8px;
-            padding: 24px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            max-height: 400px;
-            overflow-y: auto;
-            position: relative;
-            color: #2c3e50;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        .import-json {
-            width: 100%;
-            min-height: 160px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            padding: 16px;
-            border: 1px solid #e8e9ea;
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-        
-        
-        .team-section {
-            margin-bottom: 32px;
-            border: 1px solid #e8e9ea;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            background: white;
-        }
-        
-        .team-header {
-            background: linear-gradient(135deg, #4a5a6c 0%, #5a6a7c 100%);
-            color: white;
-            padding: 24px 28px;
-            font-size: 1.3em;
-            font-weight: 600;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .team-header.alfa { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); }
-        .team-header.bravo { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
-        .team-header.stt { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); }
-        .team-header.fm { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
-        .team-header.bs { background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); }
-        .team-header.sapo { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
-        .team-header.regeringen { background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%); }
-        .team-header.usa { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
-        .team-header.media { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); }
-        
-        .team-content {
-            padding: 28px;
-        }
-        
-        .team-activities-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .activity-card {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .activity-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-        }
-        
-        .activity-card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .activity-badge {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .hp-badge {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .activity-card-body {
-            padding: 20px;
-        }
-        
-        .activity-main {
-            margin-bottom: 20px;
-        }
-        
-        .activity-title {
-            margin: 0 0 10px 0;
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            line-height: 1.4;
-        }
-        
-        .activity-purpose {
-            margin: 0;
-            color: #6c757d;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        .activity-details {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-        
-        .detail-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 0;
-        }
-        
-        .detail-icon {
-            font-size: 16px;
-            width: 24px;
-            text-align: center;
-        }
-        
-        .detail-content {
-            flex: 1;
-        }
-        
-        .detail-label {
-            font-size: 12px;
-            color: #6c757d;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 2px;
-        }
-        
-        .detail-value {
-            font-size: 14px;
-            color: #2c3e50;
-            font-weight: 500;
-        }
-        
-        @media (max-width: 768px) {
-            .team-activities-grid {
-                grid-template-columns: 1fr;
-            }
-            .activity-card {
-                margin-bottom: 15px;
-            }
-        }
-        
-        .no-orders {
-            text-align: center;
-            padding: 48px;
-            color: #5a6a7c;
-            font-style: italic;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 1px solid #e8e9ea;
-        }
-        
-        .back-button {
-            display: inline-block;
-            background: #5a6a7c;
-            color: white;
-            padding: 14px 28px;
-            text-decoration: none;
-            border-radius: 8px;
-            margin-top: 24px;
-            transition: all 0.3s ease;
-            font-weight: 600;
-            border: 1px solid #4a5a6c;
-        }
-        
-        .back-button:hover {
-            background: #4a5a6c;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .team-order-link {
-            background: #4a5a6c;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-block;
-            transition: all 0.3s ease;
-            border: 1px solid #4a5a6c;
-        }
-        
-        .team-order-link:hover {
-            background: #3a4a5c;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            color: white;
-            text-decoration: none;
-        }
-        
-        .team-header a:hover {
-            background: rgba(255,255,255,0.3) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-    </style>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>LLM-underlag – Stabsspel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css?v=33">
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Kopiera ordrar till LLM</h1>
-            <p>Kopiera texten till Grok, Gemini eller ChatGPT. Klistra in JSON-svaret här eller i spelledarpanelen. Nyheter skrivs på papper till studion.</p>
-        </div>
-        
-        <div class="game-info">
-            <span>🎮 Spel: {{ data.id }}</span>
-            <span>🔄 Runda: {{ data.runda }}</span>
-            <span>⏱️ Fas: {{ data.fas }}</span>
-            <span>📅 Datum: {{ data.datum }}</span>
-        </div>
-        
-        <div class="content">
-            <div class="copy-section">
-                <h3>Kopiera till LLM</h3>
-                <div class="copy-text" id="copyText">
-{% if formatted_text %}
-{{ formatted_text }}
-{% else %}
-Inga order har skickats in ännu.
-{% endif %}
-                </div>
-                <button class="copy-button" onclick="copyToClipboard()" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">Kopiera</button>
+<body class="llm-workflow-page">
+    <main class="llm-workflow-shell">
+        <header class="llm-workflow-header">
+            <a href="/admin/{{ spel_id }}" class="secondary ghost">← Tillbaka till spelledarpanelen</a>
+            <div class="llm-workflow-heading">
+                <p class="llm-workflow-kicker">Runda {{ data.runda }} · {{ data.fas }}</p>
+                <h1>LLM-underlag</h1>
+                <p>Kopiera rundans underlag och importera sedan LLM-svaret.</p>
+            </div>
+        </header>
+
+        <section class="llm-workflow-card" data-llm-workflow>
+            <div class="llm-workflow-tabs" role="tablist" aria-label="LLM-flöde">
+                <button type="button" class="llm-workflow-tab" role="tab"
+                        id="llm-tab-copy" data-tab="copy"
+                        aria-controls="llm-panel-copy"
+                        aria-selected="{{ 'true' if active_tab == 'copy' else 'false' }}"
+                        tabindex="{{ '0' if active_tab == 'copy' else '-1' }}">
+                    1. Kopiera till LLM
+                </button>
+                <button type="button" class="llm-workflow-tab" role="tab"
+                        id="llm-tab-import" data-tab="import"
+                        aria-controls="llm-panel-import"
+                        aria-selected="{{ 'true' if active_tab == 'import' else 'false' }}"
+                        tabindex="{{ '0' if active_tab == 'import' else '-1' }}">
+                    2. Klistra in LLM-svar
+                </button>
             </div>
 
-            <div class="copy-section">
-                <h3>Klistra in LLM-svar</h3>
-                <p>JSON med nyheter, HP och milstolpar. Förslagen visas i spelledarpanelen så du kan kopiera nyheter till papper och tillämpa HP/milstolpar.</p>
-                <form method="post" action="/admin/{{ spel_id }}/llm_import" enctype="multipart/form-data">
-                    <textarea class="import-json" name="json" rows="8" placeholder='{"runda": 1, "nyheter": [], "hp": [], "milstolpar": []}'></textarea>
-                    <p><input type="file" name="fil" accept=".json,application/json,text/plain"></p>
-                    <button type="submit" class="copy-button" style="background: #4a5a6c; color: white; border: 1px solid #4a5a6c; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;">Importera LLM-svar</button>
+            <div class="llm-workflow-panel" role="tabpanel" id="llm-panel-copy"
+                 aria-labelledby="llm-tab-copy"{% if active_tab != 'copy' %} hidden{% endif %}>
+                <div class="llm-workflow-panel-head">
+                    <div>
+                        <h2>Kopiera rundans underlag</h2>
+                        <p>Texten innehåller order, speldata och spelets låsta slumpvärden.</p>
+                    </div>
+                </div>
+                <label for="llm-copy-text">Underlag till LLM</label>
+                <textarea id="llm-copy-text" class="llm-workflow-copy" readonly spellcheck="false">{% if formatted_text %}{{ formatted_text }}{% else %}Inga order har skickats in ännu.{% endif %}</textarea>
+                <div class="llm-workflow-actions">
+                    <button type="button" class="primary lg" id="llm-copy-button">Kopiera LLM-underlag</button>
+                    <span class="llm-copy-status" id="llm-copy-status" role="status" aria-live="polite"></span>
+                </div>
+            </div>
+
+            <div class="llm-workflow-panel" role="tabpanel" id="llm-panel-import"
+                 aria-labelledby="llm-tab-import"{% if active_tab != 'import' %} hidden{% endif %}>
+                <div class="llm-workflow-panel-head">
+                    <div>
+                        <h2>Klistra in LLM-svaret</h2>
+                        <p>Klistra in hela JSON-svaret. Efter lyckad import återgår du till spelledarpanelen.</p>
+                    </div>
+                </div>
+                {{ import_error }}
+                <form method="post" action="/admin/{{ spel_id }}/llm_import" enctype="multipart/form-data" class="llm-workflow-form">
+                    <label for="llm-import-json">JSON-svar</label>
+                    <textarea id="llm-import-json" name="json" rows="12" spellcheck="false"{% if import_invalid %} aria-invalid="true"{% endif %} placeholder='{"runda": 1, "nyheter": [], "hp": [], "milstolpar": []}'>{{ import_text }}</textarea>
+                    <div class="llm-workflow-upload">
+                        <label for="llm-import-file">Eller välj en JSON-fil</label>
+                        <input id="llm-import-file" type="file" name="fil" accept=".json,application/json,text/plain">
+                    </div>
+                    <div class="llm-workflow-actions">
+                        <button type="submit" class="primary lg">Importera LLM-svar</button>
+                    </div>
                 </form>
             </div>
-            
-            <h2>📊 Detaljerad Översikt</h2>
-            
-            {% if all_orders %}
-                {% for team_name, team_orders in all_orders.items() %}
-                    {% if team_orders and team_orders.orders and team_orders.orders.activities %}
-                    <div class="team-section">
-                        <div class="team-header {{ team_name.lower() }}" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>🟢 Team {{ team_name }}</span>
-                            <a href="/admin/{{ spel_id }}/view_order/{{ team_name }}" target="_blank" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
-                                👁️ View {{ team_name }} Order
-                            </a>
-                        </div>
-                        <div class="team-content">
-                            <div class="team-activities-grid">
-                                {% for activity in team_orders.orders.activities %}
-                                <div class="activity-card">
-                                    <div class="activity-card-header">
-                                        <div class="activity-number">
-                                            <span class="activity-badge">{{ loop.index }}</span>
-                                        </div>
-                                        <div class="activity-hp">
-                                            <span class="hp-badge">{{ activity.hp }} HP</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="activity-card-body">
-                                        <div class="activity-main">
-                                            <h4 class="activity-title">{{ activity.aktivitet }}</h4>
-                                            <p class="activity-purpose">{{ activity.syfte }}</p>
-                                        </div>
-                                        
-                                        <div class="activity-details">
-                                            <div class="detail-item">
-                                                <div class="detail-icon">🎯</div>
-                                                <div class="detail-content">
-                                                    <div class="detail-label">Målområde</div>
-                                                    <div class="detail-value">{{ 'Eget mål' if activity.malomrade == 'eget' else 'Annat mål' }}</div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="detail-item">
-                                                <div class="detail-icon" style="color: {{ '#28a745' if activity.typ == 'bygga' else '#dc3545' }}">{{ '🔨' if activity.typ == 'bygga' else '💥' }}</div>
-                                                <div class="detail-content">
-                                                    <div class="detail-label">Typ</div>
-                                                    <div class="detail-value">{{ 'Bygga/Förstärka' if activity.typ == 'bygga' else 'Förstöra/Störa' }}</div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="detail-item">
-                                                <div class="detail-icon">👥</div>
-                                                <div class="detail-content">
-                                                    <div class="detail-label">Påverkar</div>
-                                                    <div class="detail-value">{{ ', '.join(activity.paverkar) if activity.paverkar else 'Ingen' }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            {% else %}
-                <div class="no-orders">
-                    <h3>Inga order har skickats in ännu</h3>
-                    <p>När teamen skickar in sina order kommer de att visas här.</p>
-                </div>
-            {% endif %}
-            
-            <a href="/admin/{{ spel_id }}" class="secondary ghost">← Tillbaka till Admin Panel</a>
-        </div>
-    </div>
-    
+        </section>
+    </main>
+
     <script>
-        function copyToClipboard() {
-            const textElement = document.getElementById('copyText');
-            const text = textElement.textContent || textElement.innerText;
-            
-            // Try modern clipboard API first
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(function() {
-                    showCopySuccess();
-                }).catch(function(err) {
-                    console.error('Modern clipboard failed: ', err);
-                    fallbackCopyTextToClipboard(text);
-                });
-            } else {
-                // Use fallback method
-                fallbackCopyTextToClipboard(text);
-            }
+    (function () {
+        var root = document.querySelector('[data-llm-workflow]');
+        if (!root) return;
+        var tabs = Array.from(root.querySelectorAll('[role="tab"]'));
+        var panels = Array.from(root.querySelectorAll('[role="tabpanel"]'));
+
+        function activate(tab, focus) {
+            tabs.forEach(function (item) {
+                var selected = item === tab;
+                item.setAttribute('aria-selected', selected ? 'true' : 'false');
+                item.tabIndex = selected ? 0 : -1;
+            });
+            panels.forEach(function (panel) {
+                panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+            });
+            if (focus) tab.focus();
         }
-        
-        function fallbackCopyTextToClipboard(text) {
-            // Create a temporary textarea element
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            
-            // Make it invisible but still selectable
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            textArea.style.top = "-999999px";
-            textArea.style.opacity = "0";
-            textArea.style.pointerEvents = "none";
-            textArea.setAttribute('readonly', '');
-            
-            document.body.appendChild(textArea);
-            
-            // Select and copy
-            textArea.focus();
-            textArea.select();
-            textArea.setSelectionRange(0, 99999); // For mobile devices
-            
+
+        tabs.forEach(function (tab, index) {
+            tab.addEventListener('click', function () { activate(tab, false); });
+            tab.addEventListener('keydown', function (event) {
+                var next = null;
+                if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+                if (event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+                if (event.key === 'Home') next = tabs[0];
+                if (event.key === 'End') next = tabs[tabs.length - 1];
+                if (!next) return;
+                event.preventDefault();
+                activate(next, true);
+            });
+        });
+
+        var copyButton = document.getElementById('llm-copy-button');
+        var copyText = document.getElementById('llm-copy-text');
+        var copyStatus = document.getElementById('llm-copy-status');
+
+        function copied(ok) {
+            copyStatus.textContent = ok ? '✓ Kopierat' : 'Kopiera manuellt med Ctrl+C.';
+            copyStatus.classList.toggle('is-error', !ok);
+        }
+
+        function fallbackCopy() {
+            copyText.focus();
+            copyText.select();
+            copyText.setSelectionRange(0, copyText.value.length);
             try {
-                const successful = document.execCommand('copy');
-                document.body.removeChild(textArea);
-                
-                if (successful) {
-                    showCopySuccess();
-                } else {
-                    showCopyError();
-                }
-            } catch (err) {
-                console.error('Fallback copy failed: ', err);
-                document.body.removeChild(textArea);
-                showCopyError();
+                copied(document.execCommand('copy'));
+            } catch (_error) {
+                copied(false);
             }
         }
-        
-        function showCopySuccess() {
-            const button = document.querySelector('.copy-button');
-            if (button) {
-                const originalText = button.textContent;
-                const originalStyle = button.style.cssText;
-                
-                button.textContent = '✅ Kopierat!';
-                button.style.background = '#28a745';
-                button.style.borderColor = '#28a745';
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.cssText = originalStyle;
-                }, 2000);
+
+        copyButton.addEventListener('click', function () {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(copyText.value).then(
+                    function () { copied(true); },
+                    fallbackCopy
+                );
+            } else {
+                fallbackCopy();
             }
-        }
-        
-        function showCopyError() {
-            const button = document.querySelector('.copy-button');
-            if (button) {
-                const originalText = button.textContent;
-                const originalStyle = button.style.cssText;
-                
-                button.textContent = '❌ Kopiera manuellt';
-                button.style.background = '#dc3545';
-                button.style.borderColor = '#dc3545';
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.cssText = originalStyle;
-                }, 3000);
-            }
-            
-            // Also show a more helpful message
-            alert('Automatisk kopiering misslyckades. Markera texten i rutan ovan och kopiera manuellt (Ctrl+C eller Cmd+C).');
-        }
+        });
+    }());
     </script>
 </body>
 </html>

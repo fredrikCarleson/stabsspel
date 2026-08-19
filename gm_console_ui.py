@@ -164,7 +164,7 @@ def gm_app_menu_html(spel_id, test_mode=False):
         f'{_gm_menu_item(f"/admin/{sid}/poang", "table-cells", "HP-tabell")}'
         f'{_gm_menu_item(f"/admin/{sid}/backlog", "queue-list", "Backlog")}'
         f'{_gm_menu_item(f"/admin/{sid}/aktivitetskort", "identification", "Aktivitetskort", " target=_blank")}'
-        f'{_gm_menu_item(f"/admin/{sid}/order_summary", "arrow-up-tray", "LLM-export", " target=_blank")}'
+        f'{_gm_menu_item(f"/admin/{sid}/order_summary", "arrow-up-tray", "LLM-export")}'
         f'{_gm_menu_item("/admin", "squares-2x2", "Alla spel")}'
         f'<form method="post" action="/admin/{sid}/reset" class="gm-menu-danger" '
         f"onsubmit=\"return confirm('Återställ HELA spelet till runda 1? Detta går att ångra en gång, men raderar rundor och ordrar.');\">"
@@ -281,43 +281,6 @@ def _utfall_card_html(item):
     )
 
 
-def _llm_import_error_html(llm_import):
-    info = llm_import or {}
-    json_error = info.get("json_error")
-    domain_error = info.get("domain_error")
-    if json_error:
-        snippet = escape(json_error.get("snippet") or "")
-        pointer = escape(json_error.get("pointer") or "")
-        copy_text = escape(json_error.get("copy_text") or "")
-        copy_btn = ""
-        if json_error.get("copy_text"):
-            copy_btn = (
-                f'<textarea id="gm-json-error-copy" class="gm-news-copy" readonly hidden>'
-                f"{copy_text}</textarea>"
-                f'<button type="button" class="secondary sm" '
-                f"onclick=\"navigator.clipboard.writeText(document.getElementById('gm-json-error-copy').value)\">"
-                f"Kopiera fel</button>"
-            )
-        return (
-            f'<div class="notification error gm-json-error" id="gm-llm-json-error" role="alert">'
-            f"<strong>Ogiltig JSON</strong>"
-            f'<p>{escape(json_error.get("message") or "")}</p>'
-            f'<p class="gm-json-error-detail">{escape(json_error.get("detail") or "")}</p>'
-            f'<pre class="gm-json-error-snippet">{snippet}\n{pointer}</pre>'
-            f'<p class="gm-json-error-hint">{escape(json_error.get("hint") or "")}</p>'
-            f"{copy_btn}"
-            f"</div>"
-        )
-    if domain_error:
-        return (
-            f'<div class="notification error gm-json-error" id="gm-llm-json-error" role="alert">'
-            f"<strong>Kunde inte importera</strong>"
-            f"<p>{escape(domain_error)}</p>"
-            f"</div>"
-        )
-    return ""
-
-
 def _tab_alert_html(text):
     if not text:
         return ""
@@ -359,15 +322,9 @@ def _llm_result_tabs_html(panels, default_tab):
     )
 
 
-def _llm_block_html(spel_id, state, llm_import=None, default_result_tab=None):
+def _llm_block_html(spel_id, state, default_result_tab=None):
     fas = state.get("fas")
-    llm_import = llm_import or {}
-    has_import_error = bool(
-        llm_import.get("json_error")
-        or llm_import.get("domain_error")
-        or llm_import.get("text")
-    )
-    if fas not in ("Diplomatifas", "Resultatfas") and not has_import_error:
+    if fas not in ("Diplomatifas", "Resultatfas"):
         return ""
     sid = escape(spel_id)
     llm = state.get("llm")
@@ -387,40 +344,20 @@ def _llm_block_html(spel_id, state, llm_import=None, default_result_tab=None):
               <strong>LLM-underlag</strong>
               <p class="gm-llm-steps"><span>1 Kopiera</span><span>2 Skicka till LLM</span><span>3 Klistra in svar</span></p>
             </div>
-            <a href="/admin/{sid}/order_summary" target="_blank" class="primary">Kopiera till LLM</a>
+            <a href="/admin/{sid}/order_summary" class="primary">Kopiera till LLM</a>
         </div>
     '''
-    error_html = _llm_import_error_html(llm_import)
-    draft = escape(llm_import.get("text") or "")
-    invalid = ' aria-invalid="true"' if error_html else ""
-    rows = 8 if error_html else 4
-    import_form_body = f'''
-      <form method="post" action="/admin/{sid}/llm_import" enctype="multipart/form-data" class="gm-llm-import">
-        {error_html}
-        <label class="gm-section-help" for="gm-llm-json">3. Klistra in JSON-svaret, eller välj en fil.</label>
-        <textarea id="gm-llm-json" name="json" rows="{rows}"{invalid} placeholder='{{"nyheter": [], "hp": [], "milstolpar": []}}'>{draft}</textarea>
-        <div class="gm-llm-import-actions">
-          <input type="file" name="fil" accept=".json,application/json,text/plain">
-          <button type="submit" class="secondary">Importera svar</button>
-        </div>
-      </form>
-    '''
-    if has_import and not has_import_error:
-        import_form = (
-            '<p class="gm-llm-imported" role="status">✓ LLM-svar importerat</p>'
-            '<details class="gm-llm-reimport">'
-            '<summary>Ersätt LLM-svar</summary>'
-            f'{import_form_body}</details>'
-        )
-    else:
-        import_form = import_form_body
+    import_status = (
+        '<p class="gm-llm-imported" role="status">✓ LLM-svar importerat</p>'
+        if has_import else ""
+    )
     if not llm:
-        return f'<div class="gm-llm-panel">{copy_row}{import_form}</div>'
+        return f'<div class="gm-llm-panel">{copy_row}</div>'
 
     utfall_html = _utfall_section_html(llm)
     if not has_import:
         extra = f'<div class="gm-llm-forslag">{utfall_html}</div>' if utfall_html else ""
-        return f'<div class="gm-llm-panel">{copy_row}{import_form}{extra}</div>'
+        return f'<div class="gm-llm-panel">{copy_row}{extra}</div>'
 
     warnings = "".join(
         f"<li>{escape(item)}</li>" for item in (llm.get("warnings") or [])
@@ -538,7 +475,7 @@ def _llm_block_html(spel_id, state, llm_import=None, default_result_tab=None):
         {result_tabs}
       </div>
     '''
-    return f'<div class="gm-llm-panel">{copy_row}{import_form}{forslag}</div>'
+    return f'<div class="gm-llm-panel">{copy_row}{import_status}{forslag}</div>'
 
 
 def _chip_issue(team, inbox):
@@ -696,7 +633,7 @@ def live_html_fragments(spel_id, state):
     }
 
 
-def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None, banner=""):
+def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     state = build_live_state(data)
     runda = state["runda"]
     fas = state["fas"]
@@ -751,9 +688,7 @@ def create_gm_console_html(spel_id, data, llm_import=None, llm_view=None, banner
     clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_section_html(state.get("history") or [], state["log"])
-    llm_note = _llm_block_html(
-        spel_id, state, llm_import=llm_import, default_result_tab=llm_view
-    )
+    llm_note = _llm_block_html(spel_id, state, default_result_tab=llm_view)
 
     result_note = ""
     if fas == "Resultatfas" and avslutat:

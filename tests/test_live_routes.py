@@ -251,6 +251,78 @@ class TestLiveRoutes(unittest.TestCase):
         self.assertTrue(saved["llm_forslag"]["1"]["hp_applied"])
         self.assertTrue(saved["llm_forslag"]["1"]["milestones_applied"])
 
+    def test_llm_export_page_owns_the_import_form(self):
+        response = self._admin_client().get(
+            f"/admin/{self.spel_id}/order_summary"
+        )
+        html = response.get_data(as_text=True)
+        compact = " ".join(html.split())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("1. Kopiera till LLM", html)
+        self.assertIn("2. Klistra in LLM-svar", html)
+        self.assertIn(f'action="/admin/{self.spel_id}/llm_import"', html)
+        self.assertIn('name="json"', html)
+        self.assertIn(
+            'id="llm-tab-copy" data-tab="copy" aria-controls="llm-panel-copy" aria-selected="true"',
+            compact,
+        )
+        self.assertIn('id="llm-panel-import" aria-labelledby="llm-tab-import" hidden', compact)
+        self.assertNotIn("Detaljerad Översikt", html)
+        self.assertNotIn("team-section", html)
+        self.assertNotIn("View Alfa Order", html)
+
+    def test_invalid_llm_json_stays_on_export_page_and_keeps_text(self):
+        raw = '{"x": <script>alert(1)</script>}'
+        response = self._admin_client().post(
+            f"/admin/{self.spel_id}/llm_import",
+            data={"json": raw},
+        )
+        html = response.get_data(as_text=True)
+        compact = " ".join(html.split())
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("LLM-underlag – Stabsspel", html)
+        self.assertIn("Ogiltig JSON", html)
+        self.assertIn("Kopiera fel", html)
+        self.assertIn('aria-invalid="true"', html)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html)
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertIn(
+            'id="llm-tab-import" data-tab="import" aria-controls="llm-panel-import" aria-selected="true"',
+            compact,
+        )
+        self.assertNotIn('id="llm-panel-import" aria-labelledby="llm-tab-import" hidden', compact)
+
+    def test_llm_domain_error_stays_distinct_on_export_page(self):
+        response = self._admin_client().post(
+            f"/admin/{self.spel_id}/llm_import",
+            data={"json": "[]"},
+        )
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Kunde inte importera", html)
+        self.assertIn("JSON måste vara ett objekt", html)
+        self.assertNotIn("Ogiltig JSON nära", html)
+        self.assertIn(">[]</textarea>", html)
+
+    def test_successful_llm_import_returns_to_gm_console(self):
+        payload = json.dumps({
+            "runda": 1,
+            "nyheter": [],
+            "hp": [],
+            "milstolpar": [],
+        })
+        response = self._admin_client().post(
+            f"/admin/{self.spel_id}/llm_import",
+            data={"json": payload},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], f"/admin/{self.spel_id}")
+        self.assertTrue(self._read_game()["llm_forslag"]["1"]["importerad"])
+
 
 if __name__ == "__main__":
     unittest.main()

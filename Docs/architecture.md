@@ -231,7 +231,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `POST /admin/<id>/order_live` | Inline edit activity, withdraw to draft |
 | `POST /admin/<id>/test_mode` | Hide/show cheat controls |
 | `POST /admin/<id>/auto_fill_orders` | Testläge: fill this round from `testdata/testdataroundN.json` |
-| `POST /admin/<id>/llm_import` | Paste/upload LLM JSON (`utfall`, news, HP, milestones). Invalid JSON re-renders the console with line/column, snippet and hint; the pasted text is kept. |
+| `POST /admin/<id>/llm_import` | Paste/upload LLM JSON (`utfall`, news, HP, milestones) from the LLM export page. Invalid JSON re-renders that page with line/column, snippet and hint; the pasted text is kept. Successful import returns to the console. |
 | `POST /admin/<id>/llm_apply` | Confirm apply of suggested HP or milestones (undoable) |
 | `POST /admin/<id>/reset` | Full game reset (under Mer, with confirm) |
 
@@ -241,7 +241,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 
 | Route | Role |
 |-------|------|
-| `/admin/<id>/order_summary` | LLM export: fills `Docs/prompt.md`, freezes rolls, copy + paste/upload |
+| `/admin/<id>/order_summary` | Focused two-tab LLM export/import page in the current tab: fills `Docs/prompt.md`, freezes rolls, copy + paste/upload. It does not repeat the console's detailed order overview. |
 | `/admin/<id>/aktivitetskort` | Print hidden agendas |
 | `/admin/<id>/orderkort` | Pick a round, then printable paper order cards for all teams |
 | `/admin/<id>/orderkort/<runda>` | HTML for that round |
