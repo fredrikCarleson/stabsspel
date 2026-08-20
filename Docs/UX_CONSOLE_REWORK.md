@@ -132,6 +132,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - The start list explicitly marks active games as **Pågår**. The mobile team form gives **Kvar** visual priority and stacks save/submit actions into full-width touch targets.
 - Milstolpar har nu en väg: när LLM-förslag finns ligger den samlade åtgärden högst upp i **LLM-resultat** och Inkorg hänvisar dit. Tillämpning i endera vyn synkas till den andra i live-uppdateringen, så **Att göra** och knappar försvinner när arbetet är klart och samma progress inte kan räknas två gånger.
 - Spelledarpanelens tidigare stora titelblock är ersatt av en kompakt tvådelad kontrollheader. Runda, fas, timer, spelmetadata och spelarskärm ligger överst; fas- och timeråtgärder samt den fullständiga **Meny**-dropdownen ligger på en smal åtgärdsrad under.
+- I Resultatfas visar spelarskärmen **Denna runda → Nästa runda** för varje lags HP, inklusive nettoskillnad. Prognosen följer det verkliga fasbytet: regeringsstöd tas bort först och köade HP-förändringar appliceras därefter. Arbetsprogress är röd 0–33 %, gul 34–66 % och grön 67–100 % på både lag- och aktivitetsnivå.
 
 ## Still to do (priority)
 
@@ -150,7 +151,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 | Job | Files |
 | --- | ----- |
-| Cache-bust | Console CSS is `app.css?v=35`, JS `gm-console.js?v=14`. Bump when CSS/JS changes. |
+| Cache-bust | Shared CSS is `app.css?v=36`; console JS is `gm-console.js?v=14`; projector JS is `projector.js?v=4`. Bump when CSS/JS changes. |
 
 ## How to continue in a new chat
 

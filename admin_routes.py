@@ -2240,7 +2240,7 @@ def _spelledarpanel_response(spel_id, data, status=200):
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css?v=35">
+            <link rel="stylesheet" href="/static/app.css?v=36">
             <link rel="stylesheet" href="/static/print.css" media="print">
             <script>
                 if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {{
@@ -2918,7 +2918,7 @@ LLM_WORKFLOW_TEMPLATE = """
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>LLM-underlag – Stabsspel</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/app.css?v=35">
+    <link rel="stylesheet" href="/static/app.css?v=36">
 </head>
 <body class="llm-workflow-page">
     <main class="llm-workflow-shell">

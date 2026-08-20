@@ -1306,25 +1306,67 @@ def _log_html(log):
     return f'<ul class="gm-log">{"".join(items)}</ul>'
 
 
-def _projector_hp_html(teams):
+def _projector_hp_change(delta):
+    delta = int(delta or 0)
+    if delta > 0:
+        return " is-gain", f"+{delta} HP"
+    if delta < 0:
+        return " is-loss", f"−{abs(delta)} HP"
+    return " is-same", "Oförändrat"
+
+
+def _projector_hp_html(teams, show_next=False):
     cards = []
     for t in teams or []:
         extra = " has-support" if t.get("regeringsstod") else ""
         note = '<div class="projector-team-note">stöd +10</div>' if t.get("regeringsstod") else ""
+        hp_html = f'<div class="projector-team-hp">{t["hp"]}</div>'
+        aria = f'{escape(t["team"])}: {t["hp"]} HP'
+        if show_next:
+            change_class, change_label = _projector_hp_change(t.get("next_delta"))
+            extra += change_class
+            aria = (
+                f'{escape(t["team"])}: denna runda {t["hp"]} HP, '
+                f'nästa runda {t.get("next_hp", t["hp"])} HP, {escape(change_label)}'
+            )
+            hp_html = (
+                '<div class="projector-team-comparison">'
+                '<div class="projector-team-period">'
+                '<span>Denna runda</span>'
+                f'<strong>{t["hp"]}</strong></div>'
+                '<span class="projector-team-arrow" aria-hidden="true">→</span>'
+                '<div class="projector-team-period is-next">'
+                '<span>Nästa runda</span>'
+                f'<strong>{t.get("next_hp", t["hp"])}</strong></div>'
+                '</div>'
+                f'<div class="projector-team-change">{escape(change_label)}</div>'
+            )
         cards.append(
-            f'<div class="projector-team{extra}">'
+            f'<div class="projector-team{extra}" aria-label="{aria}">'
             f'<div class="projector-team-name">{escape(t["team"])}</div>'
-            f'<div class="projector-team-hp">{t["hp"]}</div>'
+            f'{hp_html}'
             f"{note}</div>"
         )
     return "".join(cards)
 
 
+def _projector_progress_tone(percent):
+    percent = max(0, min(100, int(percent or 0)))
+    if percent >= 67:
+        return "is-high"
+    if percent >= 34:
+        return "is-medium"
+    return "is-low"
+
+
 def _projector_bar(percent, extra_class=""):
     width = max(0, min(100, int(percent or 0)))
     done = " is-done" if width >= 100 else ""
+    tone = _projector_progress_tone(width)
+    extra = f" {extra_class}" if extra_class else ""
     return (
-        f'<div class="projector-bar{done} {extra_class}">'
+        f'<div class="projector-bar {tone}{done}{extra}" role="progressbar" '
+        f'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{width}">'
         f'<span style="width:{width}%"></span></div>'
     )
 
@@ -1382,7 +1424,12 @@ def _projector_clock_class(remaining):
 def create_projector_html(spel_id, data):
     """Player-facing display: round, phase, time, public HP. No GM controls."""
     state = build_public_state(data)
-    team_cards = _projector_hp_html(state["teams"])
+    show_next_hp = (
+        state["fas"] == "Resultatfas"
+        and state["runda"] < state["max_runda"]
+        and not state["avslutat"]
+    )
+    team_cards = _projector_hp_html(state["teams"], show_next=show_next_hp)
     progress_html = _projector_progress_html(state.get("progress") or [])
     ended = " Spelet är slut." if state["avslutat"] else ""
     clock_class = _projector_clock_class(state["remaining"])
@@ -1394,7 +1441,7 @@ def create_projector_html(spel_id, data):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spelarskärm – runda {state["runda"]}</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="/static/app.css?v=13">
+  <link rel="stylesheet" href="/static/app.css?v=36">
 </head>
 <body class="projector-page">
   <script type="application/json" id="projector-state">{state_json}</script>
@@ -1411,7 +1458,7 @@ def create_projector_html(spel_id, data):
   <button type="button" class="projector-audio-hint" id="projector-audio-hint" hidden>
     Klicka för ljudvarningar
   </button>
-  <script src="/static/projector.js?v=3"></script>
+  <script src="/static/projector.js?v=4"></script>
 </body>
 </html>
 '''

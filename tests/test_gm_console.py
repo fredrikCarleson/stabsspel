@@ -308,6 +308,10 @@ class TestGmConsoleHtml(unittest.TestCase):
 
         data = sample_game()
         data["fas"] = "Resultatfas"
+        data["hp_pending"] = [
+            {"lag": "Alfa", "delta": -5},
+            {"lag": "Bravo", "delta": 5},
+        ]
         html = create_projector_html("g1", data)
         self.assertIn("projector-clock", html)
         self.assertIn("Alfa", html)
@@ -316,15 +320,32 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("projector-progress", html)
         self.assertIn("projector-audio-hint", html)
         self.assertIn("Klicka för ljudvarningar", html)
-        self.assertIn("projector.js?v=3", html)
+        self.assertIn("projector.js?v=4", html)
+        self.assertIn("app.css?v=36", html)
+        self.assertIn("Denna runda", html)
+        self.assertIn("Nästa runda", html)
+        self.assertIn("projector-team is-loss", html)
+        self.assertIn("projector-team is-gain", html)
+        self.assertIn("−5 HP", html)
+        self.assertIn("+5 HP", html)
+        self.assertIn("projector-bar is-low", html)
+        self.assertIn('role="progressbar"', html)
         self.assertNotIn("Starta", html)
         self.assertNotIn("Pausa", html)
         self.assertNotIn("Testläge", html)
         self.assertNotIn("Orderinkorg", html)
         self.assertNotIn("HP per klick", html)
-        self.assertNotIn("Nästa runda", html)
         self.assertNotIn("gm-hp-next", html)
         self.assertNotIn("gm-backlog-prev", html)
+
+    def test_projector_progress_uses_traffic_light_thresholds(self):
+        from gm_console_ui import _projector_bar
+
+        self.assertIn("is-low", _projector_bar(33))
+        self.assertIn("is-medium", _projector_bar(34))
+        self.assertIn("is-medium", _projector_bar(66))
+        self.assertIn("is-high", _projector_bar(67))
+        self.assertIn("is-high", _projector_bar(100))
 
     def test_result_phase_shows_run_of_show(self):
         from gm_console_ui import create_gm_console_html

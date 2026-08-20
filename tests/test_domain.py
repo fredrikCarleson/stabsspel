@@ -179,6 +179,23 @@ class TestActionPoints(unittest.TestCase):
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 17)
         self.assertEqual(data.get("hp_pending") or [], [])
 
+    def test_public_next_hp_matches_the_actual_new_round(self):
+        data = create_game_state(fas="Resultatfas")
+        data["poang"]["Alfa"]["regeringsstod"] = True
+        data["hp_pending"] = [
+            {"lag": "Alfa", "delta": -30},
+            {"lag": "Alfa", "delta": 5},
+        ]
+
+        public = build_public_state(data)
+        alfa = next(team for team in public["teams"] if team["team"] == "Alfa")
+        self.assertEqual(alfa["hp"], 35)
+        self.assertEqual(alfa["next_hp"], 5)
+        self.assertEqual(alfa["next_delta"], -30)
+
+        apply_new_round(data)
+        self.assertEqual(effective_hp(data["poang"]["Alfa"]), alfa["next_hp"])
+
     def test_backlog_snapshot_marks_previous_round_spend(self):
         data = create_game_state()
         add_backlog_spend(data, "Alfa", "alfa_1", 8)
@@ -677,6 +694,8 @@ class TestPublicProjector(unittest.TestCase):
         self.assertEqual(public["fas"], "Orderfas")
         alfa = next(t for t in public["teams"] if t["team"] == "Alfa")
         self.assertEqual(alfa["hp"], 35)
+        self.assertEqual(alfa["next_hp"], 25)
+        self.assertEqual(alfa["next_delta"], -10)
         self.assertTrue(alfa["regeringsstod"])
         dumped = str(public)
         self.assertNotIn("Hemlig DDOS", dumped)

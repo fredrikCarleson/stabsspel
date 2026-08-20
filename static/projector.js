@@ -152,12 +152,21 @@
     if (running && remaining === 0) setStressful(false);
   }
 
+  function progressTone(percent) {
+    var value = Math.max(0, Math.min(100, Math.round(percent || 0)));
+    if (value >= 67) return "is-high";
+    if (value >= 34) return "is-medium";
+    return "is-low";
+  }
+
   function barHtml(percent, extraClass) {
     var width = Math.max(0, Math.min(100, Math.round(percent || 0)));
     var done = width >= 100 ? " is-done" : "";
     extraClass = extraClass ? " " + extraClass : "";
     return (
-      '<div class="projector-bar' + done + extraClass + '">' +
+      '<div class="projector-bar ' + progressTone(width) + done + extraClass +
+      '" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+      width + '">' +
       '<span style="width:' + width + '%"></span></div>'
     );
   }
@@ -234,17 +243,46 @@
       "</div>";
   }
 
-  function paintHp(teams) {
+  function paintHp(teams, showNext) {
     var root = document.getElementById("projector-hp");
     if (!root) return;
     root.innerHTML = (teams || [])
       .map(function (t) {
         var extra = t.regeringsstod ? " has-support" : "";
         var note = t.regeringsstod ? '<div class="projector-team-note">stöd +10</div>' : "";
+        var hpHtml = '<div class="projector-team-hp">' + t.hp + "</div>";
+        var aria = escapeHtml(t.team) + ": " + t.hp + " HP";
+        if (showNext) {
+          var delta = parseInt(t.next_delta, 10) || 0;
+          var nextHp = parseInt(t.next_hp, 10);
+          if (isNaN(nextHp)) nextHp = parseInt(t.hp, 10) || 0;
+          var changeClass = " is-same";
+          var changeLabel = "Oförändrat";
+          if (delta > 0) {
+            changeClass = " is-gain";
+            changeLabel = "+" + delta + " HP";
+          } else if (delta < 0) {
+            changeClass = " is-loss";
+            changeLabel = "−" + Math.abs(delta) + " HP";
+          }
+          extra += changeClass;
+          aria =
+            escapeHtml(t.team) + ": denna runda " + t.hp +
+            " HP, nästa runda " + nextHp + " HP, " + changeLabel;
+          hpHtml =
+            '<div class="projector-team-comparison">' +
+            '<div class="projector-team-period"><span>Denna runda</span><strong>' +
+            t.hp +
+            '</strong></div><span class="projector-team-arrow" aria-hidden="true">→</span>' +
+            '<div class="projector-team-period is-next"><span>Nästa runda</span><strong>' +
+            nextHp +
+            "</strong></div></div>" +
+            '<div class="projector-team-change">' + changeLabel + "</div>";
+        }
         return (
-          '<div class="projector-team' + extra + '">' +
+          '<div class="projector-team' + extra + '" aria-label="' + aria + '">' +
           '<div class="projector-team-name">' + escapeHtml(t.team) + "</div>" +
-          '<div class="projector-team-hp">' + t.hp + "</div>" +
+          hpHtml +
           note +
           "</div>"
         );
@@ -277,7 +315,10 @@
     state.avslutat = next.avslutat;
     paintClock();
     syncAlerts();
-    paintHp(next.teams);
+    paintHp(
+      next.teams,
+      next.fas === "Resultatfas" && next.runda < next.max_runda && !next.avslutat
+    );
     paintProgress(next.progress);
   }
 

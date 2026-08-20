@@ -3010,10 +3010,22 @@ button.gm-icon-btn:active {
 }
 .projector-team {
   border: 1px solid var(--c-border);
+  border-top: 4px solid transparent;
   border-radius: var(--radius-8);
-  padding: 16px;
+  padding: 13px 14px 14px;
   text-align: center;
   background: var(--c-surface);
+}
+.projector-team.is-gain {
+  border-top-color: var(--c-success);
+  background: color-mix(in srgb, var(--note-success-bg) 45%, var(--c-surface));
+}
+.projector-team.is-loss {
+  border-top-color: var(--c-danger);
+  background: color-mix(in srgb, var(--note-error-bg) 45%, var(--c-surface));
+}
+.projector-team.is-same {
+  border-top-color: var(--c-border-strong, var(--c-secondary));
 }
 .projector-team-name { font-weight: 700; font-size: 18px; }
 .projector-team-hp {
@@ -3021,6 +3033,67 @@ button.gm-icon-btn:active {
   font-weight: 800;
   line-height: 1.1;
   margin-top: 8px;
+}
+.projector-team-comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+}
+.projector-team-period {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.projector-team-period > span {
+  overflow: hidden;
+  color: var(--c-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.projector-team-period > strong {
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+}
+.projector-team-period.is-next > strong {
+  color: var(--c-primary-strong);
+}
+.projector-team-arrow {
+  align-self: end;
+  color: var(--c-muted);
+  font-size: 22px;
+  line-height: 1;
+}
+.projector-team-change {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  margin-top: 9px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--c-bg);
+  color: var(--c-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.projector-team.is-gain .projector-team-change {
+  background: var(--note-success-bg);
+  color: var(--note-success-fg);
+}
+.projector-team.is-loss .projector-team-change {
+  background: var(--note-error-bg);
+  color: var(--note-error-fg);
 }
 .projector-team-note {
   font-size: 12px;
@@ -3080,10 +3153,26 @@ button.gm-icon-btn:active {
 .projector-bar > span {
   display: block;
   height: 100%;
-  background: var(--c-primary);
   border-radius: 999px;
 }
-.projector-bar.is-done > span { background: var(--c-success); }
+.projector-bar.is-low {
+  background: color-mix(in srgb, var(--c-danger) 14%, var(--c-surface));
+}
+.projector-bar.is-low > span {
+  background: var(--c-danger);
+}
+.projector-bar.is-medium {
+  background: color-mix(in srgb, var(--c-warning) 18%, var(--c-surface));
+}
+.projector-bar.is-medium > span {
+  background: var(--c-warning);
+}
+.projector-bar.is-high {
+  background: color-mix(in srgb, var(--c-success) 16%, var(--c-surface));
+}
+.projector-bar.is-high > span {
+  background: var(--c-success);
+}
 .projector-task {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

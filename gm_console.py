@@ -1970,12 +1970,31 @@ def build_live_state(data):
 def build_public_state(data):
     """Room-safe snapshot: time, phase, public HP. No orders, log, or testläge."""
     ensure_poang(data)
+    projected_hp = {
+        lag: int((data["poang"].get(lag) or {}).get("aktuell") or 0)
+        for lag in data.get("lag") or []
+    }
+    # Mirror apply_pending_hp exactly. Government support is deliberately absent:
+    # apply_new_round removes it before queued HP changes are applied.
+    for item in data.get("hp_pending") or []:
+        team = item.get("lag")
+        if team not in projected_hp:
+            continue
+        try:
+            delta = int(item.get("delta") or 0)
+        except (TypeError, ValueError):
+            continue
+        projected_hp[team] = max(0, projected_hp[team] + delta)
     teams = []
     for lag in data.get("lag") or []:
         entry = data["poang"].get(lag) or {}
+        current_hp = effective_hp(entry)
+        next_hp = projected_hp.get(lag, int(entry.get("aktuell") or 0))
         teams.append({
             "team": lag,
-            "hp": effective_hp(entry),
+            "hp": current_hp,
+            "next_hp": next_hp,
+            "next_delta": next_hp - current_hp,
             "regeringsstod": bool(entry.get("regeringsstod")),
         })
     return {
