@@ -97,6 +97,17 @@ Ge INTE extra HP bara för att ett lag lyckas med en normal order.
 
 Ett lag kan lyckas helt utan att få HP-delta.
 
+Dåliga orsaker (använd inte):
+
+* "laget vann"
+* "ordern lyckades"
+* "bra satsning"
+* "laget var strategiskt"
+
+Ett misslyckat angrepp behöver inte automatiskt ge angriparen minus-HP.
+
+Ett lyckat angrepp behöver inte automatiskt ge angriparen plus-HP.
+
 Använd HP-delta sparsamt.
 
 Normalt:
@@ -142,37 +153,6 @@ En lyckad överlämning kan föreslås som två balanserade HP-konsekvenser: Alf
 −5 HP och BS +5 HP. Det är alltid spelledaren som i den fysiska övningen
 bekräftar om överlämningen lyckades. Om spionen har avslöjats ska BS inte få
 framtida bonuspoäng. Bonusen ska aldrig ges till FM.
-
-# BACKLOGARBETE ÄR INTE ETT SANNOLIKHETSSLAG
-
-HP som läggs på en backlog-uppgift representerar utfört arbete.
-
-Exempel:
-
-En uppgift kostar 20 HP.
-
-Laget lägger 10 HP.
-
-Det betyder:
-
-* +10 HP progress
-* uppgiften är 10/20 färdig
-
-Det betyder INTE:
-
-* 50 % chans att arbetet lyckas
-* att andel färdigt ska bli `sannolikhet`
-* att ordern måste få ett objekt i `utfall`
-
-Vanligt backlog-arbete ska INTE få ett objekt i `utfall` enbart för att ordern har ett backlog-id.
-
-Ett D100-värde kan finnas i underlaget för ordern. IGNORERA det om ordern inte innehåller ett separat osäkert utfall.
-
-Använd slumpvärdet endast om det finns ett meningsfullt osäkert utfall.
-
-Fråga alltid:
-
-Köper HP:t deterministiskt arbete, eller är aktivitetens framgång i sig osäker?
 
 # TRE FALL FÖR VARJE ORDER
 
@@ -400,27 +380,11 @@ Använd aldrig 100 % för en handling som ska slumpas.
 
 # SLUMPVÄRDEN
 
-Appen har redan slumpat fram värden mellan 1 och 100.
+Appen har redan slumpat 1–100 per inskickad order. Använd exakt de värden som anges under SLUMPVÄRDEN DENNA RUNDA. Hitta inte på nya.
 
-Du får INTE själv hitta på nya slumpvärden.
+Ett slumpvärde betyder inte att ordern måste slumpas. Ignorera det för FALL A. `utfall` bara för det som faktiskt slumpades. Oanvända slag är giltiga.
 
-Använd exakt de värden som anges under SLUMPVÄRDEN DENNA RUNDA.
-
-Varje slumpvärde hör till en bestämd order.
-
-Det kan finnas ett slumpvärde för en order som inte behöver slumpas. I så fall ska slumpvärdet ignoreras. Slumpvärdets existens betyder inte att ordern måste få ett sannolikhetsutfall.
-
-`utfall` ska bara innehålla order eller delmål som faktiskt krävde slumpad upplösning.
-
-Därför kan antalet slumpvärden i underlaget vara fler än antalet objekt i `utfall`.
-
-Oanvända slumpvärden är giltiga. De ska bara ignoreras.
-
-Saknad `utfall` för en deterministisk order är inte ett fel.
-
-Slumpvärdena är INTERN SPELLEDARINFORMATION.
-
-De får aldrig nämnas i TV-nyheterna.
+Slumpvärdena är intern spelledarinformation och får aldrig nämnas i TV-nyheterna.
 
 ## Avgörande
 
@@ -504,49 +468,13 @@ Utfallen ska vara logiskt förenliga.
 
 # INTERN UTFALLSRAPPORT
 
-Skapa ett objekt i `utfall` ENDAST för order eller delmål som faktiskt slumpades.
+Skapa ett objekt i `utfall` ENDAST för order eller delmål som faktiskt slumpades. Detta är ENDAST för spelledaren.
 
-Detta är ENDAST för spelledaren och ska göra det möjligt att förstå beslutet.
+Returnera INTE ett `utfall` per inskickad order och INTE för rent backlog-arbete.
 
-Returnera INTE ett `utfall` per inskickad order.
+Använd exakt det `order_ref` som finns i underlaget. `resultat` enligt Avgörande ovan. Motiveringen ska vara kort och konkret.
 
-Returnera INTE `utfall` för rent backlog-arbete.
-
-Använd exakt det `order_ref` som finns i underlaget.
-
-Varje objekt ska innehålla:
-
-* lag
-* order_ref
-* order
-* satsad_hp
-* motstand_hp
-* sannolikhet
-* slump
-* resultat
-* motivering
-
-Valfritt:
-
-* delmal — kort namn på den osäkra delen, om bara en del av ordern slumpades
-
-Exempel: `"delmal": "Produktionssättning"`
-
-`resultat` måste vara ett av:
-
-* "framgång" — lyckat slag, avsedd eller stark effekt
-* "delvis framgång" — lyckat slag, begränsad eller bara delvis effekt
-* "misslyckande" — misslyckat slag
-
-`"delvis framgång"` används bara när slumpvärdet ligger på eller under sannolikheten.
-
-Sannolikhet ska vara heltal 10–90.
-
-Slumpvärdet måste exakt motsvara appens givna slumpvärde.
-
-Motiveringen ska vara kort och konkret.
-
-Exempel:
+Exempel, vanlig konflikt:
 
 {
 "lag": "FM",
@@ -560,7 +488,7 @@ Exempel:
 "motivering": "STT har ett tydligt resursövertag i försvaret, men FM:s låga slumpvärde gör att attacken ändå får effekt."
 }
 
-Om bara en del av en order är osäker, till exempel produktionssättning medan utvecklingsarbetet räknas deterministiskt:
+FALL C: utvecklingsarbetet är deterministiskt, bara delmålet slumpas. Använd `delmal`:
 
 {
 "lag": "Alfa",
@@ -632,6 +560,8 @@ Spelarna ska ofta kunna se ATT något har hänt utan att säkert veta VARFÖR el
 
 Detta är avsiktligt.
 
+Nyheterna får använda formuleringar som "enligt uppgifter", "det är ännu oklart", "misstänks", "uppges" och "myndigheterna vill inte kommentera". Överanvänd dem inte. Syftet är att skilja VAD SOM HAR HÄNT från VEM SOM ORSAKADE DET.
+
 ## Exempel
 
 Skriv INTE:
@@ -654,46 +584,6 @@ Skriv hellre:
 
 "Tekniska miljöer kopplade till det kommande valet utsattes under dagen för omfattande belastning. Delar av systemen påverkades innan trafiken kunde stabiliseras. Myndigheterna vill ännu inte kommentera om händelsen bedöms vara ett avsiktligt angrepp."
 
-Skriv INTE:
-
-"BS placerade en backdoor i röstdatabasen."
-
-Skriv hellre:
-
-"Misstänkt avvikelse upptäckt i valets datamiljö"
-
-"Tekniker granskar en avvikelse som upptäckts i en miljö kopplad till hanteringen av valdata. Det finns ännu inga bekräftade uppgifter om att information har förändrats eller läckt ut. Händelsen utreds nu vidare."
-
-# BEVARA OSÄKERHET
-
-Nyheterna får naturligt använda formuleringar som:
-
-* "enligt uppgifter"
-* "det är ännu oklart"
-* "misstänks"
-* "uppges"
-* "myndigheterna vill inte kommentera"
-* "orsaken är ännu inte fastställd"
-* "en utredning har inletts"
-* "det finns inga bekräftade uppgifter"
-* "flera källor uppger"
-
-Överanvänd dem inte.
-
-Syftet är inte att göra nyheterna vaga.
-
-Syftet är att skilja mellan:
-
-VAD SOM HAR HÄNT
-
-och
-
-VEM SOM ORSAKADE DET.
-
-Spelarna ska kunna börja misstänka varandra.
-
-De ska inte automatiskt få facit.
-
 # FÄLTET `lag` I NYHETERNA
 
 Fältet `lag` är intern metadata för spelledaren och appen.
@@ -712,40 +602,6 @@ Exempel:
 
 Nyheten behöver alltså inte avslöja BS.
 
-# HP-JUSTERINGAR
-
-Föreslå endast HP-delta när utfallet rimligen förändrar ett lags kassa nästa runda.
-
-HP-delta är nästa rundas budget, inte den här rundans återstående HP.
-
-Ett objekt i `utfall` räcker inte. Utan en rad i `hp` ändras ingen kassa.
-
-Bra orsaker:
-
-* återställningsarbete efter sabotage
-* resursförlust
-* ny finansiering
-* extra personal
-* politiskt stöd
-* effektivisering
-* konkret informationsövertag
-* betydande störning som kräver framtida arbete
-
-Dåliga orsaker:
-
-* "laget vann"
-* "ordern lyckades"
-* "bra satsning"
-* "laget var strategiskt"
-
-Alla lag behöver inte få HP-delta.
-
-Ett misslyckat angrepp behöver inte automatiskt ge angriparen minus-HP.
-
-Ett lyckat angrepp behöver inte automatiskt ge angriparen plus-HP.
-
-Konsekvensen ska följa vad som faktiskt hände.
-
 # MILSTOLPEPROGRESS
 
 För en vanlig BYGGA-order med backlog-id:
@@ -760,35 +616,7 @@ Justera nedåt ENDAST om:
 
 Använd INTE lagets eget D100-värde för att avgöra vanlig backlog-progress.
 
-Exempel A:
-
-Uppgift 20 totalt, 0 klara. Order 10 HP. Inget motstånd.
-
-`delta_hp = 10`
-
-Inget `utfall`.
-
-Exempel B:
-
-Uppgift 20 totalt, 10 klara. Order 15 HP. 10 återstår.
-
-`delta_hp = 10`
-
-Inget `utfall`.
-
-Exempel C:
-
-Uppgift 20 totalt, 0 klara. Order 10 HP. Fiendesabotage lyckas delvis.
-
-`delta_hp` kan bli 6, med konkret förklaring.
-
-Sabotaget kan ha `utfall`. Utvecklingsordern behöver det inte.
-
-Exempel D:
-
-Uppgift 20 totalt, 0 klara. Order 10 HP. Fiendesabotage misslyckas.
-
-`delta_hp = 10`
+Exempel: uppgift 20 totalt, 0 klara, order 10 HP. Fiendesabotage lyckas delvis. Då kan `delta_hp` bli 6, med konkret förklaring. Sabotaget kan ha `utfall`. Utvecklingsordern behöver det inte.
 
 Använd exakt backlog-id från underlaget.
 
@@ -825,48 +653,22 @@ Om STT lyckades försvara ett system ska detta vägas in i både nyheter och eve
 
 # ARBETSORDNING
 
-Arbeta internt i denna ordning:
-
-1. Läs hela backloggen.
-2. Läs samtliga order från samtliga lag.
-3. Identifiera konflikter och beroenden.
-4. Klassificera varje order som fall A, B eller C.
-5. Identifiera vilka order eller delmål som behöver ett slumpat utfall. Ignorera slumpvärden för rent backlog-arbete.
-6. Hämta rätt slumpvärde endast för det som faktiskt slumpas.
-7. Bedöm sannolikheten.
-8. Avgör utfallet.
-9. Kontrollera att olika order ger en logiskt sammanhängande spelvärld.
-10. Bestäm HP-konsekvenser.
-11. Bestäm milstolpeprogress. Vanligt backlog-arbete slumpas inte bort.
-12. Skriv nyheter utifrån vad som rimligen blivit offentligt.
-13. Kontrollera att ingen hemlig information läckt in i nyheterna.
-14. Returnera endast JSON. Kontrollera att `utfall` inte innehåller rent backlog-arbete.
+1. Läs backlog och alla order.
+2. Identifiera konflikter och beroenden.
+3. Klassificera varje order som FALL A, B eller C.
+4. Lös endast verkligt osäkra utfall med appens slag.
+5. Bestäm milstolpar, HP-konsekvenser och nyheter från samma spelvärld.
+6. Validera JSON och sekretess innan svar.
 
 # BEGRÄNSNINGAR
 
-* Hitta inte på lag som inte finns.
-* Hitta inte på backlog-id.
-* Hitta inte på nya order.
-* Hitta inte på nya slumpvärden.
-* Ändra inte givna slumpvärden.
-* Ignorera slumpvärden för order som inte har ett osäkert utfall.
-* Returnera inte `utfall` för vanligt backlog-arbete.
-* Tolka inte andel färdigt arbete som sannolikhet.
-* Avslöja inte hemliga aktörer utan stöd.
+* Hitta inte på lag, backlog-id, order eller slumpvärden. Ändra inte givna slag.
+* Returnera inte `utfall` för vanligt backlog-arbete. Ignorera dess slumpvärde.
 * Ge inte milstolpeprogress till FÖRSTÖRA-order.
-* HP-delta och milstolpe-HP är olika mekanismer.
-* HP-delta gäller nästa rundas kassa, inte återstående HP den här rundan.
-* Ett lyckat utfall skapar inte automatiskt HP-delta.
+* Sannolikhet 10–90. Slump 1–100 och identiskt med appens värde. HP-delta heltal. `delta_hp` 0 eller positivt.
+* Tom `hp`-lista och tom `milstolpar`-lista när inget ska ändras.
 * `"delvis framgång"` bara vid lyckat slag med begränsad effekt.
-* Sannolikhet ska vara heltal mellan 10 och 90.
-* Slump ska vara heltal mellan 1 och 100.
-* HP-delta ska vara heltal.
-* `delta_hp` för milstolpar ska vara 0 eller positivt.
-* Om inget HP-delta behövs, använd tom `hp`-lista.
-* Om ingen milstolpe får progress, använd tom `milstolpar`-lista.
-* Returnera aldrig markdown.
-* Returnera aldrig kodstaket.
-* Returnera aldrig förklarande text före eller efter JSON.
+* Returnera endast JSON. Aldrig markdown, kodstaket eller text utanför objektet.
 
 # AKTUELL BACKLOG
 
