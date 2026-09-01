@@ -13,6 +13,8 @@ Single Flask process. No database, no `templates/` tree, no ORM. Each game is on
 
 Map of the repo: [Docs/architecture.md](../../../Docs/architecture.md).
 Game rules: [Docs/Stabsspel Traineeprogrammet.md](../../../Docs/Stabsspel%20Traineeprogrammet.md).
+LLM copy/import, HP queue, projector secrecy: [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md).
+Agent doc hierarchy and conflict handling: `Docs/architecture.md` § For coding agents.
 
 ## Before changing code
 
@@ -25,7 +27,7 @@ Before implementing a change:
 5. Prefer the smallest coherent change that solves the requested problem.
 6. Do not refactor unrelated code while implementing a feature or fix.
 7. If you notice adjacent technical debt, report it separately instead of silently fixing it.
-8. If `architecture.md` and the current code disagree, treat the code as runtime truth and report the discrepancy.
+8. Active domain code (`gm_console.py`) shows runtime behaviour. The docs describe intended mechanics. If they disagree, do not silently pick one and do not follow leftover or unused code. Decide whether the difference is stale documentation or a code defect, then report it before changing game mechanics. Leftover routes, unused HTML builders and root-level `test_*.py` are never the game spec. The standard test suite is `tests/`.
 
 ## Where code goes
 
@@ -43,7 +45,7 @@ Before implementing a change:
 
 Do not implement new live-event rules inside route handlers. Routes should load state, validate request-level input, call domain logic, persist, and return.
 
-Do not grow leftover admin chrome such as the old quarter bar, checklists or extra timer widgets still injected below the live console. Put new live GM work on the console.
+Do not grow leftover admin chrome (old quarter bar, checklists, extra timer widgets in `admin_routes.py`). Those builders are unused; they are not injected under the live console. Put new live GM work on the console.
 
 ## Domain model
 
@@ -57,6 +59,7 @@ Important keys include:
 * `regeringsstod`
 * `team_orders`
 * `backlog`
+* `hp_pending` — queued wallet deltas applied when a new round starts
 * `gm_log`
 * `gm_undo`
 * `test_mode`
@@ -67,9 +70,10 @@ Important rules:
 
 * Spendable HP is `aktuell`, plus +10 when `regeringsstod` applies.
 * **Transfers use stored `aktuell` only. Government support is not transferable.**
+* LLM **Tillämpa HP** and GM ± after Orderfas queue into `hp_pending` (next round's wallet). GM ± in Orderfas changes this round immediately.
 * `build_live_state` is the GM payload.
-* `build_public_state` is the projector payload. Never send inbox, `gm_log`, test mode, secret orders or other GM-only state to the projector.
-* News headlines stay on paper for the studio. LLM export fills `Docs/prompt.md` and freezes 1–100 rolls in `llm_resolution`. Paste/upload stores suggestions (`llm_forslag`) and GM-only `utfall`. HP and milestones apply only after GM confirm. Do not send `llm_forslag` or `llm_resolution` in `build_public_state`. Ordinary undo must not reroll frozen dice.
+* `build_public_state` is the projector payload. Never send inbox, `gm_log`, test mode, secret orders, `llm_forslag`, `llm_resolution`, rolls or `utfall` to the projector.
+* News headlines stay on paper for the studio. LLM export fills `Docs/prompt.md` and freezes 1–100 rolls in `llm_resolution`. Paste/upload stores suggestions (`llm_forslag`) and GM-only `utfall`. HP and milestones apply only after GM confirm. A successful `utfall` does not create wallet HP by itself. Ordinary undo must not reroll frozen dice. Details: [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md).
 * Code identifiers keep the existing mix such as `fas`, `runda`, `poang`, `regeringsstod`.
 * UI strings are Swedish. See the [ux-gui](../ux-gui/SKILL.md) skill.
 
@@ -157,7 +161,9 @@ Escape user-controlled values before rendering them into HTML.
 
 ## Tests
 
-Prefer tests under `tests/`.
+The authoritative suite is `tests/` (`test_domain.py`, `test_gm_console.py`, `test_admin_helpers.py`). Prefer those.
+
+Root-level `test_*.py` and `debug_*.py` are legacy. Do not treat them as the game specification. `test_admin_routes.py` still covers delete-game HTTP; other root tests are archaeology.
 
 Typical fast test run:
 
@@ -237,6 +243,20 @@ Do not invent alternative startup or deployment entry points unless the user exp
 * No new dependencies unless explicitly justified or requested.
 * Current stack includes Flask 3, Gunicorn, qrcode and Pillow.
 
+## Documentation
+
+Update the relevant docs in the **same change** as the code. Do not leave documentation stale for a later cleanup.
+
+| Change | Also update |
+|--------|-------------|
+| Live rules, routes, tests, console structure | `Docs/architecture.md` |
+| LLM export/import, HP queue, `utfall`, projector secrecy | `Docs/LLM_WORKFLOW.md` |
+| External LLM instructions | `Docs/prompt.md` (this file is loaded at copy time) |
+| Room rules (teams, spy, paper news) | `Docs/Stabsspel Traineeprogrammet.md` |
+| UX working notes | `Docs/UX_CONSOLE_REWORK.md` (log only, not the UI spec) |
+
+Do not rewrite unrelated docs. Do not treat the UX working log as current specification.
+
 ## Completion check
 
 Before considering a Python change complete:
@@ -247,4 +267,5 @@ Before considering a Python change complete:
 4. Run broader fast tests when the change touches shared domain logic.
 5. Check saved-game compatibility when persisted state changed.
 6. Check GM/public data separation when payloads changed.
-7. Report any remaining risk or adjacent issue separately rather than silently expanding scope.
+7. Update the docs that describe what you changed.
+8. Report any remaining risk or adjacent issue separately rather than silently expanding scope.

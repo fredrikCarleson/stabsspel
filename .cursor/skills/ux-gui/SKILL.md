@@ -17,6 +17,8 @@ The GM runs the clock and operates the live console. The projector shows shared 
 
 Software map: [Docs/architecture.md](../../../Docs/architecture.md).
 Python layering: [python](../python/SKILL.md) skill.
+LLM copy/import and HP/projector contract: [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md).
+UX working log (historical, not the spec): [Docs/UX_CONSOLE_REWORK.md](../../../Docs/UX_CONSOLE_REWORK.md).
 Design tokens and UI classes live in `static/app.css`.
 
 ## UX principle
@@ -61,8 +63,8 @@ Wait for approval before coding.
 
 | Surface            | Audience               | Files                                          | Rule                                                                          |
 | ------------------ | ---------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| Spelledarpanel     | GM, laptop             | `gm_console_ui.py`, `static/gm-console.js`     | Live operational console: clock, attention, HP, inbox, backlog, log           |
-| Spelarskärm        | Room projector         | `create_projector_html`, `static/projector.js` | Round, phase, time, public HP only. No buttons, orders, log or GM information |
+| Spelledarpanel     | GM, laptop             | `gm_console_ui.py`, `static/gm-console.js`     | Compact header + action row + tabs: Inkorg, LLM-resultat (Diplo/Resultat), Lag, Arbete, Historik. **Meny** for overflow. |
+| Spelarskärm        | Room projector         | `create_projector_html`, `static/projector.js` | Round, phase, time, public HP. Resultatfas: denna runda → nästa runda. No buttons, orders, log, rolls or GM information |
 | Team order form    | Players, usually phone | `team_order_routes.py`                         | Token URL. Draft autosave, submit, withdraw only in Orderfas                  |
 | Home / create game | GM before start        | `app.py`, `admin_routes.py`                    | List, open, download, delete, create/upload                                   |
 | Print              | Paper                  | `orderkort.py`, `static/print.css`             | Separate from live UI                                                         |
@@ -71,13 +73,13 @@ There is no SPA framework and no `templates/` directory. HTML is built in Python
 
 Prefer extending the existing live console over adding another full page.
 
-**Leftover chrome** such as the old quarter bar, checklists and extra timer widgets below the console is not the live GM UI. Do not add new workflows there.
+**Leftover chrome** such as the old quarter bar, checklists and extra timer widgets in `admin_routes.py` is unused and is **not** injected under the console. Do not add new workflows there.
 
 News stay on paper for the studio:
 
-**copy orders → LLM JSON (with app dice) → paste suggestions → paper → studio**
+**Kopiera till LLM → JSON (with app dice) → paste suggestions → paper → studio**
 
-Keep `Kopiera ordrar till LLM` as the export step. Pasted JSON may suggest headlines, HP, milestones, and GM-only `utfall`. Do not add an in-app headline editor. Rolls, probabilities and motivering stay off the projector.
+Keep **Kopiera till LLM** as the export step (`/admin/<id>/order_summary`). Pasted JSON may suggest headlines, HP, milestones, and GM-only `utfall`. Do not add an in-app headline editor. Rolls, probabilities and motivering stay off the projector.
 
 ## Design for the current task
 
@@ -127,7 +129,7 @@ Keep frequent live actions visible.
 
 Move infrequent, administrative, debug or risky controls behind:
 
-* `Mer`,
+* **Meny**,
 * expandable sections,
 * contextual menus,
 * or visually secondary controls.
@@ -195,7 +197,10 @@ Projector rules:
 * no log,
 * no secret information,
 * no Testläge,
+* no rolls, probabilities, `utfall` or `llm_forslag`,
 * no hover-only information.
+
+In Resultatfas the projector may show this-round vs next-round public HP. That is a forecast, not GM-only data.
 
 Never solve a projector problem by adding GM detail.
 
@@ -447,6 +452,8 @@ Do not introduce new workflows or functionality merely because they would make a
 
 If solving a UX problem requires behavioural changes, explain that separately before implementing.
 
+If the GUI work affects HP, LLM results, backlog/milestones, or projector data, read [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md) first. Do not invent a second wallet/backlog/import rule in the UI. `Docs/UX_CONSOLE_REWORK.md` is a historical working log, not the current UI spec.
+
 Preserve working interaction patterns unless there is a clear usability reason to change them.
 
 If you notice adjacent UX debt, report it separately instead of silently expanding scope.
@@ -501,7 +508,7 @@ Before considering a UI change complete, ask:
 * [ ] Swedish labels use existing terminology
 * [ ] Existing button classes and design tokens reused where possible
 * [ ] GM work landed on the live console, not leftover admin chrome
-* [ ] Projector still contains no inbox, log, Testläge, orders or controls
+* [ ] Projector still contains no inbox, log, Testläge, orders, rolls, `utfall` or controls
 * [ ] Dynamic HTML remains escaped
 * [ ] Poller IDs and JS hooks still match
 * [ ] Keyboard shortcuts still work
@@ -509,3 +516,11 @@ Before considering a UI change complete, ask:
 * [ ] Relevant CSS/JS cache-bust version was bumped
 * [ ] Existing behaviour was not changed unintentionally
 * [ ] Relevant tests still pass
+* [ ] Docs that describe the changed screen were updated (`architecture.md` §8 for console/projector; `LLM_WORKFLOW.md` if LLM/HP visibility changed; UX log only if recording a UX decision)
+
+## Documentation
+
+Update the docs that describe the screen you changed, in the same change.
+
+Current console/projector spec: `Docs/architecture.md` §8 and `gm_console_ui.py`.
+`Docs/UX_CONSOLE_REWORK.md` is a working log, not the spec. Do not rebuild the console from it.

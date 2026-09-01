@@ -34,8 +34,9 @@ Lämna spellösenordet tomt vid skapande för att använda standardlösenordet (
 |-----|----------|
 | [Docs/Stabsspel Traineeprogrammet.md](Docs/Stabsspel%20Traineeprogrammet.md) | Spelet: regler, lag, HP, rundor |
 | [Docs/architecture.md](Docs/architecture.md) | Koden: mappar, routes, live-event |
+| [Docs/LLM_WORKFLOW.md](Docs/LLM_WORKFLOW.md) | Hur LLM-underlag skapas, JSON tolkas och HP/nyheter/backlog påverkas |
 | [Docs/prompt.md](Docs/prompt.md) | LLM-exportens instruktioner (fylls med rundans order och slag) |
-| [Docs/UX_CONSOLE_REWORK.md](Docs/UX_CONSOLE_REWORK.md) | Spelledarpanelens UX-logg |
+| [Docs/UX_CONSOLE_REWORK.md](Docs/UX_CONSOLE_REWORK.md) | UX-arbetslogg (inte nuvarande UI-spec) |
 | [Docs/DEPLOYMENT_GUIDE.md](Docs/DEPLOYMENT_GUIDE.md) | Render / produktion |
 | [Docs/PRODUCTION_CHECKLIST.md](Docs/PRODUCTION_CHECKLIST.md) | Go-live-checklista |
 | [Docs/ORDERKORT_README.md](Docs/ORDERKORT_README.md) | Utskrivbara pappersorderkort |

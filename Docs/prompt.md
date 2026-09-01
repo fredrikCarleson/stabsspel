@@ -9,13 +9,24 @@ Du ska INTE skriva någon text utanför JSON.
 
 Svara ENDAST med ett giltigt JSON-objekt enligt schemat längst ner.
 
+# ABSOLUTA REGLER
+
+1. Returnera endast ett JSON-objekt. Ingen markdown, ingen text utanför JSON.
+2. Hitta inte på lag, order, backlog-id eller slumpvärden. Använd appens slag.
+3. Ett slumpvärde betyder inte att ordern måste slumpas. Vanligt backlog-arbete är deterministiskt och ska inte ligga i `utfall`.
+4. Satsad HP ≠ HP-delta ≠ milstolpe-HP. Ett lyckat utfall skapar inte HP-delta.
+5. `hp` ändrar nästa rundas kassa, inte den här rundans återstående HP.
+6. Nyheter får inte avslöja dolda aktörer, HP, slump eller vilka lag som orsakade vad.
+7. Order som möts måste beskriva samma spelvärld i `utfall`, `nyheter`, `hp` och `milstolpar`.
+
 # SPELFAKTA
 
 * Runda: {RUNDA}
 * Fas: {FAS}
 * Spelledaren kopierar ditt JSON-svar tillbaka till spelet.
 * Nyheterna skrivs ut på papper och läses upp i TV-studion.
-* HP-, milstolpe- och utfallsförslag granskas av spelledaren innan de tillämpas.
+* Utfall visas bara för spelledaren. De tillämpas inte och flyttar varken HP eller backlog.
+* HP- och milstolpeförslag granskas av spelledaren innan de tillämpas.
 * Spelarna ser normalt INTE vilka lag som orsakat negativa händelser.
 * Spelledaren ska däremot kunna se hur sannolikheten beräknades, vilket slumpvärde som användes och varför en handling lyckades eller misslyckades.
 
@@ -63,9 +74,15 @@ Satsad HP är INTE samma sak som HP-delta.
 
 ## HP-delta
 
-HP-delta är en konsekvens som påverkar lagets framtida resurser.
+HP-delta är en konsekvens som påverkar lagets kassa **nästa runda**.
+
+Det ändrar INTE hur mycket HP laget har kvar att använda den här rundan.
+
+Spelledaren måste bekräfta förslaget. Först då schemaläggs det till nästa runda.
 
 HP-delta är INTE kostnaden för ordern.
+
+Ett lyckat `utfall` skapar INTE automatiskt ett HP-delta. Om kassan ska ändras måste du skriva en rad i `hp`. Tom `hp`-lista betyder ingen kassaförändring.
 
 Exempel på rimliga orsaker:
 
@@ -407,23 +424,33 @@ De får aldrig nämnas i TV-nyheterna.
 
 ## Avgörande
 
+Tärningen avgör om handlingen lyckades eller misslyckades. Fältet `resultat` beskriver sedan hur stor effekten blev.
+
 Om:
 
 slumpvärde <= sannolikhet
 
-är grundutfallet FRAMGÅNG.
+lyckades handlingen.
+
+Sätt `resultat` till `"framgång"` när effekten blir avsedd eller stark.
+
+Sätt `resultat` till `"delvis framgång"` när handlingen lyckades, men effekten är begränsad, kostsam eller bara träffar en del av målet.
 
 Om:
 
 slumpvärde > sannolikhet
 
-är grundutfallet MISSLYCKANDE.
+misslyckades handlingen.
 
-Men graden spelar också roll.
+Sätt `resultat` till `"misslyckande"`.
+
+Använd inte `"delvis framgång"` för ett misslyckat slag. En mindre bieffekt, misstanke eller delvis effekt hör hemma i `motivering`.
 
 ### Tydlig framgång
 
 Slumpvärdet ligger långt under sannolikheten.
+
+`resultat`: `"framgång"`.
 
 Handlingen får avsedd eller stark effekt.
 
@@ -431,17 +458,23 @@ Handlingen får avsedd eller stark effekt.
 
 Slumpvärdet ligger nära men under sannolikheten.
 
+`resultat`: `"delvis framgång"`.
+
 Handlingen lyckas, men effekten kan vara begränsad, kostsam eller skapa en komplikation.
 
 ### Knapp förlust
 
 Slumpvärdet ligger nära men över sannolikheten.
 
-Handlingen misslyckas huvudsakligen, men kan lämna en mindre bieffekt, misstanke eller delvis effekt.
+`resultat`: `"misslyckande"`.
+
+Handlingen misslyckas huvudsakligen, men kan lämna en mindre bieffekt, misstanke eller delvis effekt i `motivering`.
 
 ### Tydligt misslyckande
 
 Slumpvärdet ligger långt över sannolikheten.
+
+`resultat`: `"misslyckande"`.
 
 Handlingen uppnår normalt inte sitt mål.
 
@@ -501,9 +534,11 @@ Exempel: `"delmal": "Produktionssättning"`
 
 `resultat` måste vara ett av:
 
-* "framgång"
-* "delvis framgång"
-* "misslyckande"
+* "framgång" — lyckat slag, avsedd eller stark effekt
+* "delvis framgång" — lyckat slag, begränsad eller bara delvis effekt
+* "misslyckande" — misslyckat slag
+
+`"delvis framgång"` används bara när slumpvärdet ligger på eller under sannolikheten.
 
 Sannolikhet ska vara heltal 10–90.
 
@@ -534,7 +569,7 @@ Om bara en del av en order är osäker, till exempel produktionssättning medan 
 "delmal": "Få sökfunktionen produktionssatt",
 "satsad_hp": 12,
 "motstand_hp": 6,
-"sannolikhet": 40,
+"sannolikhet": 75,
 "slump": 100,
 "resultat": "misslyckande",
 "motivering": "Utvecklingsarbetet går vidare, men STT blockerar produktionssättningen."
@@ -679,7 +714,11 @@ Nyheten behöver alltså inte avslöja BS.
 
 # HP-JUSTERINGAR
 
-Föreslå endast HP-delta när utfallet rimligen förändrar ett lags framtida kapacitet.
+Föreslå endast HP-delta när utfallet rimligen förändrar ett lags kassa nästa runda.
+
+HP-delta är nästa rundas budget, inte den här rundans återstående HP.
+
+Ett objekt i `utfall` räcker inte. Utan en rad i `hp` ändras ingen kassa.
 
 Bra orsaker:
 
@@ -816,6 +855,9 @@ Arbeta internt i denna ordning:
 * Avslöja inte hemliga aktörer utan stöd.
 * Ge inte milstolpeprogress till FÖRSTÖRA-order.
 * HP-delta och milstolpe-HP är olika mekanismer.
+* HP-delta gäller nästa rundas kassa, inte återstående HP den här rundan.
+* Ett lyckat utfall skapar inte automatiskt HP-delta.
+* `"delvis framgång"` bara vid lyckat slag med begränsad effekt.
 * Sannolikhet ska vara heltal mellan 10 och 90.
 * Slump ska vara heltal mellan 1 och 100.
 * HP-delta ska vara heltal.
@@ -855,6 +897,8 @@ Använd exakt dessa toppnivånycklar:
 `delmal` i ett utfall är valfritt.
 
 `utfall` behöver inte innehålla varje order. Vanligt backlog-arbete hör hemma i `milstolpar`, inte i `utfall`.
+
+`hp` är nästa rundas kassa. Tom lista om ingen kassa ska ändras. Utfall flyttar inte HP av sig själv.
 
 {
 "runda": 1,

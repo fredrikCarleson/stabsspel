@@ -196,6 +196,41 @@ class TestActionPoints(unittest.TestCase):
         apply_new_round(data)
         self.assertEqual(effective_hp(data["poang"]["Alfa"]), alfa["next_hp"])
 
+    def test_public_next_hp_when_llm_hp_was_written_into_aktuell(self):
+        data = create_game_state(fas="Resultatfas")
+        data["poang"]["Alfa"]["aktuell"] = 21
+        data["poang"]["Bravo"]["aktuell"] = 29
+        data["poang"]["STT"]["aktuell"] = 25
+        data["llm_forslag"] = {
+            "1": {
+                "runda": 1,
+                "hp_applied": True,
+                "hp": [
+                    {"lag": "Bravo", "delta": 4, "orsak": "Resursansökan"},
+                    {"lag": "Alfa", "delta": -4, "orsak": "Omfördelning"},
+                    {"lag": "BS", "delta": 3, "orsak": "Insider"},
+                ],
+            }
+        }
+        data["gm_log"] = [
+            {"kind": "hp", "message": "Bravo: +4 HP (Resursansökan). Nu 29."},
+            {"kind": "llm", "message": "Tillämpade 3 HP-justeringar från LLM"},
+        ]
+        public = build_public_state(data)
+        by_team = {team["team"]: team for team in public["teams"]}
+        self.assertEqual(by_team["Alfa"]["hp"], 25)
+        self.assertEqual(by_team["Alfa"]["next_hp"], 21)
+        self.assertEqual(by_team["Alfa"]["next_delta"], -4)
+        self.assertEqual(by_team["Bravo"]["hp"], 25)
+        self.assertEqual(by_team["Bravo"]["next_hp"], 29)
+        self.assertEqual(by_team["Bravo"]["next_delta"], 4)
+        self.assertEqual(by_team["STT"]["hp"], 25)
+        self.assertEqual(by_team["STT"]["next_hp"], 25)
+        self.assertEqual(by_team["STT"]["next_delta"], 0)
+        strip = {row["team"]: row for row in build_team_strip(data)}
+        self.assertEqual(strip["Alfa"]["pending_next"], -4)
+        self.assertEqual(strip["Bravo"]["pending_next"], 4)
+
     def test_backlog_snapshot_marks_previous_round_spend(self):
         data = create_game_state()
         add_backlog_spend(data, "Alfa", "alfa_1", 8)
@@ -825,6 +860,9 @@ class TestLlmForslag(unittest.TestCase):
         self.assertIn('"nyheter"', text)
         self.assertIn('"milstolpar"', text)
         self.assertIn("TIDIGARE RELEVANTA UTFALL", text)
+        self.assertIn("Utfall visas bara för spelledaren", text)
+        self.assertIn("kassa **nästa runda**", text)
+        self.assertIn("för ett misslyckat slag", text)
         self.assertEqual(get_round_rolls(data)["Alfa-1"], 44)
         again = build_llm_export_text(data, data["team_orders"]["orders_round_1"], randint=lambda: 1)
         self.assertEqual(get_round_rolls(data)["Alfa-1"], 44)

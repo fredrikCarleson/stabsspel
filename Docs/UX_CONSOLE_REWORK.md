@@ -1,7 +1,10 @@
 # UX rework — live console and start screen
 
 Working log for the GM/projector UX pass started 2026-08-17.
-**Read this before continuing the work.** It is the source of truth for what was agreed, what shipped, and what is still open.
+This is **not** the current UI spec. Current console/projector behaviour is
+[architecture.md](architecture.md) §8 and `gm_console_ui.py`. Early slices below may be stale
+(four tabs, HP in `<details>`, Meny in the header). Later notes (LLM-resultat,
+next-round HP) are closer to now. Do not rebuild the console from this file.
 
 Related: [architecture.md](architecture.md), skills `.cursor/skills/ux-gui/SKILL.md` and `.cursor/skills/python/SKILL.md`.
 
@@ -132,7 +135,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 - The start list explicitly marks active games as **Pågår**. The mobile team form gives **Kvar** visual priority and stacks save/submit actions into full-width touch targets.
 - Milstolpar har nu en väg: när LLM-förslag finns ligger den samlade åtgärden högst upp i **LLM-resultat** och Inkorg hänvisar dit. Tillämpning i endera vyn synkas till den andra i live-uppdateringen, så **Att göra** och knappar försvinner när arbetet är klart och samma progress inte kan räknas två gånger.
 - Spelledarpanelens tidigare stora titelblock är ersatt av en kompakt tvådelad kontrollheader. Runda, fas, timer, spelmetadata och spelarskärm ligger överst; fas- och timeråtgärder samt den fullständiga **Meny**-dropdownen ligger på en smal åtgärdsrad under.
-- I Resultatfas visar spelarskärmen **Denna runda → Nästa runda** för varje lags HP, inklusive nettoskillnad. Prognosen följer det verkliga fasbytet: regeringsstöd tas bort först och köade HP-förändringar appliceras därefter. Arbetsprogress är röd 0–33 %, gul 34–66 % och grön 67–100 % på både lag- och aktivitetsnivå.
+- I Resultatfas visar spelarskärmen **Denna runda → Nästa runda** för varje lags HP, inklusive nettoskillnad. Prognosen följer det verkliga fasbytet: regeringsstöd tas bort först och köade HP-förändringar appliceras därefter. Om äldre **Tillämpa HP** redan skrivit deltat in i `aktuell` visas samma prognos genom att räkna bakåt från LLM-listan, så rummet inte ser Oförändrat. Arbetsprogress är röd 0–33 %, gul 34–66 % och grön 67–100 % på både lag- och aktivitetsnivå.
 
 ## Still to do (priority)
 
@@ -155,7 +158,7 @@ Do not add features unless they fix a clear UX problem. Do not redesign the whol
 
 ## How to continue in a new chat
 
-1. Read this file and the ux-gui skill.
-2. Ask for a screendump of the phase you will change, or implement the next slice in the table above.
-3. Mark the slice **Done** here when it ships.
+1. Read [architecture.md](architecture.md) §8 and the ux-gui skill for current UI. This file is history.
+2. Ask for a screendump of the phase you will change.
+3. If you record a UX decision here, mark it clearly as shipped vs still open.
 4. Do not implement leftover chrome workflows. Do not reopen Orderfas/Diplomacy unless the user reports a live-play bug.

@@ -9,7 +9,7 @@ Papperskort för lag som fyller i för hand. Den **digitala** orderinmatningen �
 | Lag | Team-sidan `/team/<spel_id>/<lag>` → **Skriv ut orderkort** (`/team/<spel_id>/<lag>/orderkort`) |
 | Spelledare | Direkt-URL `/admin/<spel_id>/orderkort` → välj runda → `/admin/<spel_id>/orderkort/<runda>` |
 
-Spelledarpanelens meny **Mer** länkar till aktivitetskort och LLM-export, inte till orderkort. Använd URL:en ovan eller lagets utskriftslänk.
+Spelledarpanelens **Meny** länkar till aktivitetskort och LLM-export, inte till orderkort. Använd URL:en ovan eller lagets utskriftslänk.
 
 ## Vad ett kort innehåller
 

@@ -1,6 +1,6 @@
 # **Stabsspel Traineeprogrammet**
 
-Det här är **spelreglerna** (lag, HP, rundor, nyhetsstudio). Den digitala spelledarhjälpen — klocka, ordrar, projektor, LLM-export — beskrivs i [architecture.md](architecture.md). Starta appen med `python app.py` och öppna http://localhost:5000 (inte `flask app.py`).
+Det här är **spelreglerna** (lag, HP, rundor, nyhetsstudio). Den digitala spelledarhjälpen — klocka, ordrar, projektor — beskrivs i [architecture.md](architecture.md). Hur LLM-underlag skapas, tolkas och påverkar HP/nyheter: [LLM_WORKFLOW.md](LLM_WORKFLOW.md). Spelledaren bedömer fortfarande rummet (spion, papper, studio); appen slår tärningen. Starta appen med `python app.py` och öppna http://localhost:5000 (inte `flask app.py`).
 
 Stabsspel Traineeprogrammet är ett spel där olika lag spelar med eller mot varandra för att uppnå sina egna eller gemensamma mål. Spelarna delas upp i lag som var och en har olika antal spelare, handlingspoäng och mål. Spelet sker i realtid och består huvudsakligen av följande faser
 
@@ -209,7 +209,7 @@ Det är fritt fram för spelarna att tänka utanför boxen för att öka sina ha
 
 Brottssyndikatet strävar hela tiden efter att påverka och få in personer på viktiga platser i Skatteverket. De har lyckats infiltrera och få en av sina medlemmar anställda av Skatteverket i team Alfa. Den personen agerar utåt som en anställd på Skatteverket men informerar och styrs av Brottssyndikatet.
 
-Främmande makt vet att personen i Alpha är infiltrerad. Varje runda spionen är med förlorar team Alfa fem handlingspoäng och BS får fem poäng. **Observera att detta enbart sker om spionen fysiskt besöker Brottsyndikatets teamyta och pratar med dem.** Tidtagaren är bäst lämpad att observera om detta skett. Annars får spelledaren fråga Brottssyndikatet om de fått information.
+Främmande makt vet att BS har en spion i Alfa, men vet inte vem. Varje runda spionen är med förlorar team Alfa fem handlingspoäng och BS får fem poäng. **Observera att detta enbart sker om spionen fysiskt besöker Brottssyndikatets teamyta och pratar med dem.** Tidtagaren är bäst lämpad att observera om detta skett. Annars får spelledaren fråga Brottssyndikatet om de fått information.
 
 Spionen tillhör BS och lämnar sin information till BS. Främmande makt vet att BS har en spion i Alfa, men vet inte vem och kan försöka förhandla med BS om att få del av informationen. Om spionen avslöjas stoppas framtida överlämningar och BS kan inte längre få bonusen på fem handlingspoäng.
 
@@ -374,7 +374,7 @@ Tips:
 
    * Om möjligt, använd er påverkan för att främja en politisk agenda som skulle gynna era intressen på lång sikt. Detta kan vara att gynna ett visst parti eller skapa kaos som leder till ett politiskt dödläge.
 
-**Extra**: Ni har lyckats få reda på att Organiserad Brottslighet har en infiltratör inne i Skatteverket.
+**Extra**: Ni har lyckats få reda på att Organiserad Brottslighet har en infiltratör i Team Alfa, men inte vem. Spionen lämnar information till BS. Ni kan försöka få del av den via BS.
 
 Tips:
 
@@ -622,7 +622,7 @@ I varje team som är med för alla teammedlemmar ett aktivitetskort. Ofta är de
 
 #### **Infiltratören (Spion från Brottssyndikatet)**
 
-* **Uppdrag:** Du tillhör egentligen Brottssyndikatet. En gång per runda måste du diskret överlämna en fysisk lapp med Alfas planer till Främmande Makt. Lappen får inte lämnas öppet utan måste överlämnas personligen eller lämnas på en gemensam plats som spelledaren anvisar.
+* **Uppdrag:** Du tillhör egentligen Brottssyndikatet. En gång per runda måste du diskret överlämna en fysisk lapp med Alfas planer till Brottssyndikatet. Lappen får inte lämnas öppet utan måste överlämnas personligen eller lämnas på en gemensam plats som spelledaren anvisar.
 
 * **Mål:** Dela Team Alfas order eller strategier med Brottssyndikatet.
 
@@ -684,11 +684,11 @@ I varje team som är med för alla teammedlemmar ett aktivitetskort. Ofta är de
 
 #### **Kontaktpersonen**
 
-* **Uppdrag:** Hitta infiltratören i Team Alfa. Du vet att en spion finns, men inte vem. Hota att avslöja spelaren om ni inte får Alfas planer via en fysisk lapp.
+* **Uppdrag:** Hitta infiltratören i Team Alfa. Du vet att BS har en spion där, men inte vem. Försök få Alfas planer via Brottssyndikatet. Spionens fysiska lapp går till BS, inte till er.
 
-* **Mål:** Skapa en säker kommunikationskanal och börja styra spionen.
+* **Mål:** Förhandla med BS om informationen. Ni styr inte spionen.
 
-* **Belöning:** Varje gång ni får Alfas planer via fysisk lapp får ni \+5 handlingspoäng.
+* **Belöning:** Ingen HP-bonus för spionens lapp. Den bonusen är alltid \+5 BS och \-5 Alfa, aldrig \+5 FM. Om BS säljer informationen till er är det en separat överenskommelse.
 
 * **Bonus:** Om ni samtidigt lyckas få SÄPO att sätta dit en spion i Team Bravo får ni \+5 extra handlingspoäng.
 
@@ -804,7 +804,7 @@ I varje team som är med för alla teammedlemmar ett aktivitetskort. Ofta är de
 
 | Handling | Poängeffekt |
 | ----- | ----- |
-| Fysisk lapp till Främmande Makt (infiltratören) | \+5 BS, \-5 Alfa |
+| Fysisk lapp till Brottssyndikatet (infiltratören) | \+5 BS, \-5 Alfa |
 | Media publicerar rykte som sänker Alfa och höjer Bravo | \+3 Bravo |
 | SÄPO prioriterar STT:s säkerhetsinsats | \+1 STT per SÄPO-poäng |
 | STT får motprestation för produktionssättning | \+ lika många poäng som erbjudits |

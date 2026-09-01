@@ -430,6 +430,42 @@ def pending_hp_totals(data):
     return totals
 
 
+def _llm_hp_totals(data):
+    totals = {}
+    forslag = get_llm_forslag(data)
+    if not forslag or not forslag.get("hp_applied"):
+        return totals
+    for item in forslag.get("hp") or []:
+        team = item.get("lag")
+        if not team:
+            continue
+        try:
+            totals[team] = int(totals.get(team) or 0) + int(item.get("delta") or 0)
+        except (TypeError, ValueError):
+            continue
+    return totals
+
+
+def _llm_hp_was_written_into_aktuell(data):
+    """Older Tillämpa HP mutated aktuell immediately instead of queueing."""
+    if data.get("hp_pending"):
+        return False
+    if not _llm_hp_totals(data):
+        return False
+    for entry in data.get("gm_log") or []:
+        if "schemalagt till nästa runda" in str(entry.get("message") or ""):
+            return False
+    return True
+
+
+def next_round_hp_view(data):
+    """This-round wallet vs next-round wallet for the room and GM strip."""
+    queued = pending_hp_totals(data)
+    folded = _llm_hp_was_written_into_aktuell(data)
+    changes = queued if queued else (_llm_hp_totals(data) if folded else {})
+    return changes, folded
+
+
 def queue_hp_delta(data, team, amount, reason="", source="gm"):
     ensure_poang(data)
     if team not in data["poang"]:
@@ -972,7 +1008,7 @@ def build_public_progress(data):
 
 def build_team_strip(data):
     ensure_poang(data)
-    pending = pending_hp_totals(data)
+    changes, _folded = next_round_hp_view(data)
     strip = []
     for lag in data.get("lag") or []:
         entry = data["poang"].get(lag) or {}
@@ -987,7 +1023,7 @@ def build_team_strip(data):
             "effective": current,
             "spent": spent,
             "remaining": current - spent,
-            "pending_next": int(pending.get(lag) or 0),
+            "pending_next": int(changes.get(lag) or 0),
             "status": status,
             "status_label": STATUS_LABELS.get(status, status),
             "transferable": int(entry.get("aktuell") or 0),
@@ -1970,26 +2006,39 @@ def build_live_state(data):
 def build_public_state(data):
     """Room-safe snapshot: time, phase, public HP. No orders, log, or testläge."""
     ensure_poang(data)
+    changes, folded = next_round_hp_view(data)
     projected_hp = {
         lag: int((data["poang"].get(lag) or {}).get("aktuell") or 0)
         for lag in data.get("lag") or []
     }
-    # Mirror apply_pending_hp exactly. Government support is deliberately absent:
-    # apply_new_round removes it before queued HP changes are applied.
-    for item in data.get("hp_pending") or []:
-        team = item.get("lag")
-        if team not in projected_hp:
-            continue
-        try:
-            delta = int(item.get("delta") or 0)
-        except (TypeError, ValueError):
-            continue
-        projected_hp[team] = max(0, projected_hp[team] + delta)
+    if folded:
+        for lag, delta in changes.items():
+            if lag in projected_hp:
+                projected_hp[lag] = max(0, projected_hp[lag] - delta)
+    else:
+        # Mirror apply_pending_hp: clamp at 0 after each queued item.
+        for item in data.get("hp_pending") or []:
+            team = item.get("lag")
+            if team not in projected_hp:
+                continue
+            try:
+                delta = int(item.get("delta") or 0)
+            except (TypeError, ValueError):
+                continue
+            projected_hp[team] = max(0, projected_hp[team] + delta)
     teams = []
     for lag in data.get("lag") or []:
         entry = data["poang"].get(lag) or {}
-        current_hp = effective_hp(entry)
-        next_hp = projected_hp.get(lag, int(entry.get("aktuell") or 0))
+        aktuellt = int(entry.get("aktuell") or 0)
+        if folded:
+            this_aktuell = projected_hp.get(lag, aktuellt)
+            next_hp = aktuellt
+        else:
+            this_aktuell = aktuellt
+            next_hp = projected_hp.get(lag, aktuellt)
+        this_entry = dict(entry)
+        this_entry["aktuell"] = this_aktuell
+        current_hp = effective_hp(this_entry)
         teams.append({
             "team": lag,
             "hp": current_hp,

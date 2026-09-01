@@ -338,6 +338,29 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("gm-hp-next", html)
         self.assertNotIn("gm-backlog-prev", html)
 
+    def test_projector_shows_folded_llm_hp_as_next_round_change(self):
+        from gm_console_ui import create_projector_html
+
+        data = sample_game()
+        data["fas"] = "Resultatfas"
+        data["poang"]["Alfa"]["aktuell"] = 21
+        data["poang"]["Bravo"]["aktuell"] = 29
+        data["llm_forslag"] = {
+            "1": {
+                "runda": 1,
+                "hp_applied": True,
+                "hp": [
+                    {"lag": "Bravo", "delta": 4},
+                    {"lag": "Alfa", "delta": -4},
+                ],
+            }
+        }
+        html = create_projector_html("g1", data)
+        self.assertIn("projector-team is-loss", html)
+        self.assertIn("projector-team is-gain", html)
+        self.assertIn("−4 HP", html)
+        self.assertIn("+4 HP", html)
+
     def test_projector_progress_uses_traffic_light_thresholds(self):
         from gm_console_ui import _projector_bar
 
