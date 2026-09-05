@@ -149,6 +149,16 @@ def is_declaration_period(runda):
     """Check if current round is during declaration period (runda 3 = april-juni)"""
     return runda == 3
 
+
+def active_teams(data: dict) -> list:
+    """Persisted `lag` is the source of truth. Infer only if it is missing."""
+    lag = (data or {}).get("lag")
+    if isinstance(lag, list):
+        names = [name for name in lag if str(name or "").strip()]
+        if names:
+            return names
+    return suggest_teams((data or {}).get("antal_spelare") or 20)
+
 # Bas-HP-tabell som dictionary för enklare uppslag
 DEFAULT_HP = {namn: hp for namn, hp in TEAMS}
 
