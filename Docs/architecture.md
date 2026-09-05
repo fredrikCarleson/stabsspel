@@ -184,7 +184,7 @@ Created in `skapa_nytt_spel` and grown during play:
 | `test_mode` | Shows auto-fill / cheat links |
 | `fashistorik` | Phase history for the panel |
 
-**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable. Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and change `aktuell` when **Starta nästa runda** runs. GM ± during Orderfas still changes this round immediately.
+**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable. Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and change `aktuell` when **Starta nästa runda** runs, and also when **Avsluta spelet** runs after round 4. GM ± during Orderfas still changes this round immediately. Auto-fyll scales testdata activity HP to each team's current spendable wallet. Recurring STT tasks (`aterkommande`) start a new attempt when already at cap.
 
 The projector in Resultatfas shows **Denna runda → Nästa runda** from `build_public_state` (`hp`, `next_hp`, `next_delta`). Next-round HP is `aktuell` after queued deltas, without stöd (stöd is cleared on new round before pending HP is applied). If an older **Tillämpa HP** already wrote the delta into `aktuell` and left `hp_pending` empty, the same forecast is derived from the applied LLM `hp` list so the room does not see “Oförändrat”.
 
@@ -222,7 +222,7 @@ stabsspel/
 
 There is **no** `templates/` directory. Most pages are strings in Python.
 
-`testdata/` holds `testdataround1.json`–`testdataround4.json` for Auto-fyll, plus example LLM replies (`llm-svar-exempel.json`, `llm-svar-utfall-exempel.json`). Do not put live rolls in `Docs/prompt.md`.
+`testdata/` holds `testdataround1.json`–`testdataround4.json` for Auto-fyll (HP is scaled to the current wallet at fill time), example LLM replies (`llm-svar-exempel.json`, `llm-svar-utfall-exempel.json`), and the seeded scenario playthrough under `testdata/scenario_llm/` (`rundaN.json` plus `transcript.md`). Do not put live rolls in `Docs/prompt.md`.
 
 ---
 
@@ -351,11 +351,13 @@ Root-level `README.md` stays at the repository root (quick start).
 | `tests/test_basic_functionality.py` | Backlog clone, game shape. |
 | `tests/test_css_refactoring.py` | Helpers use CSS classes. |
 | `tests/game_fixtures.py` | Small builders: `create_game_state`, `order_record`, `activity`. |
+| `tests/scenario_runner.py` | In-memory 4-round playthrough: testdata orders, seeded D100, imported `testdata/scenario_llm/rundaN.json`. Does not write `speldata/`. |
+| `tests/test_scenario_playthrough.py` | Mechanical invariants for that playthrough (phases, HP queue, projector secrecy, wallet spend). |
 
 Typical run:
 
 ```bash
-python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers
+python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers tests.test_scenario_playthrough
 ```
 
 **Root `test_*.py` / `debug_*.py`** — older Flask-client or manual scripts. `test_admin_routes.py` still covers delete-game HTTP. Others (`test_team_order_system.py`, `test_deployment.py`, and similar) are archaeology; they are not the default suite. HTML files like `test_timer_maximize.html` are local CSS/timer experiments. `test_deployment.py` still expects `static/alarm.mp3`, which is **not** in the repo.

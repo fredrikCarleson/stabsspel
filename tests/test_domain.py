@@ -142,6 +142,19 @@ class TestPhaseMachine(unittest.TestCase):
         self.assertEqual(data["timer_status"], "stopped")
         self.assertEqual(data["timer_elapsed"], 0)
 
+    def test_ending_the_game_applies_pending_hp(self):
+        data = create_game_state(fas="Resultatfas", runda=4)
+        data["hp_pending"] = [
+            {"lag": "Alfa", "delta": -5, "orsak": "sista rundan"},
+            {"lag": "STT", "delta": 7, "orsak": "nöd"},
+        ]
+        data["poang"]["Alfa"]["regeringsstod"] = True
+        data = end_game(data)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 20)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 32)
+        self.assertFalse(data["poang"]["Alfa"]["regeringsstod"])
+        self.assertEqual(data.get("hp_pending"), [])
+
 
 class TestActionPoints(unittest.TestCase):
     def test_effective_hp_adds_government_support_without_changing_aktuell(self):
@@ -530,6 +543,15 @@ class TestBacklogSpend(unittest.TestCase):
         self.assertEqual(task["spenderade_hp"], 10)
         self.assertFalse(task["slutford"])
 
+    def test_recurring_task_starts_a_new_attempt_at_cap(self):
+        data = create_game_state()
+        add_backlog_spend(data, "STT", "stt_4", 10)
+        add_backlog_spend(data, "STT", "stt_4", 7)
+        task = next(item for item in data["backlog"]["STT"] if item["id"] == "stt_4")
+        self.assertEqual(task["spenderade_hp"], 7)
+        self.assertFalse(task["slutford"])
+        self.assertIn("ny förekomst", data["gm_log"][-1]["message"])
+
     def test_bravo_phase_completes_only_when_all_phases_are_done(self):
         data = create_game_state()
         add_backlog_spend(data, "Bravo", "bravo_1_Krav", 10)
@@ -807,6 +829,30 @@ class TestRoundTestdata(unittest.TestCase):
         data = create_game_state()
         with self.assertRaises(ValueError):
             apply_test_orders(data)
+
+    def test_apply_test_orders_scales_to_current_wallet(self):
+        from gm_console import apply_test_orders, spent_hp_for_team
+        from models import clone_backlog_for_teams, get_team_base_hp, suggest_teams
+
+        data = create_game_state()
+        data["lag"] = suggest_teams(27)
+        data["backlog"] = clone_backlog_for_teams(data["lag"])
+        data["poang"] = {}
+        for team in data["lag"]:
+            bas = get_team_base_hp(team, data)
+            data["poang"][team] = {"bas": bas, "aktuell": bas, "regeringsstod": False}
+        data["test_mode"] = True
+        apply_test_orders(data)
+        self.assertEqual(spent_hp_for_team(data, "FM"), 10)
+        self.assertEqual(spent_hp_for_team(data, "BS"), 10)
+        self.assertEqual(spent_hp_for_team(data, "Alfa"), 25)
+
+        data["runda"] = 2
+        data["poang"]["Alfa"]["aktuell"] = 22
+        data["poang"]["Bravo"]["aktuell"] = 29
+        apply_test_orders(data)
+        self.assertEqual(spent_hp_for_team(data, "Alfa"), 22)
+        self.assertEqual(spent_hp_for_team(data, "Bravo"), 29)
 
     def test_missing_round_file_raises(self):
         from gm_console import load_round_testdata

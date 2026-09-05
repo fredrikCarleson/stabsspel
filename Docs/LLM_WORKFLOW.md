@@ -187,11 +187,13 @@ Korten är bara för spelledaren. Inga tärningsslag, sannolikheter eller `order
 
 Knappen **Tillämpa HP** (`apply_llm_hp`) köar varje rad i `hp[]` via `queue_hp_delta` (`kalla`: `llm`). `aktuell` ändras inte ännu. Loggen: *Schemalade N HP-justeringar till nästa runda*. Flaggan `hp_applied` sätts så knappen inte kan tryckas om.
 
-När spelledaren kör **Starta nästa runda** (`apply_new_round`):
+When spelledaren kör **Starta nästa runda** (`apply_new_round`), eller **Avsluta spelet** efter sista rundan (`end_game`):
 
 1. `nollstall_regeringsstod`
-2. `snapshot_backlog_round` — sparar `tidigare_hp` för progressstaplar
+2. `snapshot_backlog_round` — sparar `tidigare_hp` för progressstaplar (endast ny runda)
 3. `apply_pending_hp` — skriver kön till `aktuell`, klämd vid 0
+
+Sista rundans HP-delta ska alltså synas i den avslutade kassan, inte bara som en prognos. `end_game` tar inte en ny runda och snapshot:ar inte backloggen.
 
 GM ± i Diplomatifas/Resultatfas köas på samma sätt. GM ± i Orderfas ändrar den här rundan direkt. Överföringar är alltid direkta (utan stöd).
 

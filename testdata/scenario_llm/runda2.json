@@ -1,0 +1,262 @@
+{
+  "runda": 2,
+  "utfall": [
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-2",
+      "order": "Lobbya regeringen om extra HP",
+      "satsad_hp": 7,
+      "motstand_hp": 12,
+      "sannolikhet": 30,
+      "slump": 80,
+      "resultat": "misslyckande",
+      "motivering": "Bravo (8) och regeringen (4) vill flytta resurser åt andra hållet. 7 mot 12. Tidigare tilldelning gick till Bravo. Tydligt nej."
+    },
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-3",
+      "order": "Läcka Bravos förseningar till Media",
+      "satsad_hp": 6,
+      "motstand_hp": 7,
+      "sannolikhet": 45,
+      "slump": 26,
+      "resultat": "framgång",
+      "motivering": "6 mot Bravos motrykte (7) är nästan lika. Lågt slag: storyn om att Bravo fortfarande är i design tar fäste."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-2",
+      "order": "Kräva att STT flyttar resurser från Alfa",
+      "satsad_hp": 8,
+      "motstand_hp": 7,
+      "sannolikhet": 50,
+      "slump": 79,
+      "resultat": "misslyckande",
+      "motivering": "STT jagar egen motprestation, inte Bravos resursflytt. Alfa lobbyar samtidigt. 8 mot 7 räcker inte när slaget är högt."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-3",
+      "order": "Rykte: Alfa har en säkerhetsskuld",
+      "satsad_hp": 7,
+      "motstand_hp": 6,
+      "sannolikhet": 55,
+      "slump": 89,
+      "resultat": "misslyckande",
+      "motivering": "Alfas läcka om Bravo tar Medias syre. 7 mot 6 borde bära, men slaget missar tydligt. Ryktet fäster inte den här gången."
+    },
+    {
+      "lag": "STT",
+      "order_ref": "STT-3",
+      "order": "Vägra släppa Alfas sök utan motprestation",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 97,
+      "resultat": "misslyckande",
+      "motivering": "STT äger grinden, men ingen betalar och slaget är extremt. De får ingen motprestation. Sök går ändå inte i produktion — freeze närmar sig — bara utpressningen misslyckas."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-1",
+      "order": "Störa kapacitetstestet",
+      "satsad_hp": 7,
+      "motstand_hp": 10,
+      "sannolikhet": 55,
+      "slump": 91,
+      "resultat": "misslyckande",
+      "motivering": "BS gemensamma aktion (7) lyfter 7 mot 10 mot cirka 55 %. Högt slag: störningen syns inte i lastsiffrorna. Testet är användbart."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-2",
+      "order": "Mata Media med läckt valfusk",
+      "satsad_hp": 5,
+      "motstand_hp": 6,
+      "sannolikhet": 50,
+      "slump": 10,
+      "resultat": "framgång",
+      "motivering": "Regeringens positiva beställning (6) är motstånd. Tidigare desinformation hjälper. Lågt slag: andra vågen om riggade röster går ut."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-1",
+      "order": "Gemensam aktion med Främmande Makt",
+      "satsad_hp": 7,
+      "motstand_hp": 10,
+      "sannolikhet": 55,
+      "slump": 72,
+      "resultat": "misslyckande",
+      "motivering": "Samma händelse som FM:s störning av testet. 7+7 mot 10. Slaget 72 ligger över. Insiderstödet ger ingen effekt i testfönstret."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-2",
+      "order": "Gömma bakdörr i sökfunktionen",
+      "satsad_hp": 5,
+      "motstand_hp": 12,
+      "sannolikhet": 25,
+      "slump": 55,
+      "resultat": "misslyckande",
+      "motivering": "Alfa bygger sök med 12 HP. Tidigare databasbakdörr misslyckades. 5 mot 12. Ingen bakdörr i sök."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-1",
+      "order": "Skandal: pentest läckt innan rapport",
+      "satsad_hp": 8,
+      "motstand_hp": 0,
+      "sannolikhet": 75,
+      "slump": 49,
+      "resultat": "framgång",
+      "motivering": "Ingen motpublicering. Pentest pågår samtidigt. 8 HP räcker. Rapporten läcker innan den är klar."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-2",
+      "order": "Rondsamtal med fyra lag",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 79,
+      "resultat": "misslyckande",
+      "motivering": "Knapp miss. Tre av fyra samtal blir av, men en källa tiger. Ronden ger inte den avsedda bredden."
+    },
+    {
+      "lag": "SÄPO",
+      "order_ref": "SÄPO-1",
+      "order": "Fördjupad spaning mot infiltratören",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 60,
+      "slump": 1,
+      "resultat": "framgång",
+      "motivering": "Föregående runda gav ett spår. 7 HP och extremt lågt slag: SÄPO får en tydlig bild av mönstret, inte ett offentligt namn ännu."
+    },
+    {
+      "lag": "SÄPO",
+      "order_ref": "SÄPO-2",
+      "order": "Begära extra resurser av regeringen",
+      "satsad_hp": 5,
+      "motstand_hp": 0,
+      "sannolikhet": 60,
+      "slump": 10,
+      "resultat": "framgång",
+      "motivering": "Regeringen har dålig press och vill visa handlingskraft på säkerhet. Lågt slag: SÄPO får ett tillskott."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-1",
+      "order": "Beställa positiva nyheter om valförberedelserna",
+      "satsad_hp": 6,
+      "motstand_hp": 13,
+      "sannolikhet": 25,
+      "slump": 58,
+      "resultat": "misslyckande",
+      "motivering": "Pentestläcka (8) och fuskläcka (5) tynger mer än 6 HP. Stabilitetsköpet går inte igenom."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-2",
+      "order": "Flytta en resurs från Alfa till Bravo",
+      "satsad_hp": 4,
+      "motstand_hp": 7,
+      "sannolikhet": 55,
+      "slump": 90,
+      "resultat": "misslyckande",
+      "motivering": "Bravo hjälper (8) mot Alfas lobby (7). Politisk hetta efter förra rundans Bravo-stöd sänker chansen. Högt slag: ingen flytt."
+    },
+    {
+      "lag": "USA",
+      "order_ref": "USA-1",
+      "order": "Tillfällig överenskommelse med SÄPO",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 1,
+      "resultat": "framgång",
+      "motivering": "SÄPO har just fått ett starkt spår och tar emot hjälp. Extremt lågt slag: pakten blir reell. Tidigare tekniska råd till STT fördjupas till underrättelsesamarbete."
+    },
+    {
+      "lag": "USA",
+      "order_ref": "USA-2",
+      "order": "Lämna tveksam hotbild till Media",
+      "satsad_hp": 5,
+      "motstand_hp": 0,
+      "sannolikhet": 50,
+      "slump": 78,
+      "resultat": "misslyckande",
+      "motivering": "Media har redan en pentestskandal. Tveksam hotbild tar inte plats. Slaget missar."
+    }
+  ],
+  "nyheter": [
+    {
+      "rubrik": "Säkerhetstest läckt innan rapporten är klar",
+      "upplasning": "Utkast från ett pågående penetrationstest mot valets IT-miljö har nått redaktionerna innan myndigheterna hunnit sammanställa slutsatserna. Det är oklart hur materialet lämnade rummet. Driftansvariga säger att testet är en planerad övning, inte ett bevis på intrång. Oppositionen kräver besked om hur många som hade tillgång till utkastet.",
+      "lag": ["STT", "SÄPO", "Media"]
+    },
+    {
+      "rubrik": "Lasttest av valsystemet ger blandat betyg",
+      "upplasning": "Ett kapacitetstest av den planerade valinfrastrukturen har genomförts. Siffrorna uppges hålla för den simulerade belastningen, men flera källor säger att marginalerna är små. Inga störningar under testfönstret har bekräftats. Utvecklingsteamen tvistar om slutsatsen betyder grönt ljus eller krav på mer arbete före sommaren.",
+      "lag": ["STT", "Alfa", "FM", "BS"]
+    },
+    {
+      "rubrik": "Ett utvecklingsspår ligger kvar i designfasen",
+      "upplasning": "Uppgifter gör gällande att det mer dokumenterade utvecklingsteamet fortfarande arbetar med design, medan det andra teamet redan bygger sökfunktioner. Projektledningen vill inte jämföra tidplaner. Frågan som ställs i kulisserna är om extravalet hinner få en färdig visning, eller om två spår nu kapplöper mot samma deadline.",
+      "lag": ["Bravo", "Alfa", "Media"]
+    },
+    {
+      "rubrik": "Nya påståenden om att röster kan manipuleras",
+      "upplasning": "För andra gången på kort tid sprids uppgifter om att det digitala valet skulle kunna påverkas. Myndigheterna kallar det spekulation och pekar på att inga skarpa röstdata finns i testmiljön. Regeringskansliet hade velat tala om stabilitet, men den linjen får litet utrymme. Allmänhetens förtroende uppges svaja i mätningar.",
+      "lag": ["FM", "Regeringen", "Media"]
+    },
+    {
+      "rubrik": "Säkerhetspolisen utreder oegentliga kontakter i projektet",
+      "upplasning": "Säkerhetspolisen har enligt uppgifter fått ett tydligare spår kring otillbörliga kontakter i ett av utvecklingsteamen. Inga namn har offentliggjorts och ingen är formellt misstänkt. Stämningen i projektet beskrivs som mer misstänksam. Samtidigt bekräftas ett fördjupat samarbete med en nära internationell partner kring skyddet av valet.",
+      "lag": ["SÄPO", "Alfa", "USA"]
+    }
+  ],
+  "hp": [
+    {
+      "lag": "SÄPO",
+      "delta": 3,
+      "orsak": "Regeringen ger ett begränsat resurstillskott efter den lyckade begäran."
+    },
+    {
+      "lag": "STT",
+      "delta": -3,
+      "orsak": "Läckt pentest tvingar fram intern utredning och omplanering av testhantering."
+    },
+    {
+      "lag": "Alfa",
+      "delta": -2,
+      "orsak": "Fördjupad spaning skapar intern misstänksamhet och extra möten."
+    }
+  ],
+  "milstolpar": [
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_3",
+      "delta_hp": 12,
+      "orsak": "12 HP sökutveckling. Bakdörrsförsöket misslyckades. Ingen produktionssättning krävs för progress."
+    },
+    {
+      "lag": "Bravo",
+      "uppgift": "bravo_1_Design",
+      "delta_hp": 10,
+      "orsak": "10 HP designarbete. Rent backlog-arbete."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_4",
+      "delta_hp": 10,
+      "orsak": "Kapacitetstestet genomfördes. Störningsförsöket misslyckades."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_5",
+      "delta_hp": 9,
+      "orsak": "9 HP pentest-arbete. Läckan påverkar förtroendet, inte att testarbetet utfördes."
+    }
+  ]
+}

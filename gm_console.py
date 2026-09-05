@@ -308,8 +308,45 @@ def _normalize_test_activity(raw, activity_id):
     }
 
 
+def _scale_activity_hp_to_budget(activities, budget):
+    """Rewrite activity hp so the total equals spendable HP. Returns True if changed."""
+    budget = max(0, int(budget))
+    current = [max(0, int(item.get("hp") or 0)) for item in activities]
+    total = sum(current)
+    if not activities or total == budget:
+        return False
+    if total <= 0:
+        activities[0]["hp"] = budget
+        for item in activities[1:]:
+            item["hp"] = 0
+        return budget != 0
+    weights = [hp * budget for hp in current]
+    allocated = [weight // total for weight in weights]
+    remainder = budget - sum(allocated)
+    order = sorted(
+        range(len(allocated)),
+        key=lambda i: (weights[i] % total, current[i], -i),
+        reverse=True,
+    )
+    for index in order:
+        if remainder <= 0:
+            break
+        allocated[index] += 1
+        remainder -= 1
+    changed = False
+    for item, hp in zip(activities, allocated):
+        if int(item.get("hp") or 0) != hp:
+            changed = True
+        item["hp"] = hp
+    return changed
+
+
 def apply_test_orders(data, now=None):
-    """Replace this round's submitted orders from testdata/testdataroundN.json."""
+    """Replace this round's submitted orders from testdata/testdataroundN.json.
+
+    Activity HP is scaled to each team's current spendable wallet so Auto-fyll
+    neither overspends nor leaves leftover kassa unused.
+    """
     if not data.get("test_mode"):
         raise ValueError("Auto-fyll kräver testläge")
     runda = data.get("runda", 1)
@@ -321,7 +358,9 @@ def apply_test_orders(data, now=None):
     orders_key = f"orders_round_{runda}"
     data.setdefault("team_orders", {})
     data["team_orders"].setdefault(orders_key, {})
+    ensure_poang(data)
     processed = []
+    scaled = []
     for i, team_name in enumerate(data.get("lag") or []):
         activities = orders.get(team_name)
         if not isinstance(activities, list) or not activities:
@@ -330,6 +369,13 @@ def apply_test_orders(data, now=None):
             _normalize_test_activity(activity, base_id + (i * 100) + j)
             for j, activity in enumerate(activities)
         ]
+        budget = effective_hp(data["poang"].get(team_name) or {})
+        raw_total = sum(int(item.get("hp") or 0) for item in team_orders)
+        if _scale_activity_hp_to_budget(team_orders, budget):
+            scaled.append(f"{team_name} {raw_total}→{budget}")
+        check = validate_order_hp(data, team_name, {"activities": team_orders})
+        if not check.get("valid"):
+            raise ValueError(check.get("error") or f"Auto-fyll överskred HP för {team_name}.")
         data["team_orders"][orders_key][team_name] = {
             "submitted_at": submitted_at,
             "phase": data.get("fas"),
@@ -343,11 +389,10 @@ def apply_test_orders(data, now=None):
         processed.append(team_name)
     if not processed:
         raise ValueError(f"Ingen testdata matchade lagen i runda {runda}.")
-    append_gm_log(
-        data,
-        "order",
-        f"Auto-fyllde testdata för runda {runda} ({len(processed)} lag).",
-    )
+    note = f"Auto-fyllde testdata för runda {runda} ({len(processed)} lag)."
+    if scaled:
+        note += " Skalade till kassan: " + ", ".join(scaled) + "."
+    append_gm_log(data, "order", note)
     return data, processed
 
 
@@ -620,9 +665,12 @@ def apply_new_round(data):
 
 
 def end_game(data):
+    """Close the event. Pending HP is the last round's next-wallet, so apply it."""
     data["avslutat"] = True
     reset_timer_fields(data)
     data = avsluta_aktuell_fas(data)
+    data = nollstall_regeringsstod(data)
+    apply_pending_hp(data)
     append_gm_log(data, "phase", "Spelet avslutades.")
     return data
 
@@ -728,8 +776,15 @@ def _mark_backlog_complete(uppgift, fas=None):
         uppgift["slutford"] = done
 
 
+def _is_recurring_task(uppgift, fas=None):
+    return fas is None and (uppgift or {}).get("typ") == "aterkommande"
+
+
 def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
-    """Add/subtract backlog HP, clamped to 0..total for finite tasks."""
+    """Add/subtract backlog HP, clamped to 0..total for finite tasks.
+
+    Recurring tasks (`aterkommande`) start a new attempt when already at cap.
+    """
     if team not in (data.get("lag") or []):
         raise ValueError(f"Okänt lag: {team}")
     amount = int(amount)
@@ -738,8 +793,13 @@ def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
     uppgift, fas = _find_backlog_task(data, team, task_id, phase)
     target = fas if fas is not None else uppgift
     current = int(target.get("spenderade_hp") or 0)
-    updated = max(0, current + amount)
     estimated = max(0, int(target.get("estimaterade_hp") or 0))
+    new_attempt = False
+    if amount > 0 and _is_recurring_task(uppgift, fas) and estimated > 0 and current >= estimated:
+        current = 0
+        target["spenderade_hp"] = 0
+        new_attempt = True
+    updated = max(0, current + amount)
     updated = min(estimated, updated)
     if updated == current:
         raise ValueError("Backlog-uppgiften kan inte ändras mer i den riktningen")
@@ -751,10 +811,11 @@ def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
     applied_amount = updated - current
     sign = "+" if applied_amount >= 0 else ""
     actor = log_actor or team
+    extra = " (ny förekomst)" if new_attempt else ""
     append_gm_log(
         data,
         "backlog",
-        f"{actor}: {sign}{applied_amount} HP på {team} / {label}. Nu {target['spenderade_hp']}.",
+        f"{actor}: {sign}{applied_amount} HP på {team} / {label}{extra}. Nu {target['spenderade_hp']}.",
         {"team": team, "task_id": uppgift.get("id"), "amount": applied_amount},
     )
     return data
@@ -790,6 +851,8 @@ def apply_activity_hp_to_backlog(data, team, activity_index):
     estimated = max(0, int(target.get("estimaterade_hp") or 0))
     before = max(0, int(target.get("spenderade_hp") or 0))
     remaining = max(0, estimated - before)
+    if remaining == 0 and _is_recurring_task(uppgift, fas) and estimated > 0:
+        remaining = estimated
     applied = min(hp, remaining)
     if applied:
         add_backlog_spend(data, owner, selected, applied, log_actor=team)
@@ -1701,6 +1764,8 @@ def _clamp_milestone_delta(data, team, task_id, phase, requested):
     estimated = max(0, int(target.get("estimaterade_hp") or 0))
     spent = max(0, int(target.get("spenderade_hp") or 0))
     remaining = max(0, estimated - spent)
+    if remaining == 0 and _is_recurring_task(uppgift, fas) and estimated > 0:
+        remaining = estimated
     clamped = min(int(requested), remaining)
     if clamped == int(requested):
         return clamped, None
