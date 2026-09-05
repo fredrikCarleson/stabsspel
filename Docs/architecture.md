@@ -167,7 +167,8 @@ Created in `skapa_nytt_spel` and grown during play:
 | Key | Meaning |
 |-----|---------|
 | `id`, `datum`, `plats`, `antal_spelare` | Event metadata |
-| `lag` | Team names in this game (5 or 9) |
+| `lag` | Active team names for this game (always the five core teams, plus 0–4 optional extras). Source of truth for HP, console, projector, tokens, print and LLM. |
+| `extra_lag` | Optional copy of selected extras. New games persist it; old saves may omit it. |
 | `runda` | 1–4 |
 | `fas` | `Orderfas` / `Diplomatifas` / `Resultatfas` |
 | `avslutat` | Game over |
@@ -184,7 +185,7 @@ Created in `skapa_nytt_spel` and grown during play:
 | `test_mode` | Shows auto-fill / cheat links |
 | `fashistorik` | Phase history for the panel |
 
-**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable. Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and change `aktuell` when **Starta nästa runda** runs, and also when **Avsluta spelet** runs after round 4. GM ± during Orderfas still changes this round immediately. Auto-fyll scales testdata activity HP to each team's current spendable wallet. Recurring STT tasks (`aterkommande`) start a new attempt when already at cap.
+**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable and is a GM flag, not Regeringen's player pool. When Regeringen is in `lag`, its 12 HP is political cash: the player may grant it to other active teams (immediate transfer on submit) or spend the remainder on influence orders. Granted HP leaves the pool the same round and cannot also be spent on an order. At **Starta nästa runda** Regeringen's `aktuell` resets to `bas` before `hp_pending` is applied. Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and change `aktuell` when **Starta nästa runda** runs, and also when **Avsluta spelet** runs after round 4. GM ± during Orderfas still changes this round immediately. Auto-fyll scales testdata activity HP to each team's current spendable wallet and retargets `paverkar`/copy away from optional teams that are not in this game. Recurring STT tasks (`aterkommande`) start a new attempt when already at cap.
 
 The projector in Resultatfas shows **Denna runda → Nästa runda** from `build_public_state` (`hp`, `next_hp`, `next_delta`). Next-round HP is `aktuell` after queued deltas, without stöd (stöd is cleared on new round before pending HP is applied). If an older **Tillämpa HP** already wrote the delta into `aktuell` and left `hp_pending` empty, the same forecast is derived from the applied LLM `hp` list so the room does not see “Oförändrat”.
 
@@ -222,7 +223,7 @@ stabsspel/
 
 There is **no** `templates/` directory. Most pages are strings in Python.
 
-`testdata/` holds `testdataround1.json`–`testdataround4.json` for Auto-fyll (HP is scaled to the current wallet at fill time), example LLM replies (`llm-svar-exempel.json`, `llm-svar-utfall-exempel.json`), and the seeded scenario playthrough under `testdata/scenario_llm/` (`rundaN.json` plus `transcript.md`). Do not put live rolls in `Docs/prompt.md`.
+`testdata/` holds `testdataround1.json`–`testdataround4.json` for Auto-fyll (HP is scaled to the current wallet at fill time; inactive optional teams are skipped and remaining orders are retargeted onto the live roster), example LLM replies (`llm-svar-exempel.json`, `llm-svar-utfall-exempel.json`), and two seeded scenario playthroughs: nine teams under `testdata/scenario_llm/` and seven teams (no SÄPO/USA) under `testdata/scenario_llm_7lag/` (`rundaN.json` plus `transcript.md`). Same seed; dice match through round 1 shared teams, then diverge. Do not put live rolls in `Docs/prompt.md`.
 
 ---
 
@@ -245,7 +246,7 @@ There is **no** `templates/` directory. Most pages are strings in Python.
 
 | File | Purpose |
 |------|---------|
-| `models.py` | `DATA_DIR`, `TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, roster size (5 vs 9 teams), STT base HP in large games, declaration period (round 3). |
+| `models.py` | `DATA_DIR`, `TEAMS`, `CORE_TEAMS`, `OPTIONAL_TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, configurable roster (core 5 or extended 6–9), STT base HP in extended games, declaration period (round 3). |
 | `game_management.py` | `delete_game`, `nollstall_regeringsstod`, checkbox get/set (legacy checklists). Re-exports load/save. |
 | `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/queue/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` only for uncertain outcomes, optional `delmal`, `format_json_error` for JSON syntax), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
 | `gm_console_ui.py` | HTML for the compact GM header, attention list, tabs, team HP strip, transfer form, inbox, backlog board, LLM-resultat, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
@@ -261,7 +262,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | Route | Role |
 |-------|------|
 | `GET /` | Home page: list saved games, open / download / delete |
-| `GET/POST /admin` | Create game, upload JSON, also lists saved games |
+| `GET/POST /admin` | Create game (upload is a second tab, `?tab=upload`): **Grundspel** (5 lag) or **Utökat spel** with checkboxes for Media, Regeringen, SÄPO, USA. Also lists saved games |
 | `POST /admin/delete_game/<id>` | Delete after game password (JSON if `X-Requested-With: XMLHttpRequest`) |
 | `GET/POST /admin/<id>` | Password gate + spelledarpanel |
 | `POST /admin/<id>/timer` | Start/pause, ±1 min, reset, next/prev phase, new round, end |
@@ -300,7 +301,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | File | Purpose |
 |------|---------|
 | `team_routes.py` | `/team/<id>/<lag>` — brief from `teambeskrivning/`, optional photo, QR to order URL. `/teambeskrivning/<file>` for images. |
-| `team_order_routes.py` | Token-gated order form. Auto-save draft, final submit, **withdraw in Orderfas only**. Timer JSON for the team page. GM may open the same form with `?admin_edit=true` (session required). |
+| `team_order_routes.py` | Token-gated order form (phone-first, `app.css`). Draft save, final submit, **withdraw in Orderfas only**. Timer JSON for the team page. GM may open the same form with `?admin_edit=true` (session required). |
 | Projector in `app.py` | `/spelarskarm/<id>` HTML + `/spelarskarm/<id>/live` JSON via `build_public_state`. Safe to project. |
 | `/timer_window/<id>` in `app.py` | **Legacy** GM timer with Start/Pausa. Spelarskärm no longer opens this. |
 
@@ -351,8 +352,8 @@ Root-level `README.md` stays at the repository root (quick start).
 | `tests/test_basic_functionality.py` | Backlog clone, game shape. |
 | `tests/test_css_refactoring.py` | Helpers use CSS classes. |
 | `tests/game_fixtures.py` | Small builders: `create_game_state`, `order_record`, `activity`. |
-| `tests/scenario_runner.py` | In-memory 4-round playthrough: testdata orders, seeded D100, imported `testdata/scenario_llm/rundaN.json`. Does not write `speldata/`. |
-| `tests/test_scenario_playthrough.py` | Mechanical invariants for that playthrough (phases, HP queue, projector secrecy, wallet spend). |
+| `tests/scenario_runner.py` | In-memory 4-round playthrough: testdata orders, seeded D100, imported `testdata/scenario_llm/rundaN.json` (default) or `testdata/scenario_llm_7lag/` (`python tests/scenario_runner.py seven`). Does not write `speldata/`. |
+| `tests/test_scenario_playthrough.py` | Mechanical invariants for both playthroughs (roster, phases, HP queue, projector secrecy, wallet spend, seven-team news without SÄPO/USA). |
 
 Typical run:
 
@@ -366,7 +367,7 @@ There is **no CI** in the repo.
 
 ### 6.9 Print: `orderkort.py`
 
-Builds printable HTML order slips per team and round. Used from `/admin/<id>/orderkort`. Separate from the digital order form.
+Builds printable HTML order slips per team and round. Used from `/admin/<id>/orderkort`. Separate from the digital order form. Printed max HP is the team's stored `bas` (roster catalog via `get_team_base_hp` if `bas` is missing). **Påverkar/Vem** checkboxes use `active_teams`, never the full nine-team catalog.
 
 ---
 
@@ -395,6 +396,8 @@ Tabs: **Inkorg**, **LLM-resultat** (Diplomatifas/Resultatfas), **Lag**, **Arbete
 `admin_routes.admin_panel` no longer injects the old quarter bar, team-overview cards, or phase-history cards under the console. Named quarters live in Resultatfas. Phase history lives in **Händelselogg**. Unused checklist/timer HTML builders may still exist in `admin_routes.py`; do not grow them.
 
 Keyboard on the console: **Space** pause/resume, **N** next phase (existing confirm).
+
+The team order form is a separate phone page: team, round, phase, remaining HP, then activities. **Skicka slutgiltig order** is the primary action; draft save is secondary. Other teams' work is folded.
 
 ---
 

@@ -4,9 +4,26 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 """
 
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response, g
-from models import validate_team_token, get_team_by_token, load_game_data, save_game_data, get_phase_timer, BACKLOG, game_lock_for
+from models import (
+    validate_team_token,
+    get_team_by_token,
+    load_game_data,
+    save_game_data,
+    get_phase_timer,
+    BACKLOG,
+    game_lock_for,
+    active_teams,
+)
 from admin_routes import create_team_overview, check_admin_session
-from gm_console import can_submit_orders, can_withdraw_orders, validate_order_hp, withdraw_order
+from gm_console import (
+    can_submit_orders,
+    can_withdraw_orders,
+    validate_order_hp,
+    withdraw_order,
+    sync_regeringen_fordelning,
+    effective_hp,
+    _fordelning_items,
+)
 import json
 import time
 
@@ -57,11 +74,15 @@ def _merge_server_activity_fields(existing_record, order_data):
     return order_data
 
 
-def _has_meaningful_activity(order_data):
-    return any(
+def _has_meaningful_activity(order_data, team_name=None, data=None):
+    if any(
         isinstance(item, dict) and str(item.get("aktivitet") or "").strip()
         for item in (order_data or {}).get("activities") or []
-    )
+    ):
+        return True
+    if team_name == "Regeringen" and data is not None:
+        return bool(_fordelning_items(order_data, active_teams(data), team_name))
+    return False
 
 
 def format_time(seconds):
@@ -126,20 +147,20 @@ def team_enter_order(spel_id, token):
     # Validate token and get team
     team_name = get_team_by_token(spel_id, token)
     if not team_name:
-        return "❌ Invalid or expired access token", 403
+        return "Ogiltig eller utgången länk.", 403
     
     # Load game data
     data = load_game_data(spel_id)
     if not data:
-        return "❌ Game not found or corrupted", 404
+        return "Spelet hittades inte.", 404
     
     # Check if game is active
     if data.get("avslutat", False):
-        return "❌ This game has ended", 403
+        return "Spelet är avslutat.", 403
     
     # Check if orders can be submitted
     if not can_submit_orders(data):
-        return f"❌ Orders can only be submitted during Orderfas or Diplomatifas. Current phase: {data['fas']}", 403
+        return f"Order kan bara lämnas under Orderfas eller Diplomatifas. Nuvarande fas: {data['fas']}", 403
     
     # Get remaining time
     remaining_time = get_phase_timer(data)
@@ -158,14 +179,9 @@ def team_enter_order(spel_id, token):
     is_submitted = team_orders and team_orders.get("final", False) and not is_admin_edit
     
     # Get team's max HP
-    team_max_hp = 25  # Default
-    for team, hp in data.get("poang", {}).items():
-        if team == team_name:
-            team_max_hp = hp.get("aktuell", 25)
-            # Add regeringsstöd bonus if applicable
-            if hp.get("regeringsstod", False):
-                team_max_hp += 10
-            break
+    team_entry = (data.get("poang") or {}).get(team_name) or {}
+    team_max_hp = effective_hp(team_entry) if team_entry else 25
+    roster = active_teams(data)
     
     # Generate team overview HTML
     team_overview_html = create_team_overview(data)
@@ -185,7 +201,11 @@ def team_enter_order(spel_id, token):
                                          format_time=format_time,
                                          backlog_options=generate_backlog_options(),
                                          backlog_meta=backlog_choice_meta(),
-                                         team_overview_html=team_overview_html)
+                                         team_overview_html=team_overview_html,
+                                         is_regeringen=team_name == "Regeringen",
+                                         active_team_names=roster,
+                                         fordelning_teams=[name for name in roster if name != team_name],
+                                         existing_fordelning=((team_orders or {}).get("orders") or {}).get("hp_fordelning") or ((team_orders or {}).get("hp_fordelning_applied") or []))
     
     response = make_response(html_content)
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -200,21 +220,21 @@ def team_save_order(spel_id, token):
     # Validate token and get team
     team_name = get_team_by_token(spel_id, token)
     if not team_name:
-        return jsonify({"success": False, "error": "Invalid token"}), 403
+        return jsonify({"success": False, "error": "Ogiltig länk."}), 403
     
     # Load game data
     data = load_game_data(spel_id)
     if not data:
-        return jsonify({"success": False, "error": "Game not found or corrupted"}), 404
+        return jsonify({"success": False, "error": "Spelet hittades inte."}), 404
     
     # Check if orders can be submitted
     if not can_submit_orders(data):
-        return jsonify({"success": False, "error": "Orders not allowed in current phase"}), 403
+        return jsonify({"success": False, "error": "Order kan inte lämnas i den här fasen."}), 403
     
     # Get order data from request
     order_data = request.get_json()
     if not order_data:
-        return jsonify({"success": False, "error": "No order data received"}), 400
+        return jsonify({"success": False, "error": "Ingen orderdata togs emot."}), 400
     
     # Validate HP usage
     validation_result = validate_order_hp(data, team_name, order_data)
@@ -232,7 +252,7 @@ def team_save_order(spel_id, token):
     existing = data["team_orders"][orders_key].get(team_name, {})
     admin_edit = request.args.get("admin_edit") == "true" and check_admin_session(spel_id)
     if existing.get("final") and not admin_edit:
-        return jsonify({"success": False, "error": "Order already submitted"}), 403
+        return jsonify({"success": False, "error": "Ordern är redan skickad."}), 403
     order_data = _merge_server_activity_fields(existing, order_data)
 
     # Save order data
@@ -265,21 +285,21 @@ def team_submit_order(spel_id, token):
     # Validate token and get team
     team_name = get_team_by_token(spel_id, token)
     if not team_name:
-        return jsonify({"success": False, "error": "Invalid token"}), 403
+        return jsonify({"success": False, "error": "Ogiltig länk."}), 403
     
     # Load game data
     data = load_game_data(spel_id)
     if not data:
-        return jsonify({"success": False, "error": "Game not found or corrupted"}), 404
+        return jsonify({"success": False, "error": "Spelet hittades inte."}), 404
     
     # Check if orders can be submitted
     if not can_submit_orders(data):
-        return jsonify({"success": False, "error": "Orders not allowed in current phase"}), 403
+        return jsonify({"success": False, "error": "Order kan inte lämnas i den här fasen."}), 403
     
     # Get order data from request
     order_data = request.get_json()
     if not order_data:
-        return jsonify({"success": False, "error": "No order data received"}), 400
+        return jsonify({"success": False, "error": "Ingen orderdata togs emot."}), 400
     
     # Validate HP usage
     validation_result = validate_order_hp(data, team_name, order_data)
@@ -297,8 +317,8 @@ def team_submit_order(spel_id, token):
     existing = data["team_orders"][orders_key].get(team_name, {})
     admin_edit = request.args.get("admin_edit") == "true" and check_admin_session(spel_id)
     if existing.get("final") and not admin_edit:
-        return jsonify({"success": False, "error": "Order already submitted"}), 403
-    if not _has_meaningful_activity(order_data):
+        return jsonify({"success": False, "error": "Ordern är redan skickad."}), 403
+    if not _has_meaningful_activity(order_data, team_name, data):
         return jsonify({"success": False, "error": "Order must contain an activity"}), 400
     order_data = _merge_server_activity_fields(existing, order_data)
 
@@ -314,6 +334,8 @@ def team_submit_order(spel_id, token):
     if admin_edit:
         saved["edited_by_gm"] = True
     data["team_orders"][orders_key][team_name] = saved
+    if team_name == "Regeringen":
+        sync_regeringen_fordelning(data, team_name)
     
     # Save to file
     try:
@@ -330,12 +352,12 @@ def team_withdraw_order(spel_id, token):
     """Let a team reopen a submitted order during Orderfas."""
     team_name = get_team_by_token(spel_id, token)
     if not team_name:
-        return jsonify({"success": False, "error": "Invalid token"}), 403
+        return jsonify({"success": False, "error": "Ogiltig länk."}), 403
     data = load_game_data(spel_id)
     if not data:
-        return jsonify({"success": False, "error": "Game not found or corrupted"}), 404
+        return jsonify({"success": False, "error": "Spelet hittades inte."}), 404
     if not can_withdraw_orders(data):
-        return jsonify({"success": False, "error": "Orders can only be withdrawn during Orderfas"}), 403
+        return jsonify({"success": False, "error": "Order kan bara återtas under Orderfas."}), 403
     try:
         withdraw_order(data, team_name)
         save_game_data(spel_id, data)
@@ -352,12 +374,12 @@ def team_timer(spel_id, token):
     # Validate token
     team_name = get_team_by_token(spel_id, token)
     if not team_name:
-        return jsonify({"error": "Invalid token"}), 403
+        return jsonify({"error": "Ogiltig länk."}), 403
     
     # Load game data
     data = load_game_data(spel_id)
     if not data:
-        return jsonify({"error": "Game not found or corrupted"}), 404
+        return jsonify({"error": "Spelet hittades inte."}), 404
     
     remaining_time = get_phase_timer(data)
     
@@ -378,616 +400,36 @@ TEAM_ORDER_TEMPLATE = """
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Ange Order - {{ team_name }}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 1.8rem;
-            margin-bottom: 10px;
-        }
-        
-        .game-info {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-        
-        .timer {
-            background: #ff6b6b;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1.2rem;
-            text-align: center;
-            margin-bottom: 0;
-        }
-
-        .order-sticky {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin: 0 0 20px;
-            padding-bottom: 4px;
-            background: #f5f5f5;
-        }
-        
-        .order-form {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .form-section {
-            margin-bottom: 30px;
-        }
-        
-        .form-section h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        @media (min-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #2c3e50;
-        }
-        
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-        
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            margin-top: 5px;
-        }
-        
-        .radio-group label {
-            display: flex;
-            align-items: center;
-            font-weight: normal;
-            cursor: pointer;
-        }
-        
-        .radio-group input[type="radio"] {
-            margin-right: 8px;
-        }
-        
-        .checkbox-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-top: 5px;
-        }
-        
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-            font-weight: normal;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        
-        .checkbox-group input[type="checkbox"] {
-            margin-right: 8px;
-        }
-        
-        .activity-row {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .activity-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .activity-number {
-            background: #667eea;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-        
-        .remove-activity {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        
-        .add-activity {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 18px;
-            min-height: 44px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            white-space: nowrap;
-        }
-        
-        .submit-section {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 12px;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .submit-help {
-            flex: 1 0 100%;
-            margin: 0 0 4px;
-            color: #6c757d;
-            font-size: 0.95rem;
-            text-align: left;
-            line-height: 1.4;
-        }
-        
-        .save-btn,
-        .submit-btn,
-        .withdraw-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            border: none;
-            padding: 12px 20px;
-            min-height: 44px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        
-        .save-btn {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .save-btn:hover {
-            background: #5a6268;
-        }
-        
-        .save-btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        
-        .submit-btn {
-            background: #28a745;
-            color: white;
-        }
-        
-        .submit-btn:hover {
-            background: #218838;
-        }
-        
-        .submit-btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        
-        .status-message {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px 24px;
-            border-radius: 12px;
-            margin: 16px 0;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        .status-icon {
-            margin-right: 12px;
-            font-size: 1.2rem;
-        }
-        
-        .status-text {
-            font-size: 1rem;
-        }
-        
-        .status-success {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            color: #155724;
-            border: 2px solid #28a745;
-        }
-        
-        .status-error {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            color: #721c24;
-            border: 2px solid #dc3545;
-        }
-        
-        .status-info {
-            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-            color: #0c5460;
-            border: 2px solid #17a2b8;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .hp-summary {
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 0;
-            text-align: center;
-        }
-        
-        .hp-summary h4 {
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
-        
-        .hp-display {
-            display: flex;
-            align-items: stretch;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .hp-stat {
-            min-width: 92px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            background: rgba(255,255,255,0.65);
-        }
-
-        .hp-stat small {
-            display: block;
-            color: #6c757d;
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .hp-stat strong {
-            display: block;
-            font-size: 1.25rem;
-            line-height: 1.25;
-        }
-
-        .hp-stat.is-primary {
-            background: white;
-            box-shadow: inset 0 0 0 2px currentColor;
-        }
-        
-        .hp-remaining {
-            color: #28a745;
-        }
-        
-        .hp-over {
-            color: #dc3545;
-        }
-
-        .hp-summary.is-over {
-            background: #f8d7da;
-            border: 1px solid #dc3545;
-        }
-
-        .hp-input.is-over {
-            border-color: #dc3545;
-            background: #fff5f5;
-        }
-        
-        /* Team Overview Styles */
-        .team-overview-section {
-            margin-bottom: 20px;
-        }
-        
-        .team-overview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-            margin: 15px 0;
-        }
-        
-        .team-overview-card {
-            background: white;
-            border: 1px solid #e8e9ea;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .team-overview-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-        }
-        
-        .team-overview-header {
-            color: white;
-            padding: 12px 16px;
-            position: relative;
-        }
-        
-        .team-overview-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        
-        .team-overview-title h4 {
-            margin: 0;
-            font-size: 1em;
-            font-weight: 600;
-        }
-        
-        .team-overview-progress {
-            text-align: right;
-        }
-        
-        .team-progress-percent {
-            display: block;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-        
-        .team-progress-hp {
-            display: block;
-            font-size: 0.85em;
-            opacity: 0.9;
-        }
-        
-        .team-overview-bar {
-            height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .team-progress-fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s ease;
-        }
-        
-        .team-overview-content {
-            padding: 12px 16px;
-        }
-        
-        .team-task-item {
-            margin-bottom: 8px;
-        }
-        
-        .team-task-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        .team-task-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
-        }
-        
-        .team-task-name {
-            font-size: 0.85em;
-            font-weight: 500;
-            color: #2c3e50;
-        }
-        
-        .team-task-hp {
-            font-size: 0.8em;
-            color: #6c757d;
-            font-weight: 600;
-        }
-        
-        .team-task-bar {
-            height: 3px;
-            background: #f1f3f4;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .team-task-fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s ease;
-        }
-        
-        .team-task-more {
-            text-align: center;
-            padding: 8px 0;
-            border-top: 1px solid #f1f3f4;
-            margin-top: 8px;
-        }
-        
-        .team-overview-empty {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 20px;
-            color: #6c757d;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        
-        /* Responsive adjustments for team overview */
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-
-            .header,
-            .order-form {
-                padding: 14px;
-            }
-
-            .header h1 {
-                font-size: 1.45rem;
-            }
-
-            .game-info {
-                justify-content: center;
-            }
-
-            .hp-summary {
-                padding: 10px;
-            }
-
-            .hp-summary h4 {
-                margin-bottom: 6px;
-            }
-
-            .hp-display {
-                gap: 5px;
-            }
-
-            .hp-stat {
-                flex: 1;
-                min-width: 0;
-                padding: 5px;
-            }
-
-            .submit-section :is(.save-btn, .submit-btn, .withdraw-btn) {
-                width: 100%;
-            }
-
-            .team-overview-grid {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            
-            .team-overview-card {
-                margin-bottom: 0;
-            }
-        }
-    </style>
+    <title>Ange order – {{ team_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css?v=44">
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📋 Ange Order - {{ team_name }}</h1>
+<body class="order-page">
+    <div class="order-wrap">
+        <header class="order-head">
             {% if show_gm_back %}
-            <p class="no-print" style="margin: 0 0 12px;">
-                <a href="/admin/{{ spel_id }}" style="display:inline-block; background:#e9ecef; color:#1a1a1a; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:600;">← Tillbaka till spelledarpanel</a>
+            <p class="order-gm-back no-print">
+                <a href="/admin/{{ spel_id }}" class="secondary sm">Tillbaka till spelledarpanel</a>
             </p>
             {% endif %}
             {% if is_admin_edit %}
-            <div style="background: #ffc107; color: #000; padding: 8px 16px; border-radius: 6px; margin: 10px 0; font-weight: bold; font-size: 0.9rem;">
-                🔓 ADMIN — du redigerar {{ team_name }}s order. Gå tillbaka till spelledarpanelen när du är klar.
+            <div class="order-admin-banner">
+                Du redigerar {{ team_name }}s order. Gå tillbaka till spelledarpanelen när du är klar.
             </div>
             {% endif %}
-            <div class="game-info">
-                <span>🎮 Spel: {{ data.id }}</span>
-                <span>🔄 Runda: {{ data.runda }}</span>
-                <span>⏱️ Fas: {{ data.fas }}</span>
-            </div>
-        </div>
+            <p class="order-kicker">Ange order</p>
+            <h1>{{ team_name }}</h1>
+            <p class="order-meta">Runda {{ data.runda }} · {{ data.fas }}</p>
+            {% if is_submitted and not is_admin_edit %}
+            <p class="order-state is-submitted">Order skickad</p>
+            {% else %}
+            <p class="order-state is-draft">Utkast — inte skickad</p>
+            {% endif %}
+        </header>
         
         <div class="order-sticky">
         <div class="timer" id="timer">
-            ⏰ Tid kvar: <span id="timer-display">{{ "00:00" if remaining_time <= 0 else format_time(remaining_time) }}</span>
+            Tid kvar: <span id="timer-display">{{ "00:00" if remaining_time <= 0 else format_time(remaining_time) }}</span>
         </div>
         
         <div class="hp-summary" id="hp-summary">
@@ -1003,37 +445,45 @@ TEAM_ORDER_TEMPLATE = """
         <div class="order-form">
             <form id="orderForm">
                 <div class="form-section">
-                    <h3>📝 Orderformulär</h3>
+                    <h3>Aktiviteter</h3>
                     <p class="text-muted mb-2">
-                        Fyll i orderna för denna runda (upp till 6 aktiviteter). Spara utkast när ni vill.
-                        Skicka den slutgiltiga ordern innan tiden tar slut — därefter kan ni inte ändra den själva.
+                        Upp till 6 aktiviteter. Spara utkast när ni vill.
+                        Skicka innan tiden tar slut — därefter kan ni inte ändra själva.
                     </p>
+                    {% if is_regeringen %}
+                    <div class="hp-grant-box" id="hp-grant-box">
+                        <h4>Fördela HP till andra lag</h4>
+                        <p class="text-muted mb-2">Politiska resurser. Fördelad HP lämnar kassan och kan inte också läggas på en order.</p>
+                        <div id="hp-grant-rows"></div>
+                        <button type="button" class="secondary sm" onclick="addGrantRow()">+ Lägg till fördelning</button>
+                    </div>
+                    {% endif %}
                     
                     <div id="activities-container">
                         <!-- Activities will be added here -->
                     </div>
                     
-                    <button type="button" class="add-activity" onclick="addActivity()">
-                        ➕ Lägg till aktivitet
+                    <button type="button" class="secondary add-activity" onclick="addActivity()">
+                        Lägg till aktivitet
                     </button>
                 </div>
                 
                 <div class="submit-section">
                     <p class="submit-help">
-                        Utkast syns hos spelledaren men räknas inte. Den gröna knappen skickar den slutgiltiga ordern.
+                        Utkast syns hos spelledaren men räknas inte förrän ni skickar.
                     </p>
-                    <button type="button" class="save-btn" onclick="saveOrder(false)" {% if is_submitted %}disabled{% endif %}>
-                        {% if is_submitted and not is_admin_edit %}
-                            Order skickad
-                        {% else %}
-                            Spara utkast
-                        {% endif %}
-                    </button>
-                    <button type="submit" class="submit-btn" id="submitBtn" {% if is_submitted %}disabled{% endif %}>
+                    <button type="submit" class="primary submit-btn" id="submitBtn" {% if is_submitted %}disabled{% endif %}>
                         {% if is_submitted and not is_admin_edit %}
                             Order skickad
                         {% else %}
                             Skicka slutgiltig order
+                        {% endif %}
+                    </button>
+                    <button type="button" class="secondary save-btn" onclick="saveOrder(false)" {% if is_submitted %}disabled{% endif %}>
+                        {% if is_submitted and not is_admin_edit %}
+                            Order skickad
+                        {% else %}
+                            Spara utkast
                         {% endif %}
                     </button>
                     {% if is_submitted and not is_admin_edit and data.fas == "Orderfas" %}
@@ -1047,9 +497,12 @@ TEAM_ORDER_TEMPLATE = """
         
         <!-- Team Overview Section - Moved to bottom -->
         {% if team_overview_html %}
-        <div class="team-overview-section">
-            {{ team_overview_html | safe }}
-        </div>
+        <details class="order-overview">
+            <summary>Andra lags arbete</summary>
+            <div class="team-overview-section">
+                {{ team_overview_html | safe }}
+            </div>
+        </details>
         {% endif %}
         
         <div id="status-message" aria-live="polite" aria-atomic="true"></div>
@@ -1061,6 +514,10 @@ TEAM_ORDER_TEMPLATE = """
         let timerInterval;
         const BACKLOG_META = {{ backlog_meta | tojson }};
         const TEAM_MAX_HP = {{ team_max_hp }};
+        const ACTIVE_TEAMS = {{ active_team_names | tojson }};
+        const GRANT_TEAMS = {{ fordelning_teams | tojson }};
+        const IS_REGERINGEN = {{ 'true' if is_regeringen else 'false' }};
+        let hpGrants = {{ existing_fordelning | tojson }};
         
         // Initialize form
         document.addEventListener('DOMContentLoaded', function() {
@@ -1085,6 +542,9 @@ TEAM_ORDER_TEMPLATE = """
                     const existingOrdersData = {{ existing_orders | tojson }};
                     if (existingOrdersData && existingOrdersData.orders) {
                         activities = existingOrdersData.orders.activities || [];
+                        if (existingOrdersData.orders.hp_fordelning) {
+                            hpGrants = existingOrdersData.orders.hp_fordelning;
+                        }
                         console.log('Loaded activities:', activities);
                     } else {
                         console.log('No activities in existing orders');
@@ -1100,6 +560,7 @@ TEAM_ORDER_TEMPLATE = """
             }
             
             renderActivities();
+            renderGrantRows();
             updateHPSummary();
         }
         
@@ -1141,7 +602,7 @@ TEAM_ORDER_TEMPLATE = """
                         <div class="activity-header">
                             <div class="activity-number">${index + 1}</div>
                             <button type="button" class="remove-activity" onclick="removeActivity(${activity.id})">
-                                🗑️ Ta bort
+                                Ta bort
                             </button>
                         </div>
                         
@@ -1173,7 +634,7 @@ TEAM_ORDER_TEMPLATE = """
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Målområde 🎯</label>
+                                <label>Målområde</label>
                                 <div class="radio-group">
                                     <label>
                                         <input type="radio" name="malomrade_${activity.id}" value="eget" 
@@ -1191,7 +652,7 @@ TEAM_ORDER_TEMPLATE = """
                             </div>
                             
                             <div class="form-group">
-                                <label>Typ av handling ⚔️</label>
+                                <label>Typ av handling</label>
                                 <div class="radio-group">
                                     <label>
                                         <input type="radio" name="typ_${activity.id}" value="bygga" 
@@ -1213,15 +674,9 @@ TEAM_ORDER_TEMPLATE = """
                             <div class="form-group">
                                 <label>Påverkar/Vem</label>
                                 <div class="checkbox-group">
-                                    <label><input type="checkbox" value="Alfa" onchange="updatePaverkar(${activity.id}, 'Alfa', this.checked)">Alfa</label>
-                                    <label><input type="checkbox" value="Bravo" onchange="updatePaverkar(${activity.id}, 'Bravo', this.checked)">Bravo</label>
-                                    <label><input type="checkbox" value="STT" onchange="updatePaverkar(${activity.id}, 'STT', this.checked)">STT</label>
-                                    <label><input type="checkbox" value="FM" onchange="updatePaverkar(${activity.id}, 'FM', this.checked)">FM</label>
-                                    <label><input type="checkbox" value="BS" onchange="updatePaverkar(${activity.id}, 'BS', this.checked)">BS</label>
-                                    <label><input type="checkbox" value="Media" onchange="updatePaverkar(${activity.id}, 'Media', this.checked)">Media</label>
-                                    <label><input type="checkbox" value="SÄPO" onchange="updatePaverkar(${activity.id}, 'SÄPO', this.checked)">SÄPO</label>
-                                    <label><input type="checkbox" value="Regeringen" onchange="updatePaverkar(${activity.id}, 'Regeringen', this.checked)">Regeringen</label>
-                                    <label><input type="checkbox" value="USA" onchange="updatePaverkar(${activity.id}, 'USA', this.checked)">USA</label>
+                                    ${ACTIVE_TEAMS.map(function (team) {
+                                        return '<label><input type="checkbox" value="' + team + '" onchange="updatePaverkar(' + activity.id + ', this.value, this.checked)">' + team + '</label>';
+                                    }).join('')}
                                 </div>
                             </div>
                             
@@ -1304,8 +759,61 @@ TEAM_ORDER_TEMPLATE = """
             }
         }
         
+        function grantHPTotal() {
+            if (!IS_REGERINGEN || !Array.isArray(hpGrants)) return 0;
+            return hpGrants.reduce(function (sum, row) {
+                return sum + (parseInt(row && row.hp, 10) || 0);
+            }, 0);
+        }
+
+        function usedOrderHP() {
+            const activityHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
+            return activityHP + grantHPTotal();
+        }
+
+        function addGrantRow() {
+            if (!Array.isArray(hpGrants)) hpGrants = [];
+            hpGrants.push({ lag: GRANT_TEAMS[0] || '', hp: 0 });
+            renderGrantRows();
+            updateHPSummary();
+        }
+
+        function removeGrantRow(index) {
+            hpGrants.splice(index, 1);
+            renderGrantRows();
+            updateHPSummary();
+        }
+
+        function updateGrantRow(index, field, value) {
+            if (!hpGrants[index]) return;
+            if (field === 'hp') hpGrants[index].hp = parseInt(value, 10) || 0;
+            else hpGrants[index][field] = value;
+            updateHPSummary();
+        }
+
+        function renderGrantRows() {
+            const root = document.getElementById('hp-grant-rows');
+            if (!root) return;
+            if (!Array.isArray(hpGrants) || !hpGrants.length) {
+                hpGrants = [];
+                root.innerHTML = '<p class="text-muted">Ingen fördelning ännu.</p>';
+                return;
+            }
+            root.innerHTML = hpGrants.map(function (row, index) {
+                const options = GRANT_TEAMS.map(function (team) {
+                    const selected = team === row.lag ? ' selected' : '';
+                    return '<option value="' + team + '"' + selected + '>' + team + '</option>';
+                }).join('');
+                return '<div class="hp-grant-row">' +
+                    '<select data-field="lag" onchange="updateGrantRow(' + index + ', this.dataset.field, this.value)">' + options + '</select>' +
+                    '<input type="number" min="0" data-field="hp" value="' + (parseInt(row.hp, 10) || 0) + '" oninput="updateGrantRow(' + index + ', this.dataset.field, this.value)">' +
+                    '<button type="button" class="secondary sm" onclick="removeGrantRow(' + index + ')">Ta bort</button>' +
+                    '</div>';
+            }).join('');
+        }
+
         function updateHPSummary() {
-            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
+            const usedHP = usedOrderHP();
             const remainingHP = TEAM_MAX_HP - usedHP;
             const remainingElement = document.getElementById("remaining-hp");
             const summary = document.getElementById("hp-summary");
@@ -1373,7 +881,7 @@ TEAM_ORDER_TEMPLATE = """
         // Auto-save functionality removed
         
         function saveOrder(isFinal = false, retryCount = 0) {
-            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
+            const usedHP = usedOrderHP();
             if (usedHP > TEAM_MAX_HP) {
                 showStatus(`Du har använt ${usedHP} HP men har bara ${TEAM_MAX_HP} HP tillgängliga!`, 'error');
                 return;
@@ -1381,6 +889,9 @@ TEAM_ORDER_TEMPLATE = """
             
             const orderData = {
                 activities: activities,
+                hp_fordelning: IS_REGERINGEN ? hpGrants.filter(function (row) {
+                    return row && row.lag && (parseInt(row.hp, 10) || 0) > 0;
+                }) : [],
                 timestamp: new Date().toISOString()
             };
             
@@ -1436,15 +947,15 @@ TEAM_ORDER_TEMPLATE = """
         }
         
         function submitOrder(isAutoSubmit = false) {
-            const usedHP = activities.reduce((sum, activity) => sum + (parseInt(activity.hp, 10) || 0), 0);
+            const usedHP = usedOrderHP();
             
             if (usedHP > TEAM_MAX_HP) {
                 showStatus(`Du har använt ${usedHP} HP men har bara ${TEAM_MAX_HP} HP tillgängliga!`, 'error');
                 return;
             }
             
-            if (activities.length === 0) {
-                showStatus('Du måste lägga till minst en aktivitet!', 'error');
+            if (activities.length === 0 && grantHPTotal() <= 0) {
+                showStatus('Du måste lägga till minst en aktivitet eller fördela HP!', 'error');
                 return;
             }
             
@@ -1506,8 +1017,7 @@ TEAM_ORDER_TEMPLATE = """
                 saveBtn.style.display = 'none';
             }
             if (submitBtn) {
-                submitBtn.textContent = '✅ Order Skickad';
-                submitBtn.style.background = '#28a745';
+                submitBtn.textContent = 'Order skickad';
             }
         }
         
