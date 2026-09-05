@@ -211,7 +211,7 @@ Samma progress kan också läggas manuellt i **Inkorg**. Om Inkorg redan har han
 
 ## Vad rummet ser
 
-`build_public_state` är den enda projektorsnappen. Den innehåller runda, fas, tid, publik HP, stöd-flagga, backlog-progress, och i Resultatfas `next_hp` / `next_delta`.
+`build_public_state` är den enda projektorsnappen. Den innehåller runda, fas, tid, publik HP, stöd-flagga, backlog-progress, och i Resultatfas `next_hp` / `next_delta`. Projektorn visar timerstatus på svenska och **en stapel per lag** (procent och lagd/estimerad HP), inte uppgiftsnamn.
 
 Den innehåller **inte** inbox, händelselogg, testläge, ordrar, `llm_forslag`, `llm_resolution`, slag, sannolikheter, utfall eller nyheter.
 

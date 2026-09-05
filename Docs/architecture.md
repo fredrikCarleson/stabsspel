@@ -314,7 +314,7 @@ Order URLs use `team_tokens`, not the team name, so guessing `/team/<id>/Alfa/en
 | `app.css` | Design tokens, admin, GM console, projector, homepage. Buttons are `primary` / `danger` / `sm` (not BEM `btn--primary`). Cache-busted with `?v=` on some pages. |
 | `print.css` | Print stylesheet for cards/briefs. |
 | `gm-console.js` | Clock tick, Space pause, **N** next phase (with confirm), 3s live poll, backlog buttons, inline order edit, withdraw, testläge, opens `/spelarskarm/`. |
-| `projector.js` | Clock + 2s poll of public live JSON. In Resultatfas paints this-round vs next-round HP. No controls. F11 is left to the browser. |
+| `projector.js` | Clock + 2s poll of public live JSON. Swedish timer labels. One work bar per team. In Resultatfas paints this-round vs next-round HP. No controls. F11 is left to the browser. |
 | `admin.js` | Delete-game password modal (AJAX, stays on the same page), time-adjustment modal, `openTimerWindow` (opens the projector). |
 | `backgrounds/` | Background images. Put files here; they are served at `/static/backgrounds/<filename>`. |
 
@@ -377,7 +377,7 @@ Builds printable HTML order slips per team and round. Used from `/admin/<id>/ord
 |-------|-----------|
 | GM | Password on `/admin/<id>` → `session["game_session_<id>"]`, 6 hours, refreshed on authenticated admin requests. |
 | Team orders | Unpredictable `team_tokens[lag]` in the path. |
-| Projector | No login. Payload is deliberately **small**: round, phase, remaining time, public HP, stöd flag, and in Resultatfas `next_hp` / `next_delta`. |
+| Projector | No login. Payload is deliberately **small**: round, phase, remaining time, public HP, stöd flag, team-level work totals, and in Resultatfas `next_hp` / `next_delta`. The room HTML shows Swedish timer status (Pågår / Pausad / Inte startad) and one work bar per team, not task names. |
 
 Do not point a projector at `/admin/<id>` or `/admin/<id>/live` if you care about leaking orders. Use `/spelarskarm/<id>`.
 

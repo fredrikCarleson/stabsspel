@@ -1376,24 +1376,6 @@ def _projector_progress_html(progress):
         return ""
     cards = []
     for team in progress:
-        rows = []
-        for item in team.get("items") or []:
-            phases = ""
-            if item.get("phases"):
-                ticks = "".join(
-                    f'<span class="{"is-done" if phase.get("done") else ""}">'
-                    f'{escape(phase.get("name") or "")}</span>'
-                    for phase in item["phases"]
-                )
-                phases = f'<div class="projector-phases">{ticks}</div>'
-            done_class = " is-done" if item.get("done") else ""
-            rows.append(
-                f'<div class="projector-task{done_class}">'
-                f'<span class="projector-task-name">{escape(item.get("name") or "")}</span>'
-                f'<span class="projector-task-hp">{item.get("spent", 0)}/{item.get("estimated", 0)}</span>'
-                f'{_projector_bar(item.get("percent"))}'
-                f"{phases}</div>"
-            )
         cards.append(
             f'<section class="projector-progress-card">'
             f'<div class="projector-progress-head">'
@@ -1402,7 +1384,7 @@ def _projector_progress_html(progress):
             f'{team.get("spent", 0)}/{team.get("estimated", 0)} HP</div>'
             f"</div>"
             f'{_projector_bar(team.get("percent"), "is-team")}'
-            f'{"".join(rows)}</section>'
+            f"</section>"
         )
     return (
         '<h2 class="projector-progress-title">Teamens arbete</h2>'
@@ -1441,7 +1423,7 @@ def create_projector_html(spel_id, data):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spelarskärm – runda {state["runda"]}</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="/static/app.css?v=36">
+  <link rel="stylesheet" href="/static/app.css?v=45">
 </head>
 <body class="projector-page">
   <script type="application/json" id="projector-state">{state_json}</script>
@@ -1450,7 +1432,7 @@ def create_projector_html(spel_id, data):
       <div class="projector-round">Runda {state["runda"]}/{state["max_runda"]}</div>
       <div class="projector-phase">{escape(state["fas"])}</div>
       <div class="projector-clock{clock_class}" id="projector-clock">{_fmt_time(state["remaining"])}</div>
-      <div class="projector-status" id="projector-status">{escape(state["timer_status"])}{ended}</div>
+      <div class="projector-status" id="projector-status">{escape(_timer_status_label(state["timer_status"]))}{ended}</div>
     </div>
     <div class="projector-hp" id="projector-hp">{team_cards}</div>
     <div class="projector-progress" id="projector-progress">{progress_html}</div>
@@ -1458,7 +1440,7 @@ def create_projector_html(spel_id, data):
   <button type="button" class="projector-audio-hint" id="projector-audio-hint" hidden>
     Klicka för ljudvarningar
   </button>
-  <script src="/static/projector.js?v=4"></script>
+  <script src="/static/projector.js?v=5"></script>
 </body>
 </html>
 '''

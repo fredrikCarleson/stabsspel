@@ -171,6 +171,10 @@
     );
   }
 
+  function timerStatusLabel(status) {
+    return ({ running: "Pågår", paused: "Pausad", stopped: "Inte startad" })[status] || status || "";
+  }
+
   function paintProgress(progress) {
     var root = document.getElementById("projector-progress");
     if (!root) return;
@@ -180,43 +184,6 @@
     }
     var cards = progress
       .map(function (team) {
-        var rows = (team.items || [])
-          .map(function (item) {
-            var phases = "";
-            if (item.phases && item.phases.length) {
-              phases =
-                '<div class="projector-phases">' +
-                item.phases
-                  .map(function (phase) {
-                    return (
-                      '<span class="' +
-                      (phase.done ? "is-done" : "") +
-                      '">' +
-                      escapeHtml(phase.name || "") +
-                      "</span>"
-                    );
-                  })
-                  .join("") +
-                "</div>";
-            }
-            return (
-              '<div class="projector-task' +
-              (item.done ? " is-done" : "") +
-              '">' +
-              '<span class="projector-task-name">' +
-              escapeHtml(item.name || "") +
-              "</span>" +
-              '<span class="projector-task-hp">' +
-              (item.spent || 0) +
-              "/" +
-              (item.estimated || 0) +
-              "</span>" +
-              barHtml(item.percent) +
-              phases +
-              "</div>"
-            );
-          })
-          .join("");
         return (
           '<section class="projector-progress-card">' +
           '<div class="projector-progress-head">' +
@@ -231,7 +198,6 @@
           (team.estimated || 0) +
           " HP</div></div>" +
           barHtml(team.percent, "is-team") +
-          rows +
           "</section>"
         );
       })
@@ -306,7 +272,7 @@
     if (roundEl) roundEl.textContent = "Runda " + next.runda + "/" + next.max_runda;
     if (phaseEl) phaseEl.textContent = next.fas;
     if (statusEl) {
-      statusEl.textContent = next.avslutat ? "Spelet är slut" : next.timer_status || "";
+      statusEl.textContent = next.avslutat ? "Spelet är slut" : timerStatusLabel(next.timer_status);
     }
     state.remaining = next.remaining;
     state.timer_status = next.timer_status;

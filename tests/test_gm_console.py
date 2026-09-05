@@ -316,12 +316,16 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("projector-clock", html)
         self.assertIn("Alfa", html)
         self.assertIn("Teamens arbete", html)
-        self.assertIn("Inloggning val", html)
+        visible = html.split("</script>", 1)[1]
+        self.assertNotIn("Inloggning val", visible)
+        self.assertNotIn("projector-task", visible)
         self.assertIn("projector-progress", html)
         self.assertIn("projector-audio-hint", html)
         self.assertIn("Klicka för ljudvarningar", html)
-        self.assertIn("projector.js?v=4", html)
-        self.assertIn("app.css?v=36", html)
+        self.assertIn("projector.js?v=5", html)
+        self.assertIn("app.css?v=45", html)
+        self.assertIn("Inte startad", html)
+        self.assertNotIn(">stopped<", html)
         self.assertIn("Denna runda", html)
         self.assertIn("Nästa runda", html)
         self.assertIn("projector-team is-loss", html)
@@ -866,6 +870,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Utfall och sannolikhet", projector)
         self.assertNotIn("produktionssatt", projector)
         self.assertNotIn("Slag 100", projector)
+
 
 if __name__ == "__main__":
     unittest.main()

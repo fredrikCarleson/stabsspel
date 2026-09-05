@@ -3371,14 +3371,14 @@ button.gm-icon-btn:active {
 }
 .projector-progress-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
 }
 .projector-progress-card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: 12px;
-  padding: 16px 18px 18px;
+  padding: 12px 14px 14px;
 }
 .projector-progress-head {
   display: flex;
