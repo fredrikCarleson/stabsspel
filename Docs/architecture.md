@@ -389,7 +389,7 @@ Testläge (default off) reveals auto-fill and related cheat controls. Keep it of
 
 The **live surface** is the compact header + tabs in `gm_console_ui.py`.
 
-Header: round, phase, timer, game metadata, **Spelarskärm**. Action row: Nästa / Föregående / Ångra, Starta/Pausa, ±1 min, **Nollställ timer**, **Meny** (Testläge, testdata, fallback pages, LLM-export, reset). Clock never lives in a tab.
+Header: round, phase, timer, game metadata, **Spelarskärm**. Action row: Nästa / Föregående / Ångra, Starta/Pausa, ±1 min, **Nollställ timer**, **Meny** (Testläge, testdata, fallback pages, LLM-export, reset). Clock never lives in a tab. **Starta** is the primary action until the timer is running; **Nästa** stays secondary until then. Orderfas readiness chips are compact roster pills; missing teams are not a red wall.
 
 Tabs: **Inkorg**, **LLM-resultat** (Diplomatifas/Resultatfas), **Lag**, **Arbete**, **Historik**. Tabs that need a GM action show the word **Att göra**. Resultatfas opens on Lag and shows the körschema above the tabs.
 

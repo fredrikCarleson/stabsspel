@@ -83,6 +83,9 @@
       var running = live.timer_status === "running";
       startBtn.hidden = running;
       pauseBtn.hidden = !running;
+      startBtn.className = running ? "success" : "primary";
+      var nextBtn = document.querySelector('#gm-next-form [name="action"]');
+      if (nextBtn) nextBtn.className = running ? "primary" : "secondary";
     }
   }
 

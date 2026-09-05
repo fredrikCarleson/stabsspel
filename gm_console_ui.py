@@ -725,6 +725,9 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     readiness_html = _readiness_html(state)
     start_hidden = "hidden" if timer_status == "running" else ""
     pause_hidden = "hidden" if timer_status != "running" else ""
+    timer_running = timer_status == "running"
+    next_btn_class = "primary" if timer_running else "secondary"
+    start_btn_class = "success" if timer_running else "primary"
     clock_class = _clock_warn_class(remaining)
     backlog_html = _backlog_html(state["backlog"], avslutat)
     log_html = _log_section_html(state.get("history") or [], state["log"])
@@ -851,6 +854,7 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     })
 
     return f'''
+    <link rel="stylesheet" href="/static/app.css?v=46">
     <div class="gm-console" id="gm-console">
       <script type="application/json" id="gm-state">{state_json}</script>
       <div class="gm-bar">
@@ -878,7 +882,7 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
         <div class="gm-bar-actions">
           <div class="gm-bar-phase">
             <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline" id="gm-next-form" data-next-action="{next_action}" {next_confirm}>
-              <button name="action" value="{next_action}" class="primary" {next_disabled}>{escape(next_label)}</button>
+              <button name="action" value="{next_action}" class="{next_btn_class}" {next_disabled}>{escape(next_label)}</button>
             </form>
             <form method="post" action="/admin/{escape(spel_id)}/timer" class="d-inline">
               <button name="action" value="prev_fas" class="secondary" {back_disabled}>Föregående</button>
@@ -889,7 +893,7 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
           </div>
           <div class="gm-bar-tools">
             <form method="post" action="/admin/{escape(spel_id)}/timer" class="gm-bar-time">
-              <button name="action" value="start" class="success" {timer_disabled} {start_hidden}>Starta</button>
+              <button name="action" value="start" class="{start_btn_class}" {timer_disabled} {start_hidden}>Starta</button>
               <button name="action" value="pause" class="warning" {timer_disabled} {pause_hidden}>Pausa</button>
               <button name="action" value="add_min" class="secondary" {timer_disabled}>+1 min</button>
               <button name="action" value="sub_min" class="secondary" {timer_disabled}>−1 min</button>

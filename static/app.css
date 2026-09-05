@@ -1867,16 +1867,18 @@ thead th {
 }
 
 .gm-chips {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .gm-chip {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 14px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 6px 10px;
   border: 1px solid var(--c-border);
   border-radius: var(--radius-8);
   background: var(--c-surface);
@@ -1885,40 +1887,47 @@ thead th {
 .gm-chip-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--c-muted);
+  color: var(--c-text);
 }
 
 .gm-chip-status {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   line-height: 1.2;
   text-transform: uppercase;
+  color: var(--c-muted);
 }
 
 .gm-chip-hp {
-  font-size: 13px;
-  color: var(--c-text);
+  font-size: 12px;
+  color: var(--c-muted);
 }
 
 .gm-chip-note {
   font-size: 12px;
   color: var(--c-muted);
+  flex-basis: 100%;
 }
 
 .gm-chip.gm-status-empty {
-  border-color: var(--c-danger);
-  background: var(--note-error-bg);
+  border-color: var(--c-border);
+  background: var(--c-bg);
+  color: inherit;
 }
+.gm-chip.gm-status-empty .gm-chip-status { color: var(--c-muted); }
 .gm-chip.gm-status-draft {
   border-color: var(--c-warning);
   background: var(--note-warning-bg);
 }
+.gm-chip.gm-status-draft .gm-chip-status { color: var(--c-warning); }
 .gm-chip.gm-status-submitted,
 .gm-chip.gm-status-changed {
   border-color: var(--c-success);
   background: var(--note-success-bg);
 }
+.gm-chip.gm-status-submitted .gm-chip-status,
+.gm-chip.gm-status-changed .gm-chip-status { color: var(--c-success); }
 
 .gm-readiness-summary {
   margin: 10px 0 0;
@@ -2774,10 +2783,10 @@ thead th {
   background: var(--c-bg);
 }
 
-.gm-status-empty { color: var(--c-danger); background: var(--note-error-bg); }
-.gm-status-draft { color: var(--note-warning-fg); background: var(--note-warning-bg); }
-.gm-status-submitted { color: var(--note-success-fg); background: var(--note-success-bg); }
-.gm-status-changed { color: var(--c-primary-strong); background: var(--note-info-bg); }
+.gm-status.gm-status-empty { color: var(--c-danger); background: var(--note-error-bg); }
+.gm-status.gm-status-draft { color: var(--note-warning-fg); background: var(--note-warning-bg); }
+.gm-status.gm-status-submitted { color: var(--note-success-fg); background: var(--note-success-bg); }
+.gm-status.gm-status-changed { color: var(--c-primary-strong); background: var(--note-info-bg); }
 
 .gm-inbox-wrap {
   overflow-x: auto;

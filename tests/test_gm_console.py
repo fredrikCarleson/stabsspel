@@ -469,8 +469,8 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn('id="gm-test-form"', html)
         self.assertIn('class="gm-autofill gm-menu-autofill" hidden', html)
         self.assertIn('id="gm-attention" hidden', html)
-        self.assertIn('value="next_fas" class="primary"', html)
-        self.assertIn('value="start" class="success"', html)
+        self.assertIn('value="next_fas" class="secondary"', html)
+        self.assertIn('value="start" class="primary"', html)
         self.assertNotIn('value="next_fas" class="success"', html)
         self.assertIn('value="pause" class="warning"', html)
         self.assertIn("lag utan inskickad order", html)
@@ -478,6 +478,11 @@ class TestGmConsoleHtml(unittest.TestCase):
         fragments = live_html_fragments("g1", build_live_state(data))
         self.assertIn("gm-chip", fragments["readiness"])
         self.assertEqual(fragments["attention"], "")
+
+        data["timer_status"] = "running"
+        running = create_gm_console_html("g1", data)
+        self.assertIn('value="next_fas" class="primary"', running)
+        self.assertRegex(running, r'value="start" class="success"[^>]*\bhidden\b')
 
         data["fas"] = "Diplomatifas"
         dip = create_gm_console_html("g1", data)
