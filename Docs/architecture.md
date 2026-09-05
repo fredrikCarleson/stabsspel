@@ -288,8 +288,8 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `/admin/<id>/orderkort` | Pick a round, then printable paper order cards for all teams |
 | `/admin/<id>/orderkort/<runda>` | HTML for that round |
 | `/team/<id>/<lag>/orderkort` | Paper cards for one team (link on the team brief page) |
-| `/admin/<id>/backlog` | Full backlog table (fallback; spend is on the console) |
-| `/admin/<id>/poang` | Full HP table (fallback; strip is on the console) |
+| `/admin/<id>/backlog` | Leftover full backlog table. Spend is on the console **Arbete** tab. Not linked from Meny. |
+| `/admin/<id>/poang` | Leftover full HP table. The HP strip is on the console **Lag** tab. Not linked from Meny. |
 | `/admin/download_game/<id>`, `/admin/upload_game` | JSON backup |
 
 **Leftover chrome** (old checklists and extra timer widgets). They are no longer injected under the live console. `create_timer_controls` and phase checklists in this file are unused previous-admin-shell builders; do not add new GM workflows there.
@@ -389,11 +389,11 @@ Testläge (default off) reveals auto-fill and related cheat controls. Keep it of
 
 The **live surface** is the compact header + tabs in `gm_console_ui.py`.
 
-Header: round, phase, timer, game metadata, **Spelarskärm**. Action row: Nästa / Föregående / Ångra, Starta/Pausa, ±1 min, **Nollställ timer**, **Meny** (Testläge, testdata, fallback pages, LLM-export, reset). Clock never lives in a tab. **Starta** is the primary action until the timer is running; **Nästa** stays secondary until then. Orderfas readiness chips are compact roster pills; missing teams are not a red wall.
+Header: round, phase, timer, game metadata, **Spelarskärm**. Action row: Nästa / Föregående / Ångra, Starta/Pausa, ±1 min, **Nollställ timer**, **Meny** (Testläge, testdata, aktivitetskort, LLM-export, reset). Clock never lives in a tab. **Starta** is the primary action until the timer is running; **Nästa** stays secondary until then. Orderfas readiness chips are compact roster pills; missing teams are not a red wall.
 
 Tabs: **Inkorg**, **LLM-resultat** (Diplomatifas/Resultatfas), **Lag**, **Arbete**, **Historik**. Tabs that need a GM action show the word **Att göra**. Resultatfas opens on Lag and shows the körschema above the tabs.
 
-`admin_routes.admin_panel` no longer injects the old quarter bar, team-overview cards, or phase-history cards under the console. Named quarters live in Resultatfas. Phase history lives in **Händelselogg**. Unused checklist/timer HTML builders may still exist in `admin_routes.py`; do not grow them.
+`admin_routes.admin_panel` no longer injects the old quarter bar, team-overview cards, or phase-history cards under the console. Named quarters live in Resultatfas. Phase history lives in **Händelselogg**. Unused checklist/timer HTML builders may still exist in `admin_routes.py`; do not grow them. `/admin` is create/upload only; open saved games from the home page.
 
 Keyboard on the console: **Space** pause/resume, **N** next phase (existing confirm).
 

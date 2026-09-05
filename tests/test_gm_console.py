@@ -462,6 +462,10 @@ class TestGmConsoleHtml(unittest.TestCase):
         menu_start = html.find('<details class="gm-menu gm-app-menu">')
         menu_html = html[menu_start:html.find("</details>", menu_start)]
         self.assertNotIn("Nollställ timer", menu_html)
+        self.assertNotIn("HP-tabell", menu_html)
+        self.assertNotIn("/poang", menu_html)
+        self.assertNotIn("/backlog", menu_html)
+        self.assertIn("Aktivitetskort", menu_html)
         self.assertNotIn("Gå till nästa fas? Det går att ångra.", html)
         self.assertIn("Testläge", html)
         self.assertIn("Redigera order", html)
@@ -889,6 +893,17 @@ class TestTeamBriefHtml(unittest.TestCase):
         self.assertIn("app.css?v=47", src)
         self.assertLess(src.find("brief-qr"), src.find("brief-body"))
         self.assertNotIn("📱", src)
+
+
+class TestAdminStartHtml(unittest.TestCase):
+    def test_admin_start_points_home_instead_of_listing_games(self):
+        import inspect
+        from admin_routes import admin_start
+
+        src = inspect.getsource(admin_start)
+        self.assertNotIn("Befintliga spel", src)
+        self.assertIn("Till startsidan", src)
+        self.assertIn('href="/"', src)
 
 
 if __name__ == "__main__":

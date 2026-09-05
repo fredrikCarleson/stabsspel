@@ -1099,17 +1099,7 @@ def admin_start():
         spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min, password)
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
     
-    # Lista befintliga spel
-    spel = []
-    for game in list_saved_games():
-        spel.append({
-            "id": game["id"],
-            "datum": game.get("datum", ""),
-            "plats": game.get("plats", ""),
-            "runda": game.get("runda", 1),
-            "fas": game.get("fas", ""),
-        })
-    
+    game_count = sum(1 for _ in list_saved_games())
     intervals = [
         ("15-26 (5 team)", 20),
         ("27-60 (9 team)", 27)
@@ -1120,7 +1110,7 @@ def admin_start():
     
     return f'''
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/static/app.css?v=10">
+        <link rel="stylesheet" href="/static/app.css?v=48">
         <link rel="stylesheet" href="/static/print.css" media="print">
         <div class="container">
             <!-- Header Section -->
@@ -1199,39 +1189,10 @@ def admin_start():
                     </a>
                 </div>
                 
-                <!-- Existing Games -->
-                <div class="admin-form-section success">
-                    <h2>
-                        <span class="admin-form-section-icon">📋</span>
-                        Befintliga spel ({len(spel)})
-                    </h2>
-                    
-                    {f'''
-                    <div class="scroll-y-400">
-                        {''.join([f'''
-                        <div class="list-card border-left-success" data-game-card-id="{s["id"]}">
-                            <div class="flex-between">
-                                <div class="flex-1">
-                                    <h3 class="h3-compact">{s["datum"]}</h3>
-                                    <p class="mb-0 text-muted">📍 {s["plats"]}</p>
-                                    <p class="mt-5px text-xs text-muted-light">Runda {s.get("runda", "?")} · {s.get("fas", "")} · ID: {s["id"]}</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <a href="/admin/{s["id"]}" class="primary sm link-light">▶️ Öppna</a>
-                                    <a href="/admin/download_game/{s["id"]}" class="secondary sm link-light">💾 Ladda ner</a>
-                                    {create_delete_game_button(s["id"], f'{s["datum"]} – {s["plats"]}')}
-                                </div>
-                            </div>
-                        </div>
-                        ''' for s in spel])}
-                    </div>
-                    ''' if spel else '''
-                    <div class="text-center empty-box text-muted">
-                        <div class="emoji-xl">📭</div>
-                        <h3 class="mb-0">Inga spel ännu</h3>
-                        <p class="text-sm">Skapa ditt första spel genom att fylla i formuläret till vänster.</p>
-                    </div>
-                    '''}
+                <div class="admin-form-section">
+                    <h2>Sparade spel</h2>
+                    <p class="text-muted mb-3">Öppna, ladda ner och ta bort spel från startsidan.</p>
+                    <a href="/" class="secondary lg">Till startsidan</a>
                 </div>
             </div>
             
@@ -1244,7 +1205,7 @@ def admin_start():
                 <div class="grid-auto-200">
                     <div class="stat-box">
                         <div class="emoji-lg">🎮</div>
-                        <h3 class="mb-0">{len(spel)}</h3>
+                        <h3 class="mb-0">{game_count}</h3>
                         <p class="mt-5px text-sm text-muted">Totalt antal spel</p>
                     </div>
                     <div class="stat-box">

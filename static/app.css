@@ -693,6 +693,9 @@ thead th {
 .admin-start-tabs .app-tabpanel {
   padding: 16px 18px;
 }
+.admin-start-home {
+  margin: 8px 24px 24px;
+}
 .admin-create-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(15rem, 0.7fr);

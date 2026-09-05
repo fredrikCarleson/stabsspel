@@ -173,8 +173,6 @@ def gm_app_menu_html(spel_id, test_mode=False, runda=1, has_orders=False):
         f'onsubmit="return confirm(\'{escape(autofill_confirm)}\');">'
         f'<button type="submit" class="gm-menu-item" role="menuitem">'
         f'{_heroicon("beaker")}{escape(autofill_label)}</button></form>'
-        f'{_gm_menu_item(f"/admin/{sid}/poang", "table-cells", "HP-tabell")}'
-        f'{_gm_menu_item(f"/admin/{sid}/backlog", "queue-list", "Backlog")}'
         f'{_gm_menu_item(f"/admin/{sid}/aktivitetskort", "identification", "Aktivitetskort", " target=_blank")}'
         f'{_gm_menu_item(f"/admin/{sid}/order_summary", "arrow-up-tray", "LLM-export")}'
         f'{_gm_menu_item("/admin", "squares-2x2", "Alla spel")}'
