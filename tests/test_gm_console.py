@@ -877,5 +877,19 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Slag 100", projector)
 
 
+class TestTeamBriefHtml(unittest.TestCase):
+    def test_brief_uses_readable_column_and_qr_first(self):
+        import inspect
+        from team_routes import team_beskrivning
+
+        src = inspect.getsource(team_beskrivning)
+        self.assertIn("brief-page", src)
+        self.assertIn("brief-wrap", src)
+        self.assertIn("Ange order", src)
+        self.assertIn("app.css?v=47", src)
+        self.assertLess(src.find("brief-qr"), src.find("brief-body"))
+        self.assertNotIn("📱", src)
+
+
 if __name__ == "__main__":
     unittest.main()

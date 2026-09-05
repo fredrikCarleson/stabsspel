@@ -51,18 +51,16 @@ def team_beskrivning(spel_id, lag_namn):
             full_url = request.url_root.rstrip('/') + team_order_url
             qr_code_data = generate_qr_code(full_url)
             qr_code_html = f'''
-            <div class="qr-panel">
-                <h3 class="mb-2">📱 Ange Order</h3>
-                <div class="qr-content">
-                    <div>
-                        <img src="{qr_code_data}" alt="QR Code" class="qr-image">
-                    </div>
-                    <div class="qr-info">
-                        <p class="qr-title">Skanna QR-koden eller gå till:</p>
-                        <p class="qr-link">{full_url}</p>
+            <section class="brief-qr">
+                <h2>Ange order</h2>
+                <div class="brief-qr-row">
+                    <img src="{qr_code_data}" alt="QR-kod till orderformulär" class="brief-qr-image">
+                    <div class="brief-qr-info">
+                        <p class="brief-qr-help">Skanna koden eller öppna länken på telefonen.</p>
+                        <a class="brief-qr-link" href="{team_order_url}">{full_url}</a>
                     </div>
                 </div>
-            </div>
+            </section>
             '''
     
     # Läs beskrivningstext
@@ -88,7 +86,6 @@ def team_beskrivning(spel_id, lag_namn):
             <img src="/teambeskrivning/{lag_namn.lower()}.jpg" alt="{lag_namn}" class="team-image-print">
         </div>
         '''
-    # Förbättrad utskriftsvänlig och lättläst CSS
     html_content = f'''
         <!DOCTYPE html>
         <html lang="sv">
@@ -98,21 +95,25 @@ def team_beskrivning(spel_id, lag_namn):
             <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
+            <title>{lag_namn}</title>
             <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="/static/app.css">
+            <link rel="stylesheet" href="/static/app.css?v=47">
             <link rel="stylesheet" href="/static/print.css">
         </head>
-        <body>
-        <div class="container">
-        <div class="flex gap-2 mb-2 no-print">
-            <button onclick="window.print()" class="secondary">Skriv ut</button>
-            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="info">
+        <body class="brief-page">
+        <div class="brief-wrap">
+        <div class="brief-toolbar no-print">
+            <button type="button" onclick="window.print()" class="secondary">Skriv ut</button>
+            <a href="/team/{spel_id}/{lag_namn}/orderkort" target="_blank" class="secondary">
                 Skriv ut orderkort
             </a>
         </div>
-        <h1>{lag_namn}</h1>
+        <header class="brief-head">
+            <p class="brief-kicker">Lagbeskrivning</p>
+            <h1>{lag_namn}</h1>
+        </header>
         {qr_code_html}
-        <div>{Markup(text_html)}</div>
+        <div class="brief-body">{Markup(text_html)}</div>
         {img_html}
         </div>
         </body>
@@ -135,4 +136,4 @@ def team_orderkort(spel_id, lag_namn):
 
 @team_bp.route("/teambeskrivning/<filename>")
 def team_bild(filename):
-    return send_from_directory("teambeskrivning", filename) 
+    return send_from_directory("teambeskrivning", filename)

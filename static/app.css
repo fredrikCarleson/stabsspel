@@ -4539,3 +4539,115 @@ body.gm-page > .container {
     width: auto;
   }
 }
+
+.brief-page {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-ui);
+}
+.brief-wrap {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+.brief-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.brief-head {
+  margin: 0 0 20px;
+}
+.brief-kicker {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.brief-head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3rem);
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+.brief-banner {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-left: 4px solid var(--c-primary);
+  border-radius: var(--radius-8);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.brief-qr {
+  margin: 0 0 28px;
+  padding: 16px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+}
+.brief-qr h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.brief-qr-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.brief-qr-image {
+  width: 160px;
+  height: 160px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: #fff;
+}
+.brief-qr-help {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 15px;
+}
+.brief-qr-link {
+  display: block;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--c-primary-strong);
+  background: var(--c-bg);
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+}
+.brief-body {
+  font-size: 17px;
+  line-height: 1.55;
+  max-width: 40rem;
+}
+.brief-body b {
+  display: block;
+  margin-top: 1.1em;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+@media (min-width: 640px) {
+  .brief-qr-row {
+    flex-direction: row;
+    align-items: center;
+  }
+}

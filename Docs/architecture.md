@@ -300,7 +300,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 
 | File | Purpose |
 |------|---------|
-| `team_routes.py` | `/team/<id>/<lag>` — brief from `teambeskrivning/`, optional photo, QR to order URL. `/teambeskrivning/<file>` for images. |
+| `team_routes.py` | `/team/<id>/<lag>` — brief from `teambeskrivning/`, optional photo, QR to order URL first, then readable goal text. `/teambeskrivning/<file>` for images. |
 | `team_order_routes.py` | Token-gated order form (phone-first, `app.css`). Draft save, final submit, **withdraw in Orderfas only**. Timer JSON for the team page. GM may open the same form with `?admin_edit=true` (session required). |
 | Projector in `app.py` | `/spelarskarm/<id>` HTML + `/spelarskarm/<id>/live` JSON via `build_public_state`. Safe to project. |
 | `/timer_window/<id>` in `app.py` | **Legacy** GM timer with Start/Pausa. Spelarskärm no longer opens this. |
@@ -398,6 +398,8 @@ Tabs: **Inkorg**, **LLM-resultat** (Diplomatifas/Resultatfas), **Lag**, **Arbete
 Keyboard on the console: **Space** pause/resume, **N** next phase (existing confirm).
 
 The team order form is a separate phone page: team, round, phase, remaining HP, then activities. **Skicka slutgiltig order** is the primary action; draft save is secondary. Other teams' work is folded.
+
+The team brief (`/team/<id>/<lag>`) is a readable column: team name, QR to the order form, then the goal text. Print actions stay secondary.
 
 ---
 
