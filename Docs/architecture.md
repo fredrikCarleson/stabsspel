@@ -50,7 +50,7 @@ The app’s job is to **keep the room on the clock** and hold **orders, HP, back
 - Create / resume a game, password-protect the GM panel, delete a game (password in a modal)
 - Run Order → Diplomacy → Result (four rounds), with timer, undo, and previous phase
 - Collect team orders (draft → submit → optional withdraw in Orderfas)
-- Show one GM console: compact header, tabs (Inkorg, LLM-resultat, Lag, Arbete, Historik)
+- Show one GM console: compact header, tabs (Inkorg, LLM-resultat, Lag except Orderfas, Arbete, Historik)
 - Project round, phase, time, public HP (and in Resultatfas this-round vs next-round HP) to the room
 - Print activity cards, order cards, team briefs, QR links to order entry
 - Freeze 1–100 rolls per submitted order, import LLM JSON (`utfall`, news, HP, milestones)
@@ -81,7 +81,7 @@ Spelledarpanel  ──────────────►  Spelarskärm  (/s
                 └── next round (or end after round 4)
 ```
 
-News still happen **outside** the studio workflow: **Kopiera till LLM** opens `/admin/<id>/order_summary` (fill `Docs/prompt.md`, freeze rolls, copy) → paste JSON on that page → console tab **LLM-resultat** → copy headlines to paper → studio. The copy step freezes 1–100 rolls per submitted order (`llm_resolution`). The LLM must reuse those rolls when an outcome is actually uncertain; it must not invent dice. Unused rolls are valid: ordinary backlog work is deterministic progress and should not appear in `utfall`. Imported `utfall` is GM-only. Suggestions (`llm_forslag`) can apply HP/backlog on confirm. Projector payloads must not include `llm_forslag`, `llm_resolution`, rolls, probabilities, or order refs.
+News still happen **outside** the studio workflow: **Kopiera till LLM** opens `/admin/<id>/order_summary` (fill `Docs/prompt.md`, freeze rolls, copy) → paste JSON on that page → console tab **LLM-resultat** → copy headlines to paper → studio. The copy step freezes 1–100 rolls per submitted order (`llm_resolution`). The LLM must reuse those rolls when an outcome is actually uncertain; it must not invent dice. Unused rolls are valid for ordinary backlog work, which should not appear in `utfall`. Orders without a backlog id, and FÖRSTÖRA orders, should have `utfall`; the GM tab lists gaps as **Saknar utfall**. Imported `utfall` is GM-only. Suggestions (`llm_forslag`) can apply HP/backlog on confirm. Projector payloads must not include `llm_forslag`, `llm_resolution`, rolls, probabilities, or order refs.
 
 | Role | Where they look |
 |------|-----------------|
@@ -145,7 +145,7 @@ flowchart TB
 
 1. GM opens `/admin/<id>`, enters password → Flask session (6 hours, sliding).
 2. Panel HTML is `create_gm_console_html`: compact header (round/phase/timer, metadata, Spelarskärm) plus an action row (Nästa / Föregående / Ångra, timer, **Meny**).
-3. Always-on tabs: **Inkorg**, **Lag**, **Arbete**, **Historik**. Diplomatifas and Resultatfas also get **LLM-resultat**. Default tab is Inkorg except Resultatfas (Lag), unless `?llm_view=` opens LLM-resultat.
+3. Always-on tabs: **Inkorg**, **Arbete**, **Historik**. **Lag** is hidden in Orderfas and shown in Diplomatifas and Resultatfas. Diplomatifas and Resultatfas also get **LLM-resultat**. Default tab is Inkorg except Resultatfas (Lag), unless `?llm_view=` opens LLM-resultat.
 4. `static/gm-console.js` polls `GET /admin/<id>/live` every 3s (inbox, HP, backlog, LLM apply state).
 5. HP / backlog / inline order edits POST JSON; domain mutates the dict; `save_game_data` writes JSON under a per-game lock.
 6. Projector polls `GET /spelarskarm/<id>/live` — **public** snapshot only (no inbox, log, testläge, rolls, or `utfall`).
@@ -172,8 +172,8 @@ Created in `skapa_nytt_spel` and grown during play:
 | `runda` | 1–4 |
 | `fas` | `Orderfas` / `Diplomatifas` / `Resultatfas` |
 | `avslutat` | Game over |
-| `poang.<lag>` | `{ bas, aktuell, regeringsstod }` — spendable HP is `aktuell`, plus +10 if stöd |
-| `hp_pending` | Queued HP deltas applied when a new round starts. LLM **Tillämpa HP** and GM ± after Orderfas change next round's wallet, not this round's remaining. |
+| `poang.<lag>` | `{ bas, aktuell, varaktigt, tillfalligt }` — spendable this round is `bas + varaktigt + tillfalligt` (`aktuell` is a synced cache). `regeringsstod` on old saves is folded into `tillfalligt` once |
+| `hp_pending` | Queued HP deltas applied when a new round starts. Each item may set `varaktig`. LLM **Tillämpa HP** and GM ± after Orderfas change next round's wallet, not this round's remaining. |
 | `backlog` | Dev-team work (Alfa / Bravo / STT). Bravo has phases (Krav, Design, …). `tidigare_hp` is the spent mark from the previous round for GM progress bars. |
 | `team_orders.orders_round_N.<lag>` | `{ orders.activities[], final, submitted_at, updated_at, edited_by_gm, … }` |
 | `team_tokens` | Secret URLs for order entry |
@@ -185,9 +185,9 @@ Created in `skapa_nytt_spel` and grown during play:
 | `test_mode` | Shows auto-fill / cheat links |
 | `fashistorik` | Phase history for the panel |
 
-**HP rule that bites live:** transfers use stored `aktuell`, not effective HP. Government support (+10) is **not** transferable and is a GM flag, not Regeringen's player pool. When Regeringen is in `lag`, its 12 HP is political cash: the player may grant it to other active teams (immediate transfer on submit) or spend the remainder on influence orders. Granted HP leaves the pool the same round and cannot also be spent on an order. At **Starta nästa runda** Regeringen's `aktuell` resets to `bas` before `hp_pending` is applied. Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and change `aktuell` when **Starta nästa runda** runs, and also when **Avsluta spelet** runs after round 4. GM ± during Orderfas still changes this round immediately. Auto-fyll scales testdata activity HP to each team's current spendable wallet and retargets `paverkar`/copy away from optional teams that are not in this game. Recurring STT tasks (`aterkommande`) start a new attempt when already at cap.
+**HP rule that bites live:** spendable this round is `bas + varaktigt + tillfalligt`. **Bas** is table HP. **Varaktigt** is lasting income (e.g. DevOps +3) and survives a new round. **Tillfälligt** is this round only (government grant, spy drop, LLM `hp[]`, GM one-off, transfers) and is cleared before `hp_pending` is applied. Transfers move tillfällig HP this round and can dip below income; next round both sides return to income plus the queue. When Regeringen is in `lag`, its 12 HP is political cash: the player may grant it to other active teams (immediate transfer on submit) or spend the remainder on influence orders. Granted HP leaves the pool the same round and cannot also be spent on an order. At **Starta nästa runda** temporary HP expires for every team, then `hp_pending` is applied (`varaktig` items join income, the rest are tillfälliga next round). Order consequences (LLM **Tillämpa HP**, and GM ± in Diplomatifas/Resultatfas) are queued in `hp_pending` and land when **Starta nästa runda** runs, and also when **Avsluta spelet** runs after round 4. GM ± during Orderfas still changes this round immediately. Lasting income is GM-only on Lag (Varje runda); do not double-count DevOps as both +HP and free backlog. Auto-fyll scales testdata activity HP to each team's current spendable wallet and retargets `paverkar`/copy away from optional teams that are not in this game. Recurring STT tasks (`aterkommande`) start a new attempt when already at cap.
 
-The projector in Resultatfas shows **Denna runda → Nästa runda** from `build_public_state` (`hp`, `next_hp`, `next_delta`). Next-round HP is `aktuell` after queued deltas, without stöd (stöd is cleared on new round before pending HP is applied). If an older **Tillämpa HP** already wrote the delta into `aktuell` and left `hp_pending` empty, the same forecast is derived from the applied LLM `hp` list so the room does not see “Oförändrat”.
+The projector in Resultatfas shows **Denna runda → Nästa runda** from `build_public_state` (`hp`, `next_hp`, `next_delta`, plus `bas` / `varaktigt` / `tillfalligt` and the same keys prefixed `next_`). Next-round HP is income (bas + varaktigt) after queued deltas; this-round tillfälligt expires. The room sees the recipe (bas, varaktigt, tillfälligt), not a stöd +10 footnote. If an older **Tillämpa HP** already wrote the delta into `aktuell` and left `hp_pending` empty, the same forecast is derived from the applied LLM `hp` list so the room does not see “Oförändrat”.
 
 Wallet HP (next round's cash) is not backlog HP (progress on Teamens arbete). A successful `utfall` does not move the wallet by itself.
 
@@ -248,8 +248,8 @@ There is **no** `templates/` directory. Most pages are strings in Python.
 |------|---------|
 | `models.py` | `DATA_DIR`, `TEAMS`, `CORE_TEAMS`, `OPTIONAL_TEAMS`, `FASER`, `MAX_RUNDA=4`, `BACKLOG`, `AKTIVITETSKORT`. Load/save JSON, create game, team tokens, password hash/verify, session validity (6h), phase timer remaining, configurable roster (core 5 or extended 6–9), STT base HP in extended games, declaration period (round 3). |
 | `game_management.py` | `delete_game`, `nollstall_regeringsstod`, checkbox get/set (legacy checklists). Re-exports load/save. |
-| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/queue/transfer/stöd, order status (empty/draft/submitted/changed), inbox + same-target conflicts, backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` only for uncertain outcomes, optional `delmal`, `format_json_error` for JSON syntax), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
-| `gm_console_ui.py` | HTML for the compact GM header, attention list, tabs, team HP strip, transfer form, inbox, backlog board, LLM-resultat, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
+| `gm_console.py` | **Source of truth for live play:** next/previous phase, new round, end game, HP adjust/queue/transfer (tillfälligt vs varaktigt), order status (empty/draft/submitted/changed; changed = GM edited after submit), inbox + same-target conflicts (inbox omits blank activity slots), backlog spend, apply order HP onto backlog, withdraw order (Orderfas), inline activity edit, undo stack (does not reroll `llm_resolution`), GM log, LLM export/import (`order_ref`, frozen 1–100 rolls, `utfall` for non-backlog and FÖRSTÖRA, optional `delmal`, `format_json_error` for JSON syntax), `build_live_state` vs `build_public_state`, Auto-fyll from `testdata/testdataroundN.json`. |
+| `gm_console_ui.py` | HTML for the compact GM header, attention list, tabs (Lag hidden in Orderfas), team HP strip, inbox, backlog board (idle/active/done), LLM-resultat, result run-of-show, projector page. `live_html_fragments` for poll-without-reload. |
 
 Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/test_domain.py`, not in route handlers.
 
@@ -266,7 +266,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | `POST /admin/delete_game/<id>` | Delete after game password (JSON if `X-Requested-With: XMLHttpRequest`) |
 | `GET/POST /admin/<id>` | Password gate + spelledarpanel |
 | `POST /admin/<id>/timer` | Start/pause, ±1 min, reset, next/prev phase, new round, end |
-| `POST /admin/<id>/hp` | Adjust (queued after Orderfas), transfer, stöd |
+| `POST /admin/<id>/hp` | Adjust (queued after Orderfas; `duration` tillfälligt or varje runda), transfer |
 | `POST /admin/<id>/undo` | Restore last snapshot |
 | `GET /admin/<id>/live` | JSON + HTML snippets for the poller (same data as the panel) |
 | `POST /admin/<id>/backlog_live` | Backlog ±, apply order HP |
@@ -301,7 +301,7 @@ Prefer putting **new live-event rules in `gm_console.py`** and tests in `tests/t
 | File | Purpose |
 |------|---------|
 | `team_routes.py` | `/team/<id>/<lag>` — brief from `teambeskrivning/`, optional photo, QR to order URL first, then readable goal text. `/teambeskrivning/<file>` for images. |
-| `team_order_routes.py` | Token-gated order form (phone-first, `app.css`). Draft save, final submit, **withdraw in Orderfas only**. Timer JSON for the team page. GM may open the same form with `?admin_edit=true` (session required). |
+| `team_order_routes.py` | Token-gated order form (phone-first, `app.css`). Draft save, final submit, **withdraw in Orderfas only**. During Resultatfas the same URL shows a wait page (orders belong in Orderfas). Timer JSON for the team page. GM may open the same form with `?admin_edit=true` (session required). |
 | Projector in `app.py` | `/spelarskarm/<id>` HTML + `/spelarskarm/<id>/live` JSON via `build_public_state`. Safe to project. |
 | `/timer_window/<id>` in `app.py` | **Legacy** GM timer with Start/Pausa. Spelarskärm no longer opens this. |
 
@@ -377,7 +377,7 @@ Builds printable HTML order slips per team and round. Used from `/admin/<id>/ord
 |-------|-----------|
 | GM | Password on `/admin/<id>` → `session["game_session_<id>"]`, 6 hours, refreshed on authenticated admin requests. |
 | Team orders | Unpredictable `team_tokens[lag]` in the path. |
-| Projector | No login. Payload is deliberately **small**: round, phase, remaining time, public HP, stöd flag, team-level work totals, and in Resultatfas `next_hp` / `next_delta`. The room HTML shows Swedish timer status (Pågår / Pausad / Inte startad) and one work bar per team, not task names. |
+| Projector | No login. Payload is deliberately **small**: round, phase, remaining time, public spendable HP with bas/varaktigt/tillfälligt, team-level work totals, and in Resultatfas `next_hp` / `next_delta` plus next-round recipe. The room HTML shows Swedish timer status (Pågår / Pausad / Inte startad) and one work bar per team, not task names. |
 
 Do not point a projector at `/admin/<id>` or `/admin/<id>/live` if you care about leaking orders. Use `/spelarskarm/<id>`.
 
@@ -391,7 +391,7 @@ The **live surface** is the compact header + tabs in `gm_console_ui.py`.
 
 Header: round, phase, timer, game metadata, **Spelarskärm**. Action row: Nästa / Föregående / Ångra, Starta/Pausa, ±1 min, **Nollställ timer**, **Meny** (Testläge, testdata, aktivitetskort, LLM-export, reset). Clock never lives in a tab. **Starta** is the primary action until the timer is running; **Nästa** stays secondary until then. Orderfas readiness chips are compact roster pills; missing teams are not a red wall.
 
-Tabs: **Inkorg**, **LLM-resultat** (Diplomatifas/Resultatfas), **Lag**, **Arbete**, **Historik**. Tabs that need a GM action show the word **Att göra**. Resultatfas opens on Lag and shows the körschema above the tabs.
+Tabs: **Inkorg**, **LLM-resultat** (Diplomatifas/Resultatfas), **Lag** (hidden in Orderfas; compact cards: HP now, `→` next total when it differs, and two layer steppers. The − / + number is the layer total — next-round in Diplomatifas/Resultatfas, this round in Orderfas. Reason and Verkställ appear when the total is edited; Verkställ writes the difference. Spy is two tillfälligt commits. One Historik line per Verkställ), **Arbete**, **Historik**. Arbete rows are red (not started), yellow (in progress) or green (done). Tabs that need a GM action show the word **Att göra**. Resultatfas opens on Lag and shows the körschema above the tabs.
 
 `admin_routes.admin_panel` no longer injects the old quarter bar, team-overview cards, or phase-history cards under the console. Named quarters live in Resultatfas. Phase history lives in **Händelselogg**. Unused checklist/timer HTML builders may still exist in `admin_routes.py`; do not grow them. `/admin` is create/upload only; open saved games from the home page.
 
@@ -418,8 +418,8 @@ Production: Gunicorn via `wsgi:app`, set `SECRET_KEY`. `speldata/` must be **wri
 1. **Live rules** (phases, HP, orders, backlog, undo, LLM rolls/`utfall`) → `gm_console.py` plus a test in `tests/test_domain.py`.
 2. **GM HTML** → `gm_console_ui.py` plus `static/gm-console.js` / `app.css`. Do not grow new live workflows as another full page if they can sit on the console.
 3. **Room-visible data** → `build_public_state` only. Never send inbox, `gm_log`, `llm_forslag`, `llm_resolution`, rolls, or `utfall` to the projector.
-4. **News** stay on paper for the studio. LLM export fills `Docs/prompt.md` and asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). The app generates one die per submitted order; unused rolls are ignored. Ordinary backlog HP is deterministic progress, not a probability. `utfall` is only for uncertain outcomes (optional `delmal` when only part of an order is rolled). Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor. Details: [LLM_WORKFLOW.md](LLM_WORKFLOW.md).
-5. Prefer Swedish labels in the UI (the room is Swedish); keep code identifiers in the existing mix (`fas`, `runda`, `poang`, `regeringsstod`).
+4. **News** stay on paper for the studio. LLM export fills `Docs/prompt.md` and asks for JSON (`utfall`, `nyheter`, `hp`, `milstolpar`). The app generates one die per submitted order. Ordinary backlog HP is deterministic progress and should not appear in `utfall`. Orders without a backlog id, and FÖRSTÖRA, must have `utfall`; the console lists gaps. Optional `delmal` when only part of an order is rolled. Paste/upload stores suggestions the GM can copy (news) or apply (HP, milestones). `utfall` is GM-only. This is not an in-app headline editor. Details: [LLM_WORKFLOW.md](LLM_WORKFLOW.md).
+5. Prefer Swedish labels in the UI (the room is Swedish); keep code identifiers in the existing mix (`fas`, `runda`, `poang`, `tillfalligt`, `varaktigt`).
 6. **Update docs in the same change.** Live rules/routes → this file. LLM/HP/projector contract → [LLM_WORKFLOW.md](LLM_WORKFLOW.md). External LLM text → [prompt.md](prompt.md). Room rules → [Stabsspel Traineeprogrammet.md](Stabsspel%20Traineeprogrammet.md). [UX_CONSOLE_REWORK.md](UX_CONSOLE_REWORK.md) is a working log, not the UI spec.
 
 ---

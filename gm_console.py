@@ -19,6 +19,7 @@ from pathlib import Path
 from models import (
     FASER,
     MAX_RUNDA,
+    OPTIONAL_TEAMS,
     add_fashistorik_entry,
     avsluta_aktuell_fas,
     clone_backlog_for_teams,
@@ -45,28 +46,54 @@ BACKLOG_PHASES = ("Krav", "Design", "Utveckling", "Test")
 BACKLOG_OWNERS = {"alfa": "Alfa", "bravo": "Bravo", "stt": "STT"}
 
 
-def effective_hp(entry):
-    """Current spendable HP, including government support bonus."""
+def _hp_int(value):
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def income_hp(entry):
+    """HP the team receives each round: table base plus lasting bonus."""
     if not isinstance(entry, dict):
         return 0
-    hp = int(entry.get("aktuell") or 0)
-    if entry.get("regeringsstod"):
-        hp += 10
-    return max(0, hp)
+    return max(0, _hp_int(entry.get("bas")) + _hp_int(entry.get("varaktigt")))
+
+
+def effective_hp(entry):
+    """Spendable this round: income plus temporary grants or cuts."""
+    if not isinstance(entry, dict):
+        return 0
+    return max(0, income_hp(entry) + _hp_int(entry.get("tillfalligt")))
+
+
+def _sync_aktuell(entry):
+    if not isinstance(entry, dict):
+        return 0
+    income = income_hp(entry)
+    temp = _hp_int(entry.get("tillfalligt"))
+    if income + temp < 0:
+        temp = -income
+        entry["tillfalligt"] = temp
+    entry["aktuell"] = income + temp
+    return entry["aktuell"]
 
 
 def spent_hp_for_team(data, team_name):
-    """HP assigned on the current round's order activities."""
+    """HP assigned on the current round's order activities (and unapplied government grants)."""
     orders = _team_order_record(data, team_name)
     if not orders:
         return 0
-    activities = (orders.get("orders") or {}).get("activities") or []
+    payload = orders.get("orders") or {}
+    activities = payload.get("activities") or []
     total = 0
     for activity in activities:
         try:
             total += int(activity.get("hp") or 0)
         except (TypeError, ValueError):
             continue
+    if not orders.get("hp_fordelning_applied"):
+        total += _fordelning_hp_total(payload, active_teams(data), team_name)
     return total
 
 
@@ -77,7 +104,11 @@ def _team_order_record(data, team_name):
 
 
 def team_order_status(data, team_name):
-    """empty | draft | submitted | changed"""
+    """empty | draft | submitted | changed.
+
+    changed is a submitted order the GM later edited. A team draft followed by
+    a final submit stays submitted, even if updated_at is later than submitted_at.
+    """
     record = _team_order_record(data, team_name)
     if not record:
         return "empty"
@@ -85,9 +116,7 @@ def team_order_status(data, team_name):
     if not activities and not record.get("final"):
         return "empty"
     if record.get("final"):
-        updated = float(record.get("updated_at") or 0)
-        submitted = float(record.get("submitted_at") or 0)
-        if updated > submitted + 0.5 or record.get("edited_by_gm"):
+        if record.get("edited_by_gm"):
             return "changed"
         return "submitted"
     return "draft"
@@ -139,6 +168,10 @@ def _fordelning_items(order_data, teams, from_team):
     return [{"lag": team, "hp": amount} for team, amount in merged.items()]
 
 
+def _fordelning_hp_total(order_data, teams, from_team):
+    return sum(item["hp"] for item in _fordelning_items(order_data, teams, from_team))
+
+
 def apply_regeringen_fordelning(data, team):
     """Move submitted government grants out of Regeringen's wallet. Idempotent."""
     if team != "Regeringen":
@@ -171,7 +204,7 @@ def reverse_regeringen_fordelning(data, team):
             continue
         if not target or amount <= 0 or target not in data["poang"]:
             continue
-        available = int(data["poang"][target].get("aktuell") or 0)
+        available = effective_hp(data["poang"][target])
         take = min(amount, available)
         if take:
             transfer_hp(data, target, "Regeringen", take, "Återtagen fördelning")
@@ -185,9 +218,27 @@ def sync_regeringen_fordelning(data, team):
     return apply_regeringen_fordelning(data, team)
 
 
+def reset_regeringen_budget(data):
+    """Political HP returns to income each new round; pending deltas apply after."""
+    if "Regeringen" not in active_teams(data):
+        return data
+    ensure_poang(data)
+    entry = data["poang"].get("Regeringen")
+    if not isinstance(entry, dict):
+        return data
+    entry["tillfalligt"] = 0
+    _sync_aktuell(entry)
+    return data
+
+
+def regeringen_next_aktuell(data, queued_delta=0):
+    return next_round_spendable(data, "Regeringen")
+
+
 def validate_order_hp(data, team_name, order_data):
     """Reject negative, malformed, or over-budget HP on an order."""
     try:
+        ensure_poang(data)
         entry = (data.get("poang") or {}).get(team_name)
         team_hp = effective_hp(entry) if entry else 25
 
@@ -201,12 +252,29 @@ def validate_order_hp(data, team_name, order_data):
             except (ValueError, TypeError):
                 return {"valid": False, "error": "Ogiltiga HP-värden i order"}
 
-        if used_hp > team_hp:
+        record = _team_order_record(data, team_name)
+        applied_items = (record or {}).get("hp_fordelning_applied") or []
+        applied_sum = 0
+        for item in applied_items:
+            try:
+                applied_sum += int(item.get("hp") or 0)
+            except (TypeError, ValueError):
+                continue
+        grant_hp = _fordelning_hp_total(order_data, active_teams(data), team_name)
+        used_hp += grant_hp
+        if grant_hp and team_name != "Regeringen":
             return {
                 "valid": False,
-                "error": f"Du har använt {used_hp} HP men har bara {team_hp} HP tillgängliga!",
+                "error": "Bara Regeringen kan fördela HP till andra lag via ordern.",
             }
-        return {"valid": True, "used_hp": used_hp, "max_hp": team_hp}
+        available = team_hp + applied_sum
+
+        if used_hp > available:
+            return {
+                "valid": False,
+                "error": f"Du har använt {used_hp} HP men har bara {available} HP tillgängliga!",
+            }
+        return {"valid": True, "used_hp": used_hp, "max_hp": available}
     except Exception as e:
         return {"valid": False, "error": f"Valideringsfel: {str(e)}"}
 
@@ -220,16 +288,22 @@ def auto_submit_unsaved_orders(data, current_round=None):
     if not round_orders:
         return data
     now = time.time()
-    for team_orders in round_orders.values():
-        activities = ((team_orders or {}).get("orders") or {}).get("activities") or []
+    for team_name, team_orders in round_orders.items():
+        payload = (team_orders or {}).get("orders") or {}
+        activities = payload.get("activities") or []
         has_content = any(
             isinstance(item, dict) and str(item.get("aktivitet") or "").strip()
             for item in activities
         )
-        if team_orders and has_content and not team_orders.get("final", False):
+        has_grants = bool(
+            _fordelning_items(payload, active_teams(data), team_name)
+        )
+        if team_orders and (has_content or has_grants) and not team_orders.get("final", False):
             team_orders["final"] = True
             team_orders["auto_submitted"] = True
             team_orders["submitted_at"] = now
+            if team_name == "Regeringen" and has_grants:
+                apply_regeringen_fordelning(data, team_name)
     return data
 
 
@@ -378,6 +452,56 @@ def _normalize_test_activity(raw, activity_id):
     }
 
 
+def _absent_team_substitutes(roster):
+    """Map optional teams that are not in this game to a live stand-in."""
+    active = set(roster or [])
+    mapping = {}
+    for name in OPTIONAL_TEAMS:
+        if name in active:
+            continue
+        if name == "SÄPO":
+            mapping[name] = "Regeringen" if "Regeringen" in active else "spelledaren"
+        elif name == "USA":
+            if "Regeringen" in active:
+                mapping[name] = "Regeringen"
+            elif "Media" in active:
+                mapping[name] = "Media"
+            else:
+                mapping[name] = "spelledaren"
+        elif name == "Media":
+            mapping[name] = "nyhetsstudion"
+        elif name == "Regeringen":
+            mapping[name] = "spelledaren"
+    return mapping
+
+
+def _adapt_test_activity_to_roster(activity, roster):
+    """Keep Auto-fyll from targeting teams that are not in this game."""
+    known = list(roster or [])
+    known_set = set(known)
+    substitutes = _absent_team_substitutes(known)
+    retargeted = []
+    seen = set()
+    for name in activity.get("paverkar") or []:
+        target = substitutes.get(name, name)
+        if target not in known_set:
+            continue
+        if target in seen:
+            continue
+        seen.add(target)
+        retargeted.append(target)
+    activity["paverkar"] = retargeted
+    for field in ("aktivitet", "syfte"):
+        text = activity.get(field) or ""
+        for absent, replacement in substitutes.items():
+            if absent in text:
+                text = text.replace(absent, replacement)
+            if absent == "SÄPO" and "Säpo" in text:
+                text = text.replace("Säpo", replacement)
+        activity[field] = text
+    return activity
+
+
 def _scale_activity_hp_to_budget(activities, budget):
     """Rewrite activity hp so the total equals spendable HP. Returns True if changed."""
     budget = max(0, int(budget))
@@ -415,7 +539,8 @@ def apply_test_orders(data, now=None):
     """Replace this round's submitted orders from testdata/testdataroundN.json.
 
     Activity HP is scaled to each team's current spendable wallet so Auto-fyll
-    neither overspends nor leaves leftover kassa unused.
+    neither overspends nor leaves leftover kassa unused. Orders for inactive
+    teams are skipped; paverkar and copy are retargeted away from them.
     """
     if not data.get("test_mode"):
         raise ValueError("Auto-fyll kräver testläge")
@@ -429,14 +554,18 @@ def apply_test_orders(data, now=None):
     data.setdefault("team_orders", {})
     data["team_orders"].setdefault(orders_key, {})
     ensure_poang(data)
+    roster = active_teams(data)
     processed = []
     scaled = []
-    for i, team_name in enumerate(data.get("lag") or []):
+    for i, team_name in enumerate(roster):
         activities = orders.get(team_name)
         if not isinstance(activities, list) or not activities:
             continue
         team_orders = [
-            _normalize_test_activity(activity, base_id + (i * 100) + j)
+            _adapt_test_activity_to_roster(
+                _normalize_test_activity(activity, base_id + (i * 100) + j),
+                roster,
+            )
             for j, activity in enumerate(activities)
         ]
         budget = effective_hp(data["poang"].get(team_name) or {})
@@ -466,13 +595,45 @@ def apply_test_orders(data, now=None):
     return data, processed
 
 
+def _normalize_poang_entry(lag, entry, data):
+    if not isinstance(entry, dict):
+        entry = {}
+    bas = _hp_int(entry.get("bas")) or get_team_base_hp(lag, data)
+    entry["bas"] = bas
+    if "varaktigt" not in entry:
+        entry["varaktigt"] = 0
+    else:
+        entry["varaktigt"] = _hp_int(entry.get("varaktigt"))
+    if "tillfalligt" not in entry:
+        entry["tillfalligt"] = _hp_int(entry.get("aktuell")) - bas - entry["varaktigt"]
+        if entry.get("regeringsstod"):
+            entry["tillfalligt"] += 10
+            entry["regeringsstod"] = False
+    else:
+        entry["tillfalligt"] = _hp_int(entry.get("tillfalligt"))
+        if entry.get("regeringsstod"):
+            entry["tillfalligt"] += 10
+            entry["regeringsstod"] = False
+    entry["regeringsstod"] = bool(entry.get("regeringsstod"))
+    _sync_aktuell(entry)
+    return entry
+
+
 def ensure_poang(data):
     if "poang" not in data:
         data["poang"] = {}
-    for lag in data.get("lag") or []:
-        if lag not in data["poang"]:
+    for lag in active_teams(data):
+        if lag not in data["poang"] or not isinstance(data["poang"][lag], dict):
             bas = get_team_base_hp(lag, data)
-            data["poang"][lag] = {"bas": bas, "aktuell": bas, "regeringsstod": False}
+            data["poang"][lag] = {
+                "bas": bas,
+                "aktuell": bas,
+                "varaktigt": 0,
+                "tillfalligt": 0,
+                "regeringsstod": False,
+            }
+        else:
+            data["poang"][lag] = _normalize_poang_entry(lag, data["poang"][lag], data)
     return data
 
 
@@ -496,6 +657,30 @@ def hp_delta_from_fields(op, amount=None, direction=None):
     return n
 
 
+def hp_delta_from_total(total, baseline):
+    """Turn an edited layer total into the delta to apply."""
+    def parse(raw):
+        try:
+            return int(str(raw).replace("+", "").strip() or "0")
+        except (TypeError, ValueError):
+            raise ValueError("Beloppet måste vara ett heltal")
+    delta = parse(total) - parse(baseline)
+    if delta == 0:
+        raise ValueError("Ingen ändring att verkställa")
+    return delta
+
+
+def lasting_from_fields(source):
+    """Read Tillfälligt vs Varje runda from a JSON body or form."""
+    if not isinstance(source, dict):
+        return False
+    lasting = source.get("lasting")
+    if lasting in (True, 1, "1", "true", "True", "on", "lasting"):
+        return True
+    duration = str(source.get("duration") or "").strip().lower()
+    return duration in ("lasting", "varaktig", "varje")
+
+
 def parse_positive_amount(raw, default=1):
     """Read a GM amount field. Blank uses default; must be at least 1."""
     if raw in (None, ""):
@@ -509,20 +694,27 @@ def parse_positive_amount(raw, default=1):
     return n
 
 
-def adjust_hp(data, team, amount, reason=""):
+def adjust_hp(data, team, amount, reason="", varaktig=False):
     ensure_poang(data)
-    if team not in data["poang"]:
+    if team not in active_teams(data) or team not in data["poang"]:
         raise ValueError(f"Okänt lag: {team}")
     amount = int(amount)
-    current = int(data["poang"][team].get("aktuell") or 0)
-    data["poang"][team]["aktuell"] = max(0, current + amount)
+    if amount == 0:
+        raise ValueError("Beloppet får inte vara 0")
+    entry = data["poang"][team]
+    if varaktig:
+        entry["varaktigt"] = _hp_int(entry.get("varaktigt")) + amount
+    else:
+        entry["tillfalligt"] = _hp_int(entry.get("tillfalligt")) + amount
+    _sync_aktuell(entry)
     sign = "+" if amount >= 0 else ""
     note = reason.strip() or "Justering"
+    kind = "varaktigt" if varaktig else "tillfälligt"
     append_gm_log(
         data,
         "hp",
-        f"{team}: {sign}{amount} HP ({note}). Nu {data['poang'][team]['aktuell']}.",
-        {"team": team, "amount": amount, "reason": note},
+        f"{team}: {sign}{amount} HP {kind} ({note}). Nu {entry['aktuell']}.",
+        {"team": team, "amount": amount, "reason": note, "lasting": bool(varaktig)},
     )
     return data
 
@@ -530,6 +722,94 @@ def adjust_hp(data, team, amount, reason=""):
 def hp_applies_next_round(data):
     """Order consequences change next round's wallet, not this round's remaining HP."""
     return (data.get("fas") or "") in ("Diplomatifas", "Resultatfas")
+
+
+def next_round_entry(data, team):
+    """Wallet after temporary HP expires and queued deltas apply, in order."""
+    ensure_poang(data)
+    entry = (data.get("poang") or {}).get(team) or {}
+    scratch = {
+        "bas": _hp_int(entry.get("bas")) or get_team_base_hp(team, data),
+        "varaktigt": _hp_int(entry.get("varaktigt")),
+        "tillfalligt": 0,
+    }
+    for item in data.get("hp_pending") or []:
+        if item.get("lag") != team:
+            continue
+        try:
+            delta = int(item.get("delta") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not delta:
+            continue
+        if item.get("varaktig"):
+            scratch["varaktigt"] = _hp_int(scratch.get("varaktigt")) + delta
+        else:
+            scratch["tillfalligt"] = _hp_int(scratch.get("tillfalligt")) + delta
+        _sync_aktuell(scratch)
+    _sync_aktuell(scratch)
+    return scratch
+
+
+def next_round_spendable(data, team):
+    """Income next round plus queued lasting and temporary deltas.
+
+    Temporary HP this round expires first. Pending items then apply in order,
+    with spendable clamped at 0 after each item (same as apply_pending_hp).
+    """
+    return _sync_aktuell(next_round_entry(data, team))
+
+
+def team_hp_layers(data, team, folded=None):
+    """This-round and next-round bas / varaktigt / tillfalligt for GM and projector."""
+    ensure_poang(data)
+    if folded is None:
+        _, folded = next_round_hp_view(data)
+    entry = (data.get("poang") or {}).get(team) or {}
+    this_hp, next_hp = team_hp_this_and_next(data, team, folded=folded)
+    bas = _hp_int(entry.get("bas")) or get_team_base_hp(team, data)
+    varaktigt = _hp_int(entry.get("varaktigt"))
+    tillfalligt = _hp_int(entry.get("tillfalligt"))
+    if folded:
+        this_parts = {
+            "bas": bas,
+            "varaktigt": varaktigt,
+            "tillfalligt": 0,
+            "hp": this_hp,
+        }
+        next_parts = {
+            "bas": bas,
+            "varaktigt": varaktigt,
+            "tillfalligt": tillfalligt,
+            "hp": next_hp,
+        }
+        return this_parts, next_parts
+    nxt = next_round_entry(data, team)
+    return (
+        {
+            "bas": bas,
+            "varaktigt": varaktigt,
+            "tillfalligt": tillfalligt,
+            "hp": this_hp,
+        },
+        {
+            "bas": _hp_int(nxt.get("bas")),
+            "varaktigt": _hp_int(nxt.get("varaktigt")),
+            "tillfalligt": _hp_int(nxt.get("tillfalligt")),
+            "hp": next_hp,
+        },
+    )
+
+
+def team_hp_this_and_next(data, team, folded=None):
+    """Spendable shown this round vs after the next round change."""
+    ensure_poang(data)
+    if folded is None:
+        _, folded = next_round_hp_view(data)
+    entry = (data.get("poang") or {}).get(team) or {}
+    if folded:
+        return income_hp(entry), effective_hp(entry)
+    return effective_hp(entry), next_round_spendable(data, team)
 
 
 def pending_hp_totals(data):
@@ -568,7 +848,8 @@ def _llm_hp_was_written_into_aktuell(data):
     if not _llm_hp_totals(data):
         return False
     for entry in data.get("gm_log") or []:
-        if "schemalagt till nästa runda" in str(entry.get("message") or ""):
+        message = str(entry.get("message") or "")
+        if "schemalagt till nästa runda" in message or "schemalagt (" in message:
             return False
     return True
 
@@ -581,9 +862,9 @@ def next_round_hp_view(data):
     return changes, folded
 
 
-def queue_hp_delta(data, team, amount, reason="", source="gm"):
+def queue_hp_delta(data, team, amount, reason="", source="gm", varaktig=False):
     ensure_poang(data)
-    if team not in data["poang"]:
+    if team not in active_teams(data) or team not in data["poang"]:
         raise ValueError(f"Okänt lag: {team}")
     amount = int(amount)
     if amount == 0:
@@ -594,23 +875,31 @@ def queue_hp_delta(data, team, amount, reason="", source="gm"):
         "delta": amount,
         "orsak": str(reason or "").strip(),
         "kalla": source,
+        "varaktig": bool(varaktig),
     })
     data["hp_pending"] = pending
     sign = "+" if amount >= 0 else ""
     note = (reason or "").strip() or "Justering"
+    when = "varje runda från nästa runda" if varaktig else "tillfälligt nästa runda"
     append_gm_log(
         data,
         "hp",
-        f"{team}: {sign}{amount} HP schemalagt till nästa runda ({note}).",
-        {"team": team, "amount": amount, "reason": note, "when": "next_round"},
+        f"{team}: {sign}{amount} HP schemalagt ({when}, {note}).",
+        {
+            "team": team,
+            "amount": amount,
+            "reason": note,
+            "when": "next_round",
+            "lasting": bool(varaktig),
+        },
     )
     return data
 
 
-def apply_or_queue_hp(data, team, amount, reason="", source="gm"):
+def apply_or_queue_hp(data, team, amount, reason="", source="gm", varaktig=False):
     if hp_applies_next_round(data):
-        return queue_hp_delta(data, team, amount, reason, source)
-    return adjust_hp(data, team, amount, reason)
+        return queue_hp_delta(data, team, amount, reason, source, varaktig=varaktig)
+    return adjust_hp(data, team, amount, reason, varaktig=varaktig)
 
 
 def apply_pending_hp(data):
@@ -625,7 +914,13 @@ def apply_pending_hp(data):
         if not team or amount == 0:
             continue
         try:
-            adjust_hp(data, team, amount, item.get("orsak") or "Nästa runda")
+            adjust_hp(
+                data,
+                team,
+                amount,
+                item.get("orsak") or "Nästa runda",
+                varaktig=bool(item.get("varaktig")),
+            )
         except ValueError:
             continue
     return data
@@ -647,6 +942,9 @@ def snapshot_backlog_round(data):
 
 def transfer_hp(data, from_team, to_team, amount, reason=""):
     ensure_poang(data)
+    teams = active_teams(data)
+    if from_team not in teams or to_team not in teams:
+        raise ValueError("Okänt lag i överföring")
     if from_team not in data["poang"] or to_team not in data["poang"]:
         raise ValueError("Okänt lag i överföring")
     amount = int(amount)
@@ -654,33 +952,41 @@ def transfer_hp(data, from_team, to_team, amount, reason=""):
         raise ValueError("Beloppet måste vara större än 0")
     if from_team == to_team:
         raise ValueError("Kan inte föra över till samma lag")
-    source = int(data["poang"][from_team].get("aktuell") or 0)
+    source_entry = data["poang"][from_team]
+    target_entry = data["poang"][to_team]
+    source = effective_hp(source_entry)
     if amount > source:
-        extra = ""
-        if data["poang"][from_team].get("regeringsstod"):
-            extra = " (regeringsstöd +10 kan inte flyttas)"
-        raise ValueError(f"{from_team} har bara {source} överförbar HP{extra}")
-    data["poang"][from_team]["aktuell"] = source - amount
-    data["poang"][to_team]["aktuell"] = int(data["poang"][to_team].get("aktuell") or 0) + amount
+        raise ValueError(f"{from_team} har bara {source} HP att föra över den här rundan")
+    source_entry["tillfalligt"] = _hp_int(source_entry.get("tillfalligt")) - amount
+    target_entry["tillfalligt"] = _hp_int(target_entry.get("tillfalligt")) + amount
+    _sync_aktuell(source_entry)
+    _sync_aktuell(target_entry)
     note = reason.strip() or "Överföring"
     append_gm_log(
         data,
         "hp",
-        f"{amount} HP {from_team} → {to_team} ({note}).",
+        f"{amount} HP {from_team} → {to_team} ({note}, tillfälligt den här rundan).",
         {"from": from_team, "to": to_team, "amount": amount, "reason": note},
     )
     return data
 
 
 def set_regeringsstod(data, team, enabled, reason=""):
+    """Legacy GM +10 this round. Prefer apply_or_queue_hp with a reason."""
+    amount = 10 if enabled else -10
+    return adjust_hp(data, team, amount, reason or "Tillfälligt stöd", varaktig=False)
+
+
+def clear_temporary_hp(data):
+    """Temporary grants expire at round change. Lasting income stays."""
     ensure_poang(data)
-    if team not in data["poang"]:
-        raise ValueError(f"Okänt lag: {team}")
-    data["poang"][team]["regeringsstod"] = bool(enabled)
-    state = "på" if enabled else "av"
-    note = reason.strip()
-    suffix = f" ({note})" if note else ""
-    append_gm_log(data, "hp", f"Regeringsstöd {state} för {team}{suffix}.")
+    for lag in active_teams(data):
+        entry = data["poang"].get(lag)
+        if not isinstance(entry, dict):
+            continue
+        entry["tillfalligt"] = 0
+        entry["regeringsstod"] = False
+        _sync_aktuell(entry)
     return data
 
 
@@ -726,6 +1032,7 @@ def apply_new_round(data):
     data["fas"] = "Orderfas"
     reset_timer_fields(data)
     add_fashistorik_entry(data, data["runda"], "Orderfas", "pågående")
+    data = clear_temporary_hp(data)
     data = nollstall_regeringsstod(data)
     data["checkbox_states"] = {}
     snapshot_backlog_round(data)
@@ -739,6 +1046,7 @@ def end_game(data):
     data["avslutat"] = True
     reset_timer_fields(data)
     data = avsluta_aktuell_fas(data)
+    data = clear_temporary_hp(data)
     data = nollstall_regeringsstod(data)
     apply_pending_hp(data)
     append_gm_log(data, "phase", "Spelet avslutades.")
@@ -762,7 +1070,7 @@ def apply_previous_phase(data):
 def missing_order_teams(data):
     """Teams with no submitted (final) order this round."""
     missing = []
-    for lag in data.get("lag") or []:
+    for lag in active_teams(data):
         if team_order_status(data, lag) in ("empty", "draft"):
             missing.append(lag)
     return missing
@@ -783,7 +1091,7 @@ def ensure_backlog(data):
     """Fill missing team backlogs from the template without resetting spend."""
     if "backlog" not in data or not isinstance(data["backlog"], dict):
         data["backlog"] = {}
-    template = clone_backlog_for_teams(data.get("lag") or [])
+    template = clone_backlog_for_teams(active_teams(data))
     for team, tasks in template.items():
         if team not in data["backlog"]:
             data["backlog"][team] = tasks
@@ -855,7 +1163,7 @@ def add_backlog_spend(data, team, task_id, amount, phase=None, log_actor=None):
 
     Recurring tasks (`aterkommande`) start a new attempt when already at cap.
     """
-    if team not in (data.get("lag") or []):
+    if team not in (active_teams(data)):
         raise ValueError(f"Okänt lag: {team}")
     amount = int(amount)
     if amount == 0:
@@ -972,15 +1280,43 @@ def _backlog_estimated_hp(data, activity):
         return None
 
 
+def _activity_is_blank(activity):
+    """Unused order-form slots: no name and no HP."""
+    if not isinstance(activity, dict):
+        return True
+    name = str(activity.get("aktivitet") or "").strip()
+    try:
+        hp = int(activity.get("hp") or 0)
+    except (TypeError, ValueError):
+        hp = 0
+    return not name and hp <= 0
+
+
+def _activity_has_backlog(activity):
+    selected = str((activity or {}).get("backlog_selected") or "").strip()
+    return bool(selected) and selected != "custom"
+
+
+def _activity_requires_utfall(activity):
+    """Own/custom actions and FÖRSTÖRA need a GM-facing roll result."""
+    if _activity_is_blank(activity):
+        return False
+    if (activity.get("typ") or "bygga") == "forstora":
+        return True
+    return not _activity_has_backlog(activity)
+
+
 def build_inbox(data):
     """Flat list of current-round activities plus conflict flags."""
     rows = []
     groups = {}
-    for lag in data.get("lag") or []:
+    for lag in active_teams(data):
         record = _team_order_record(data, lag)
         status = team_order_status(data, lag)
         activities = ((record or {}).get("orders") or {}).get("activities") or []
         for index, activity in enumerate(activities):
+            if _activity_is_blank(activity):
+                continue
             key = _conflict_key(activity)
             selected = (activity.get("backlog_selected") or "").strip()
             row = {
@@ -1031,7 +1367,7 @@ def build_backlog_board(data):
     ensure_backlog(data)
     runda = data.get("runda") or 1
     board = []
-    for lag in data.get("lag") or []:
+    for lag in active_teams(data):
         tasks = (data.get("backlog") or {}).get(lag)
         if not tasks:
             continue
@@ -1141,25 +1477,33 @@ def build_public_progress(data):
 
 def build_team_strip(data):
     ensure_poang(data)
-    changes, _folded = next_round_hp_view(data)
+    _, folded = next_round_hp_view(data)
     strip = []
-    for lag in data.get("lag") or []:
-        entry = data["poang"].get(lag) or {}
+    for lag in active_teams(data):
         spent = spent_hp_for_team(data, lag)
-        current = effective_hp(entry)
+        this_parts, next_parts = team_hp_layers(data, lag, folded=folded)
+        current = this_parts["hp"]
+        next_hp = next_parts["hp"]
         status = team_order_status(data, lag)
+        pending_next = next_hp - current
         strip.append({
             "team": lag,
-            "bas": int(entry.get("bas") or 0),
-            "aktuell": int(entry.get("aktuell") or 0),
-            "regeringsstod": bool(entry.get("regeringsstod")),
+            "bas": this_parts["bas"],
+            "aktuell": current,
+            "varaktigt": this_parts["varaktigt"],
+            "tillfalligt": this_parts["tillfalligt"],
+            "regeringsstod": False,
             "effective": current,
             "spent": spent,
             "remaining": current - spent,
-            "pending_next": int(changes.get(lag) or 0),
+            "pending_next": pending_next,
+            "next_hp": next_hp,
+            "next_bas": next_parts["bas"],
+            "next_varaktigt": next_parts["varaktigt"],
+            "next_tillfalligt": next_parts["tillfalligt"],
             "status": status,
             "status_label": STATUS_LABELS.get(status, status),
-            "transferable": int(entry.get("aktuell") or 0),
+            "transferable": current,
             "can_withdraw": (
                 data.get("fas") == "Orderfas"
                 and not data.get("avslutat")
@@ -1259,7 +1603,7 @@ def _round_orders_map(data, all_orders=None):
 def iter_submitted_orders(data, all_orders=None):
     """Yield (team, index, order_ref, activity) for submitted current-round orders."""
     orders = _round_orders_map(data, all_orders)
-    teams = list(data.get("lag") or []) or list(orders)
+    teams = list(active_teams(data)) or list(orders)
     for team in teams:
         record = orders.get(team) or {}
         if not record.get("final"):
@@ -1295,6 +1639,40 @@ def get_round_utfall(data, runda=None):
     if isinstance(result, dict):
         return list(result.get("utfall") or [])
     return []
+
+
+def orders_missing_utfall(data, utfall=None, runda=None, all_orders=None):
+    """Submitted non-backlog (and FÖRSTÖRA) orders that the LLM left out of utfall."""
+    items = list(utfall) if utfall is not None else list(get_round_utfall(data, runda))
+    if not items:
+        forslag = get_llm_forslag(data, runda) or {}
+        items = list(forslag.get("utfall") or [])
+    covered = {
+        str(item.get("order_ref") or "").strip()
+        for item in items
+        if str(item.get("order_ref") or "").strip()
+    }
+    rolls = get_round_rolls(data, runda)
+    missing = []
+    for team, _index, ref, activity in iter_submitted_orders(data, all_orders):
+        if not _activity_requires_utfall(activity):
+            continue
+        order_ref = str(ref or "").strip()
+        if not order_ref or order_ref in covered:
+            continue
+        try:
+            hp = int(activity.get("hp") or 0)
+        except (TypeError, ValueError):
+            hp = 0
+        slump = rolls.get(order_ref)
+        missing.append({
+            "team": team,
+            "order_ref": order_ref,
+            "aktivitet": str(activity.get("aktivitet") or "").strip(),
+            "hp": hp,
+            "slump": int(slump) if slump is not None else None,
+        })
+    return missing
 
 
 def _ensure_resolution_record(data, runda=None):
@@ -1334,14 +1712,18 @@ def format_orders_export(data, all_orders):
     """Plain-text order dump used by the LLM export page."""
     lines = []
     poang = data.get("poang") or {}
+    orders = _round_orders_map(data, all_orders)
     current_team = None
+    seen = set()
     for team, index, ref, activity in iter_submitted_orders(data, all_orders):
         if team != current_team:
             if current_team is not None:
                 lines.append("")
             current_team = team
+            seen.add(team)
             hp = int((poang.get(team) or {}).get("aktuell") or 0)
             lines.append(f"=== LAG {team.upper()} (HP i kassan: {hp}) ===")
+            _append_fordelning_export(lines, data, orders.get(team) or {}, team)
         order_type = activity.get("typ", "bygga")
         typ_label = "BYGGA" if order_type == "bygga" else "FÖRSTÖRA"
         aktivitet = activity.get("aktivitet") or ""
@@ -1362,7 +1744,29 @@ def format_orders_export(data, all_orders):
             lines.append(f"   Påverkar: {', '.join(str(p) for p in paverkar)}")
         if malomrade:
             lines.append(f"   Målområde: {malomrade}")
+    for team in active_teams(data) or list(orders):
+        record = orders.get(team) or {}
+        if team in seen or not record.get("final"):
+            continue
+        grants = record.get("hp_fordelning_applied") or _fordelning_items(
+            record.get("orders"), active_teams(data), team
+        )
+        if not grants:
+            continue
+        if lines:
+            lines.append("")
+        hp = int((poang.get(team) or {}).get("aktuell") or 0)
+        lines.append(f"=== LAG {team.upper()} (HP i kassan: {hp}) ===")
+        _append_fordelning_export(lines, data, record, team)
     return "\n".join(lines) if lines else "(Inga inskickade ordrar ännu)"
+
+
+def _append_fordelning_export(lines, data, record, team):
+    grants = record.get("hp_fordelning_applied") or _fordelning_items(
+        record.get("orders"), active_teams(data), team
+    )
+    for item in grants:
+        lines.append(f"   Fördelar {item['hp']} HP till {item['lag']} (redan flyttat från kassan)")
 
 
 def _format_backlog_for_llm(data):
@@ -1408,9 +1812,9 @@ def _format_rolls_for_llm(rolls):
     if not rolls:
         return "(Inga slumpvärden. Inga inskickade order.)"
     lines = [
-        "Det kan finnas ett slumpvärde för en order som inte behöver slumpas. "
-        "I så fall ska slumpvärdet ignoreras. Slumpvärdets existens betyder inte "
-        "att ordern måste få ett sannolikhetsutfall.",
+        "Vanligt backlog-arbete ska inte slumpas; ignorera då slumpvärdet. "
+        "Order utan backlog-id, och FÖRSTÖRA-order, ska ha utfall och använda sitt slumpvärde. "
+        "Slumpvärdets existens betyder inte att ordern måste få ett sannolikhetsutfall.",
         "",
     ]
     lines.extend(f"{ref}: {int(value)}" for ref, value in rolls.items())
@@ -1448,7 +1852,7 @@ def build_llm_export_text(data, all_orders, randint=None):
     """Fill Docs/prompt.md with live round data. Creates missing rolls."""
     runda = int(data.get("runda") or 1)
     fas = data.get("fas") or ""
-    teams = ", ".join(data.get("lag") or []) or "Alfa, Bravo, Charlie, Delta, Echo, STT"
+    teams = ", ".join(active_teams(data)) or "Alfa, Bravo, STT, FM, BS"
     rolls = ensure_round_rolls(data, all_orders, randint=randint)
     ordered_refs = current_order_refs(data, all_orders)
     ordered_rolls = {ref: rolls[ref] for ref in ordered_refs if ref in rolls}
@@ -1611,7 +2015,7 @@ def parse_llm_forslag(raw, data):
         raise ValueError("JSON måste vara ett objekt.")
 
     ensure_backlog(data)
-    teams = list(data.get("lag") or [])
+    teams = list(active_teams(data))
     runda = int(data.get("runda") or 1)
     warnings = []
     payload_runda = payload.get("runda")
@@ -1733,7 +2137,7 @@ def parse_utfall_items(raw_items, data):
     }
     known_refs = set(known_orders)
     rolls = get_round_rolls(data)
-    teams = list(data.get("lag") or [])
+    teams = list(active_teams(data))
     parsed = []
     required = (
         "lag", "order_ref", "order", "satsad_hp", "motstand_hp",
@@ -1807,7 +2211,7 @@ def _resolve_milestone_ref(data, team, uppgift, fas=None):
             pass
 
     needle = raw.lower()
-    search_teams = [team] if team else list(data.get("lag") or [])
+    search_teams = [team] if team else list(active_teams(data))
     matches = []
     for t in search_teams:
         for item in (data.get("backlog") or {}).get(t) or []:
@@ -1933,7 +2337,7 @@ def _activity_matches_milestone(activity, item):
 
 
 def _round_activities(data):
-    for team in data.get("lag") or []:
+    for team in active_teams(data):
         record = _team_order_record(data, team)
         activities = ((record or {}).get("orders") or {}).get("activities") or []
         for activity in activities:
@@ -2074,6 +2478,7 @@ def llm_forslag_view(data, runda=None):
         "milestones_applied_via": (forslag or {}).get("milestones_applied_via"),
         "milestones_manual_status": manual_status,
         "warnings": list((forslag or {}).get("warnings") or []),
+        "missing_utfall": orders_missing_utfall(data, utfall, runda) if forslag else [],
     }
 
 
@@ -2141,45 +2546,24 @@ def build_live_state(data):
 def build_public_state(data):
     """Room-safe snapshot: time, phase, public HP. No orders, log, or testläge."""
     ensure_poang(data)
-    changes, folded = next_round_hp_view(data)
-    projected_hp = {
-        lag: int((data["poang"].get(lag) or {}).get("aktuell") or 0)
-        for lag in data.get("lag") or []
-    }
-    if folded:
-        for lag, delta in changes.items():
-            if lag in projected_hp:
-                projected_hp[lag] = max(0, projected_hp[lag] - delta)
-    else:
-        # Mirror apply_pending_hp: clamp at 0 after each queued item.
-        for item in data.get("hp_pending") or []:
-            team = item.get("lag")
-            if team not in projected_hp:
-                continue
-            try:
-                delta = int(item.get("delta") or 0)
-            except (TypeError, ValueError):
-                continue
-            projected_hp[team] = max(0, projected_hp[team] + delta)
+    _changes, folded = next_round_hp_view(data)
     teams = []
-    for lag in data.get("lag") or []:
-        entry = data["poang"].get(lag) or {}
-        aktuellt = int(entry.get("aktuell") or 0)
-        if folded:
-            this_aktuell = projected_hp.get(lag, aktuellt)
-            next_hp = aktuellt
-        else:
-            this_aktuell = aktuellt
-            next_hp = projected_hp.get(lag, aktuellt)
-        this_entry = dict(entry)
-        this_entry["aktuell"] = this_aktuell
-        current_hp = effective_hp(this_entry)
+    for lag in active_teams(data):
+        this_parts, next_parts = team_hp_layers(data, lag, folded=folded)
+        current_hp = this_parts["hp"]
+        next_hp = next_parts["hp"]
         teams.append({
             "team": lag,
             "hp": current_hp,
+            "bas": this_parts["bas"],
+            "varaktigt": this_parts["varaktigt"],
+            "tillfalligt": this_parts["tillfalligt"],
             "next_hp": next_hp,
+            "next_bas": next_parts["bas"],
+            "next_varaktigt": next_parts["varaktigt"],
+            "next_tillfalligt": next_parts["tillfalligt"],
             "next_delta": next_hp - current_hp,
-            "regeringsstod": bool(entry.get("regeringsstod")),
+            "regeringsstod": False,
         })
     return {
         "runda": data.get("runda", 1),
@@ -2201,11 +2585,12 @@ def withdraw_order(data, team):
     """Turn a submitted order back into a draft. Orderfas only."""
     if not can_withdraw_orders(data):
         raise ValueError("Order kan bara återtas under orderfasen")
-    if team not in (data.get("lag") or []):
+    if team not in (active_teams(data)):
         raise ValueError(f"Okänt lag: {team}")
     record = _team_order_record(data, team)
     if not record or not record.get("final"):
         raise ValueError("Ingen inskickad order att återta")
+    reverse_regeringen_fordelning(data, team)
     record["final"] = False
     record["withdrawn_at"] = time.time()
     record["updated_at"] = time.time()
@@ -2218,7 +2603,7 @@ def update_activity(data, team, index, fields):
     """Patch one activity on the current-round order. GM stays on the console."""
     if data.get("fas") not in ("Orderfas", "Diplomatifas") or data.get("avslutat"):
         raise ValueError("Kan bara ändra order under order- eller diplomatifas")
-    if team not in (data.get("lag") or []):
+    if team not in (active_teams(data)):
         raise ValueError(f"Okänt lag: {team}")
     record = _team_order_record(data, team)
     if not record:

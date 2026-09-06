@@ -1,0 +1,213 @@
+{
+  "runda": 3,
+  "utfall": [
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-2",
+      "order": "Köpa en lucka efter deklarationen",
+      "satsad_hp": 5,
+      "motstand_hp": 6,
+      "sannolikhet": 50,
+      "slump": 79,
+      "resultat": "misslyckande",
+      "motivering": "STT:s vägran (6) och regeringens freeze-linje väger mer än 5 HP. Slaget missar: ingen garanterad julilucka."
+    },
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-3",
+      "order": "Andra resurskravet mot regeringen",
+      "satsad_hp": 5,
+      "motstand_hp": 5,
+      "sannolikhet": 70,
+      "slump": 1,
+      "resultat": "framgång",
+      "motivering": "Bravos flyttförsök är 5 mot 5. Extremt lågt slag: regeringen ger Alfa ett tillskott under freeze, inte en flytt från Bravo."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-2",
+      "order": "Andra ryktet: Alfa saboterar deklarationen",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 60,
+      "slump": 58,
+      "resultat": "delvis framgång",
+      "motivering": "Ingen motkampanj. Freeze-skandalen tar inte fäste. Ryktet sprids i korridorerna, inte som huvudnyhet."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-3",
+      "order": "Andra resursflytten från Alfa",
+      "satsad_hp": 5,
+      "motstand_hp": 5,
+      "sannolikhet": 40,
+      "slump": 90,
+      "resultat": "misslyckande",
+      "motivering": "Alfa får samtidigt extra av regeringen. 5 mot 5 och högt slag. Ingen flytt."
+    },
+    {
+      "lag": "STT",
+      "order_ref": "STT-2",
+      "order": "Vägra båda leveranserna i deklarationsfönstret",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 80,
+      "slump": 78,
+      "resultat": "delvis framgång",
+      "motivering": "Kalendern stoppar produktion. Knapp framgång: STT håller grinden utan att få betalt. Freeze bärs mer av regeringens linje än av en deal."
+    },
+    {
+      "lag": "STT",
+      "order_ref": "STT-3",
+      "order": "Ta Regeringen till WAF-arbetet",
+      "satsad_hp": 5,
+      "motstand_hp": 0,
+      "sannolikhet": 65,
+      "slump": 70,
+      "resultat": "misslyckande",
+      "motivering": "Regeringen prioriterar freeze-linjen, inte STT:s arkitektur. 5 HP räcker inte. Ingen politisk välsignelse av WAF-arbetet."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-1",
+      "order": "Tyst påverkan medan systemet är låst",
+      "satsad_hp": 6,
+      "motstand_hp": 7,
+      "sannolikhet": 45,
+      "slump": 71,
+      "resultat": "misslyckande",
+      "motivering": "Regeringens positiva budskap är 7 mot 6. Freeze ger utrymme, men slaget missar. Tvivlet om att stoppet döljer valfusk tar inte fäste."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-2",
+      "order": "Kräva lapp från infiltratören",
+      "satsad_hp": 4,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 11,
+      "resultat": "framgång",
+      "motivering": "Lågt slag. Lappen kommer. Infiltratören levererar Alfas planer under freeze."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-1",
+      "order": "Utnyttja freeze till bakdörrsarbete",
+      "satsad_hp": 6,
+      "motstand_hp": 10,
+      "sannolikhet": 40,
+      "slump": 65,
+      "resultat": "misslyckande",
+      "motivering": "Alfa bygger admin med 10 HP. 6 mot 10. Ingen bakdörr i admin under freeze."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-2",
+      "order": "Sälja insiderinfo till FM",
+      "satsad_hp": 4,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 50,
+      "resultat": "framgång",
+      "motivering": "Samarbetet från förra rundan består. 4 HP räcker. Info går över, utan att synas i produktion."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-1",
+      "order": "Skandal: hemlig freeze-pakt",
+      "satsad_hp": 6,
+      "motstand_hp": 7,
+      "sannolikhet": 50,
+      "slump": 58,
+      "resultat": "misslyckande",
+      "motivering": "Regeringens positiva budskap (7) plus linjen om inga nödsättningar. Slaget missar: storyn om olagligt stopp går inte."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-2",
+      "order": "Fyra källor under deklarationen",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 45,
+      "resultat": "framgång",
+      "motivering": "Lågt nog. Media får samtal med de fyra målen. Underlaget breddas även utan skandalrubrik."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-1",
+      "order": "Andra positiva nyheten: deklarationen är under kontroll",
+      "satsad_hp": 7,
+      "motstand_hp": 6,
+      "sannolikhet": 55,
+      "slump": 82,
+      "resultat": "misslyckande",
+      "motivering": "Medias paktpåstående (6) tynger. Högt slag: stabilitetsbeställningen går inte ut som huvudnyhet."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-2",
+      "order": "Hålla linjen: inga nödsättningar",
+      "satsad_hp": 5,
+      "motstand_hp": 0,
+      "sannolikhet": 75,
+      "slump": 35,
+      "resultat": "framgång",
+      "motivering": "Regeringen backar stoppet offentligt. Alfa får ingen lucka. Freeze håller som politisk linje, inte som STT-deal."
+    }
+  ],
+  "nyheter": [
+    {
+      "rubrik": "Inget nytt får sättas i drift – extravalet väntar",
+      "upplasning": "Regeringen backar linjen att inget nytt får sättas i drift så länge deklarationsfönstret pågår. Driftansvariga bekräftar att utveckling fortsätter i testmiljö, men att skarpa släpp får vänta till sommaren. Oppositionen frågar vem som då bestämmer vad som släpps först.",
+      "lag": ["Regeringen", "STT", "Alfa", "Bravo"]
+    },
+    {
+      "rubrik": "Extra stöd till det mer iterativa utvecklingsspåret",
+      "upplasning": "Mitt i stoppet skjuter regeringen till mer resurser till det utvecklingsteam som arbetat mer iterativt. Det mer planerade teamet får ingen motsvarande flytt. Beskedet tolkas som ett försök att visa handlingskraft utan att släppa något skarpt.",
+      "lag": ["Regeringen", "Alfa", "Bravo"]
+    },
+    {
+      "rubrik": "Källor i projektet talar – men ingen ny skandal går ut",
+      "upplasning": "Flera redaktioner uppges ha talat med källor i både teknik- och politikspåret under deklarationsperioden. En uppgift om att stoppet skulle dölja något mer allvarligt får inte fäste. Stämningen beskrivs som spänd, med mer möten än rubriker.",
+      "lag": ["Media", "Regeringen", "STT"]
+    },
+    {
+      "rubrik": "Ett rykte pekar ut slarv som skäl till stoppet",
+      "upplasning": "I korridorerna cirkulerar påståenden om att ett av utvecklingsteamen skulle ha orsakat deklarationsstoppet genom slarv. Ingen myndighet bekräftar kopplingen. Projektledningen säger att stoppet är planerat. Ändå hörs frågan vem som bär ansvaret om extravalet blir försenat.",
+      "lag": ["Bravo", "Alfa", "Media"]
+    }
+  ],
+  "hp": [
+    {
+      "lag": "Alfa",
+      "delta": 4,
+      "orsak": "Regeringen ger ett tillskott under freeze efter det lyckade resurskravet."
+    },
+    {
+      "lag": "STT",
+      "delta": -2,
+      "orsak": "Att hålla freeze utan motprestation binder ledningstid mot två utvecklingsteam."
+    }
+  ],
+  "milstolpar": [
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_4",
+      "delta_hp": 10,
+      "orsak": "10 HP adminarbete. Bakdörrsförsöket misslyckades."
+    },
+    {
+      "lag": "Bravo",
+      "uppgift": "bravo_1_Utveckling",
+      "delta_hp": 17,
+      "orsak": "17 HP utveckling under freeze. Rent backlog-arbete."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_3",
+      "delta_hp": 15,
+      "orsak": "15 HP WAF-arkitektur. Ingen produktionssättning under deklarationen."
+    }
+  ]
+}

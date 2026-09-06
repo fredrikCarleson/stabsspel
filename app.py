@@ -346,7 +346,7 @@ def startsida():
         <header class="home-bar">
             <h1>Stabsspelet</h1>
             <div class="home-bar-actions">
-                <a href="/admin/upload_game" class="secondary">Ladda upp</a>
+                <a href="/admin?tab=upload" class="secondary">Ladda upp</a>
                 <a href="/admin" class="primary">Starta nytt spel</a>
             </div>
         </header>

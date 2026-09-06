@@ -11,57 +11,100 @@ def add_no_cache_headers(response):
     return response
 
 def create_team_info_js():
-    """Skapa JavaScript för team-information"""
+    """Skapa JavaScript för laguppsättning vid nytt spel."""
     return '''
     <script>
-    function updateTeamInfo() {
-        const select = document.getElementById('players_interval');
-        const teamInfo = document.getElementById('team-info');
-        const numPlayers = parseInt(select.value);
-        
-        if (numPlayers >= 27) {
-            teamInfo.innerHTML = `
-                <h3>Team som kommer vara med (9 st):</h3>
-                <div class="team-info">
-                    <h4>🧩 Grundteam (5 st):</h4>
-                    <ul>
-                        <li>Team Alfa</li>
-                        <li>Team Bravo</li>
-                        <li>STT</li>
-                        <li>Främmande Makt (FM)</li>
-                        <li>Brottssyndikatet (BS)</li>
-                    </ul>
-                    <h4>➕ Extra team (4 st):</h4>
-                    <ul>
-                        <li>Media</li>
-                        <li>SÄPO</li>
-                        <li>Regeringen</li>
-                        <li>USA</li>
-                    </ul>
-                </div>
-            `;
-        } else {
-            teamInfo.innerHTML = `
-                <h3>Team som kommer vara med (5 st):</h3>
-                <div class="team-info">
-                    <h4>🧩 Grundteam:</h4>
-                    <ul>
-                        <li>Team Alfa</li>
-                        <li>Team Bravo</li>
-                        <li>STT</li>
-                        <li>Främmande Makt (FM)</li>
-                        <li>Brottssyndikatet (BS)</li>
-                    </ul>
-                    <p><em>Extra team (Media, SÄPO, Regeringen, USA) aktiveras vid 27+ spelare</em></p>
-                </div>
-            `;
-        }
-    }
-    
-    // Uppdatera när sidan laddas
-    window.onload = function() {
-        updateTeamInfo();
+    const CORE_TEAMS = ["Alfa", "Bravo", "STT", "FM", "BS"];
+    const EXTRA_TEAMS = ["Media", "SÄPO", "Regeringen", "USA"];
+    const EXTRA_LABELS = {
+        "Media": "Media",
+        "Regeringen": "Regeringen",
+        "SÄPO": "SÄPO",
+        "USA": "USA"
     };
+
+    function selectedExtraTeams() {
+        return EXTRA_TEAMS.filter((name) => {
+            const box = document.querySelector('input[name="extra_lag"][value="' + name + '"]');
+            return box && box.checked;
+        });
+    }
+
+    function currentSpellage() {
+        const selected = document.querySelector('input[name="spellage"]:checked');
+        return selected ? selected.value : "core";
+    }
+
+    function updateTeamInfo() {
+        const extrasWrap = document.getElementById("extra-teams");
+        const teamInfo = document.getElementById("team-info");
+        const totalEl = document.getElementById("admin-team-total");
+        const extended = currentSpellage() === "extended";
+        if (extrasWrap) {
+            extrasWrap.hidden = !extended;
+            extrasWrap.querySelectorAll('input[name="extra_lag"]').forEach((box) => {
+                box.disabled = !extended;
+            });
+        }
+
+        let extras = [];
+        let heading = "5 lag";
+        let warning = "";
+        if (extended) {
+            extras = selectedExtraTeams();
+            if (!extras.length) {
+                warning = "<p class=\\"admin-team-preview-warning\\">Välj minst ett extra lag.</p>";
+            }
+            heading = (5 + extras.length) + " lag";
+        }
+        if (totalEl) {
+            totalEl.textContent = "Totalt: " + heading;
+            totalEl.classList.toggle("is-warning", Boolean(extended && !extras.length));
+        }
+        const extraList = extras.length
+            ? extras.map((name) => "<li>" + EXTRA_LABELS[name] + "</li>").join("")
+            : "<li><em>Inga extra lag</em></li>";
+        teamInfo.innerHTML = `
+            <div class="admin-team-preview">
+                <p class="admin-team-preview-kicker">Valda lag</p>
+                <p class="admin-team-preview-count">${heading}</p>
+                <div class="team-info">
+                    <div>
+                    <h4>Grundteam (5 st)</h4>
+                    <ul>
+                        <li>Team Alfa</li>
+                        <li>Team Bravo</li>
+                        <li>STT</li>
+                        <li>Främmande Makt (FM)</li>
+                        <li>Brottssyndikatet (BS)</li>
+                    </ul>
+                    </div>
+                    <div>
+                    <h4>Extra lag</h4>
+                    <ul>${extraList}</ul>
+                    </div>
+                </div>
+                ${warning}
+            </div>
+        `;
+    }
+
+    window.addEventListener("DOMContentLoaded", function() {
+        updateTeamInfo();
+        document.querySelectorAll('input[name="spellage"], input[name="extra_lag"]').forEach((el) => {
+            el.addEventListener("change", updateTeamInfo);
+        });
+        const form = document.querySelector("#admin-panel-create form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (currentSpellage() === "extended" && selectedExtraTeams().length === 0) {
+                    event.preventDefault();
+                    updateTeamInfo();
+                    alert("Utökat spel kräver minst ett extra lag.");
+                }
+            });
+        }
+    });
     </script>
     '''
 
@@ -102,7 +145,7 @@ def create_script_references():
     """Skapa referenser till externa JavaScript-filer"""
     return '''
     <script src="/static/admin.js"></script>
-    <script src="/static/gm-console.js?v=15"></script>
+    <script src="/static/gm-console.js?v=23"></script>
     '''
 
 def create_delete_game_button(spel_id, label, css_class="danger sm"):

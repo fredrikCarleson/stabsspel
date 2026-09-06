@@ -38,6 +38,8 @@ from gm_console import (
     can_submit_orders,
     current_order_refs,
     effective_hp,
+    income_hp,
+    lasting_from_fields,
     end_game,
     ensure_round_rolls,
     format_json_error,
@@ -45,13 +47,16 @@ from gm_console import (
     get_round_rolls,
     get_round_utfall,
     hp_delta_from_fields,
+    hp_delta_from_total,
     import_llm_forslag,
     LlmJsonSyntaxError,
     make_order_ref,
     missing_order_teams,
+    orders_missing_utfall,
     parse_llm_forslag,
     parse_positive_amount,
     pending_hp_totals,
+    next_round_spendable,
     push_undo,
     set_regeringsstod,
     spent_hp_for_team,
@@ -60,11 +65,16 @@ from gm_console import (
     update_activity,
     validate_order_hp,
     withdraw_order,
+    apply_regeringen_fordelning,
+    sync_regeringen_fordelning,
 )
 from models import (
     AKTIVITETSKORT,
+    CORE_TEAMS,
     MAX_RUNDA,
+    OPTIONAL_TEAMS,
     SESSION_TIMEOUT_SECONDS,
+    activity_cards_for_team,
     create_game_session,
     encrypt_password,
     get_next_fas,
@@ -73,7 +83,9 @@ from models import (
     is_declaration_period,
     is_game_session_valid,
     is_large_game,
+    normalize_saved_roster,
     refresh_game_session,
+    resolve_active_teams,
     skapa_nytt_spel,
     suggest_teams,
     verify_password,
@@ -157,10 +169,18 @@ class TestPhaseMachine(unittest.TestCase):
 
 
 class TestActionPoints(unittest.TestCase):
-    def test_effective_hp_adds_government_support_without_changing_aktuell(self):
-        entry = {"aktuell": 25, "regeringsstod": True}
-        self.assertEqual(effective_hp(entry), 35)
-        self.assertEqual(entry["aktuell"], 25)
+    def test_effective_hp_is_income_plus_temporary(self):
+        entry = {"bas": 25, "varaktigt": 3, "tillfalligt": 5}
+        self.assertEqual(income_hp(entry), 28)
+        self.assertEqual(effective_hp(entry), 33)
+
+    def test_old_save_folds_stod_into_temporary(self):
+        data = create_game_state()
+        data["poang"]["Alfa"] = {"bas": 25, "aktuell": 25, "regeringsstod": True}
+        strip = {row["team"]: row for row in build_team_strip(data)}
+        self.assertEqual(strip["Alfa"]["aktuell"], 35)
+        self.assertEqual(data["poang"]["Alfa"]["tillfalligt"], 10)
+        self.assertFalse(data["poang"]["Alfa"]["regeringsstod"])
 
     def test_removing_points_clamps_at_zero(self):
         data = create_game_state()
@@ -189,12 +209,60 @@ class TestActionPoints(unittest.TestCase):
         self.assertEqual(pending_hp_totals(data)["Alfa"], -3)
 
         apply_new_round(data)
-        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 17)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 22)
         self.assertEqual(data.get("hp_pending") or [], [])
+
+    def test_lasting_and_temporary_stack_then_temp_expires(self):
+        data = create_game_state()
+        adjust_hp(data, "STT", 3, "DevOps", varaktig=True)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 28)
+        self.assertEqual(data["poang"]["STT"]["varaktigt"], 3)
+        data["fas"] = "Resultatfas"
+        apply_or_queue_hp(data, "STT", 5, "anslag")
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 28)
+        self.assertEqual(next_round_spendable(data, "STT"), 33)
+
+        apply_new_round(data)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 33)
+        self.assertEqual(data["poang"]["STT"]["varaktigt"], 3)
+        self.assertEqual(data["poang"]["STT"]["tillfalligt"], 5)
+
+        data["fas"] = "Resultatfas"
+        apply_new_round(data)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 28)
+        self.assertEqual(data["poang"]["STT"]["tillfalligt"], 0)
+        self.assertEqual(data["poang"]["STT"]["varaktigt"], 3)
+
+    def test_public_hp_recipe_shows_lasting_and_temporary_together(self):
+        data = create_game_state(fas="Resultatfas")
+        adjust_hp(data, "Bravo", 3, "DevOps", varaktig=True)
+        apply_or_queue_hp(data, "Bravo", 3, "regering")
+        public = build_public_state(data)
+        bravo = next(team for team in public["teams"] if team["team"] == "Bravo")
+        self.assertEqual(bravo["hp"], 28)
+        self.assertEqual(bravo["bas"], 25)
+        self.assertEqual(bravo["varaktigt"], 3)
+        self.assertEqual(bravo["tillfalligt"], 0)
+        self.assertEqual(bravo["next_hp"], 31)
+        self.assertEqual(bravo["next_bas"], 25)
+        self.assertEqual(bravo["next_varaktigt"], 3)
+        self.assertEqual(bravo["next_tillfalligt"], 3)
+        strip = {row["team"]: row for row in build_team_strip(data)}
+        self.assertEqual(strip["Bravo"]["varaktigt"], 3)
+        self.assertEqual(strip["Bravo"]["next_tillfalligt"], 3)
+
+    def test_queued_lasting_joins_income_next_round(self):
+        data = create_game_state(fas="Resultatfas")
+        apply_or_queue_hp(data, "STT", 3, "DevOps", varaktig=True)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 25)
+        self.assertEqual(next_round_spendable(data, "STT"), 28)
+        apply_new_round(data)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 28)
+        self.assertEqual(data["poang"]["STT"]["varaktigt"], 3)
 
     def test_public_next_hp_matches_the_actual_new_round(self):
         data = create_game_state(fas="Resultatfas")
-        data["poang"]["Alfa"]["regeringsstod"] = True
+        adjust_hp(data, "Alfa", 10, "anslag")
         data["hp_pending"] = [
             {"lag": "Alfa", "delta": -30},
             {"lag": "Alfa", "delta": 5},
@@ -278,8 +346,16 @@ class TestActionPoints(unittest.TestCase):
         self.assertIsNone(hp_delta_from_fields("transfer", 5))
         with self.assertRaises(ValueError):
             hp_delta_from_fields("adjust", 0)
+        self.assertEqual(hp_delta_from_total("+6", 5), 1)
+        self.assertEqual(hp_delta_from_total(-9, -10), 1)
+        self.assertEqual(hp_delta_from_total(0, 4), -4)
+        with self.assertRaises(ValueError):
+            hp_delta_from_total(5, 5)
         self.assertEqual(parse_positive_amount(""), 1)
         self.assertEqual(parse_positive_amount("4"), 4)
+        self.assertFalse(lasting_from_fields({"duration": "temp"}))
+        self.assertTrue(lasting_from_fields({"duration": "lasting"}))
+        self.assertTrue(lasting_from_fields({"lasting": True}))
 
     def test_transfer_moves_points_between_teams(self):
         data = create_game_state()
@@ -303,28 +379,32 @@ class TestActionPoints(unittest.TestCase):
         with self.assertRaises(ValueError):
             transfer_hp(data, "Alfa", "Alfa", 5)
 
-    def test_transfer_cannot_move_government_support_bonus(self):
+    def test_transfer_moves_temporary_hp_this_round(self):
         data = create_game_state()
-        set_regeringsstod(data, "Alfa", True)
+        adjust_hp(data, "Alfa", 10, "anslag")
         self.assertEqual(effective_hp(data["poang"]["Alfa"]), 35)
-        with self.assertRaises(ValueError) as ctx:
-            transfer_hp(data, "Alfa", "Bravo", 30, "stöd")
-        self.assertIn("överförbar", str(ctx.exception))
-        self.assertIn("kan inte flyttas", str(ctx.exception))
+        transfer_hp(data, "Alfa", "Bravo", 30, "stöd")
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 5)
+        self.assertEqual(data["poang"]["Bravo"]["aktuell"], 55)
+        data["fas"] = "Resultatfas"
+        apply_new_round(data)
         self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+        self.assertEqual(data["poang"]["Bravo"]["aktuell"], 25)
 
     def test_unknown_team_cannot_receive_points(self):
         data = create_game_state()
         with self.assertRaises(ValueError):
             adjust_hp(data, "Media", 5)
 
-    def test_new_round_clears_government_support(self):
+    def test_new_round_clears_temporary_hp_not_lasting(self):
         data = create_game_state(fas="Resultatfas")
-        set_regeringsstod(data, "Alfa", True)
-        self.assertTrue(data["poang"]["Alfa"]["regeringsstod"])
+        adjust_hp(data, "Alfa", 3, "DevOps", varaktig=True)
+        adjust_hp(data, "Alfa", 10, "anslag")
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 38)
         data = apply_new_round(data)
-        self.assertFalse(data["poang"]["Alfa"]["regeringsstod"])
-        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 28)
+        self.assertEqual(data["poang"]["Alfa"]["varaktigt"], 3)
+        self.assertEqual(data["poang"]["Alfa"]["tillfalligt"], 0)
 
 
 class TestOrderBudgets(unittest.TestCase):
@@ -348,9 +428,9 @@ class TestOrderBudgets(unittest.TestCase):
         )
         self.assertFalse(result["valid"])
 
-    def test_government_support_raises_the_order_budget_by_ten(self):
+    def test_temporary_grant_raises_the_order_budget(self):
         data = create_game_state()
-        data["poang"]["Alfa"]["regeringsstod"] = True
+        adjust_hp(data, "Alfa", 10, "anslag")
         result = validate_order_hp(data, "Alfa", {"activities": [activity(hp=35)]})
         self.assertTrue(result["valid"])
         self.assertEqual(result["max_hp"], 35)
@@ -409,6 +489,20 @@ class TestOrderBudgets(unittest.TestCase):
             }
         }
         self.assertEqual(team_order_status(data, "Alfa"), "changed")
+
+    def test_draft_then_submit_is_submitted_not_changed(self):
+        data = create_game_state()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": order_record(
+                    [activity(hp=10)],
+                    final=True,
+                    submitted_at=1,
+                    updated_at=100,
+                )
+            }
+        }
+        self.assertEqual(team_order_status(data, "Alfa"), "submitted")
 
     def test_spent_hp_counts_current_round_activities(self):
         data = create_game_state()
@@ -496,15 +590,190 @@ class TestRosterAndCalendar(unittest.TestCase):
     def test_stt_base_hp_increases_in_a_large_game(self):
         small = {"lag": suggest_teams(20)}
         large = {"lag": suggest_teams(27)}
+        seven = {"lag": CORE_TEAMS + ["Media", "Regeringen"]}
         self.assertEqual(get_team_base_hp("STT", small), 25)
         self.assertEqual(get_team_base_hp("STT", large), 30)
         self.assertEqual(get_team_base_hp("Alfa", large), 25)
+        self.assertEqual(get_team_base_hp("STT", seven), 30)
+        self.assertEqual(get_team_base_hp("FM", seven), 10)
+        self.assertEqual(get_team_base_hp("Media", seven), 12)
+        self.assertEqual(get_team_base_hp("Regeringen", seven), 12)
 
     def test_declaration_period_is_only_round_three(self):
         self.assertFalse(is_declaration_period(1))
         self.assertFalse(is_declaration_period(2))
         self.assertTrue(is_declaration_period(3))
         self.assertFalse(is_declaration_period(4))
+
+
+def _roster_state(extra):
+    lag = list(CORE_TEAMS) + list(extra)
+    data = create_game_state(lag=lag)
+    data["poang"] = {}
+    for team in lag:
+        bas = get_team_base_hp(team, data)
+        data["poang"][team] = {"bas": bas, "aktuell": bas, "regeringsstod": False}
+    data["team_tokens"] = {team: f"tok-{team}" for team in lag}
+    return data
+
+
+class TestConfigurableRoster(unittest.TestCase):
+    def test_core_and_extended_rosters(self):
+        self.assertEqual(resolve_active_teams(spellage="core"), CORE_TEAMS)
+        six = resolve_active_teams(spellage="extended", extra_lag=["Media"])
+        self.assertEqual(six, CORE_TEAMS + ["Media"])
+        seven = resolve_active_teams(
+            spellage="extended", extra_lag=["Media", "Regeringen"]
+        )
+        self.assertEqual(seven, CORE_TEAMS + ["Media", "Regeringen"])
+        nine = resolve_active_teams(spellage="extended", extra_lag=OPTIONAL_TEAMS)
+        self.assertEqual(nine, CORE_TEAMS + OPTIONAL_TEAMS)
+        self.assertEqual(nine, suggest_teams(27))
+
+    def test_extended_without_extras_is_rejected(self):
+        with self.assertRaises(ValueError):
+            resolve_active_teams(spellage="extended", extra_lag=[])
+
+    def test_created_games_persist_only_active_teams(self):
+        with tempfile.TemporaryDirectory() as data_dir, patch("models.DATA_DIR", data_dir):
+            core_id = skapa_nytt_spel("2026-01-01", "A", 20, 10, 10, spellage="core")
+            seven_id = skapa_nytt_spel(
+                "2026-01-01",
+                "B",
+                30,
+                10,
+                10,
+                extra_lag=["Media", "Regeringen"],
+                spellage="extended",
+            )
+            nine_id = skapa_nytt_spel(
+                "2026-01-01",
+                "C",
+                27,
+                10,
+                10,
+                extra_lag=OPTIONAL_TEAMS,
+                spellage="extended",
+            )
+            from models import load_game_data
+            core = load_game_data(core_id)
+            seven = load_game_data(seven_id)
+            nine = load_game_data(nine_id)
+            self.assertEqual(core["lag"], CORE_TEAMS)
+            self.assertEqual(set(core["poang"]), set(CORE_TEAMS))
+            self.assertEqual(set(core["team_tokens"]), set(CORE_TEAMS))
+            self.assertNotIn("Media", core["poang"])
+            self.assertEqual(seven["lag"], CORE_TEAMS + ["Media", "Regeringen"])
+            self.assertEqual(seven["poang"]["STT"]["bas"], 30)
+            self.assertEqual(seven["poang"]["Regeringen"]["bas"], 12)
+            self.assertNotIn("SÄPO", seven["poang"])
+            self.assertNotIn("USA", seven["team_tokens"])
+            self.assertEqual(nine["lag"], CORE_TEAMS + OPTIONAL_TEAMS)
+            self.assertEqual(nine["poang"]["SÄPO"]["bas"], 15)
+
+    def test_legacy_saves_infer_roster_when_lag_is_missing(self):
+        small = normalize_saved_roster({"antal_spelare": 20})
+        large = normalize_saved_roster({"antal_spelare": 27})
+        trusted = normalize_saved_roster({
+            "antal_spelare": 20,
+            "lag": CORE_TEAMS + ["Media"],
+        })
+        self.assertEqual(small["lag"], CORE_TEAMS)
+        self.assertEqual(large["lag"], CORE_TEAMS + OPTIONAL_TEAMS)
+        self.assertEqual(trusted["lag"], CORE_TEAMS + ["Media"])
+
+    def test_inactive_teams_stay_out_of_gm_public_and_llm(self):
+        data = _roster_state(["Media", "Regeringen"])
+        public = build_public_state(data)
+        strip = build_team_strip(data)
+        public_names = [row["team"] for row in public["teams"]]
+        strip_names = [row["team"] for row in strip]
+        self.assertEqual(public_names, data["lag"])
+        self.assertEqual(strip_names, data["lag"])
+        self.assertNotIn("SÄPO", public_names)
+        self.assertNotIn("USA", strip_names)
+        export = build_llm_export_text(data, {}, randint=lambda: 11)
+        self.assertIn(
+            "Spelet har lagen:\nAlfa, Bravo, STT, FM, BS, Media, Regeringen",
+            export,
+        )
+        parsed = parse_llm_forslag(json.dumps({
+            "runda": 1,
+            "nyheter": [],
+            "hp": [
+                {"lag": "Regeringen", "delta": -1, "orsak": "ok"},
+                {"lag": "SÄPO", "delta": 5, "orsak": "ska hoppas över"},
+            ],
+            "milstolpar": [],
+        }), data)
+        self.assertEqual(parsed["hp"], [
+            {"lag": "Regeringen", "delta": -1, "orsak": "ok"},
+        ])
+        with self.assertRaises(ValueError):
+            parse_llm_forslag(json.dumps({
+                "utfall": [{
+                    "lag": "SÄPO",
+                    "order_ref": "SÄPO-1",
+                    "order": "x",
+                    "satsad_hp": 1,
+                    "motstand_hp": 1,
+                    "sannolikhet": 50,
+                    "slump": 10,
+                    "resultat": "framgång",
+                    "motivering": "x",
+                }]
+            }), data)
+
+    def test_regeringen_can_grant_but_not_double_spend(self):
+        data = _roster_state(["Media", "Regeringen"])
+        self.assertEqual(data["poang"]["Regeringen"]["aktuell"], 12)
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Regeringen": order_record(
+                    [activity(name="Positiv publicitet", hp=3)],
+                    final=False,
+                )
+            }
+        }
+        data["team_orders"]["orders_round_1"]["Regeringen"]["orders"]["hp_fordelning"] = [
+            {"lag": "STT", "hp": 5},
+            {"lag": "Alfa", "hp": 4},
+        ]
+        check = validate_order_hp(
+            data, "Regeringen", data["team_orders"]["orders_round_1"]["Regeringen"]["orders"]
+        )
+        self.assertTrue(check["valid"])
+        too_much = dict(data["team_orders"]["orders_round_1"]["Regeringen"]["orders"])
+        too_much["hp_fordelning"] = [{"lag": "STT", "hp": 10}]
+        too_much["activities"] = [activity(name="Påverkan", hp=3)]
+        self.assertFalse(validate_order_hp(data, "Regeringen", too_much)["valid"])
+        data["team_orders"]["orders_round_1"]["Regeringen"]["final"] = True
+        apply_regeringen_fordelning(data, "Regeringen")
+        self.assertEqual(data["poang"]["Regeringen"]["aktuell"], 3)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 35)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 29)
+        leftover = validate_order_hp(
+            data, "Regeringen", data["team_orders"]["orders_round_1"]["Regeringen"]["orders"]
+        )
+        self.assertTrue(leftover["valid"])
+        data["fas"] = "Resultatfas"
+        data = apply_new_round(data)
+        self.assertEqual(data["poang"]["Regeringen"]["aktuell"], 12)
+        self.assertEqual(data["poang"]["STT"]["aktuell"], 30)
+        self.assertEqual(data["poang"]["Alfa"]["aktuell"], 25)
+
+    def test_activity_cards_drop_absent_team_objectives(self):
+        seven = CORE_TEAMS + ["Media", "Regeringen"]
+        stt = activity_cards_for_team("STT", seven)
+        self.assertIn("Regeringen", stt[0]["uppdrag"])
+        self.assertNotIn("SÄPO", stt[0]["uppdrag"])
+        five = activity_cards_for_team("STT", CORE_TEAMS)
+        self.assertNotIn("SÄPO", five[0]["uppdrag"])
+        self.assertNotIn("Regeringen", five[0]["uppdrag"])
+        fm = activity_cards_for_team("FM", CORE_TEAMS)
+        self.assertNotIn("Media", fm[1]["uppdrag"])
+        nine = activity_cards_for_team("STT", CORE_TEAMS + OPTIONAL_TEAMS)
+        self.assertIn("SÄPO", nine[0]["uppdrag"])
 
 
 class TestBacklogSpend(unittest.TestCase):
@@ -753,7 +1022,7 @@ class TestPublicProjector(unittest.TestCase):
         self.assertEqual(alfa["hp"], 35)
         self.assertEqual(alfa["next_hp"], 25)
         self.assertEqual(alfa["next_delta"], -10)
-        self.assertTrue(alfa["regeringsstod"])
+        self.assertFalse(alfa["regeringsstod"])
         dumped = str(public)
         self.assertNotIn("Hemlig DDOS", dumped)
         self.assertNotIn("hemlig justering", dumped)
@@ -849,7 +1118,9 @@ class TestRoundTestdata(unittest.TestCase):
 
         data["runda"] = 2
         data["poang"]["Alfa"]["aktuell"] = 22
+        data["poang"]["Alfa"]["tillfalligt"] = -3
         data["poang"]["Bravo"]["aktuell"] = 29
+        data["poang"]["Bravo"]["tillfalligt"] = 4
         apply_test_orders(data)
         self.assertEqual(spent_hp_for_team(data, "Alfa"), 22)
         self.assertEqual(spent_hp_for_team(data, "Bravo"), 29)
@@ -859,6 +1130,37 @@ class TestRoundTestdata(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             load_round_testdata(9)
+
+    def test_apply_test_orders_retargets_absent_optional_teams(self):
+        from gm_console import apply_test_orders
+
+        data = _roster_state(["Media", "Regeringen"])
+        data["test_mode"] = True
+        data["runda"] = 3
+        apply_test_orders(data)
+        stt = data["team_orders"]["orders_round_3"]["STT"]["orders"]["activities"]
+        waf = next(item for item in stt if "till WAF-arbetet" in item["aktivitet"])
+        self.assertNotIn("SÄPO", waf["aktivitet"])
+        self.assertNotIn("SÄPO", waf["syfte"])
+        self.assertNotIn("SÄPO", waf["paverkar"])
+        self.assertIn("Regeringen", waf["aktivitet"])
+        self.assertEqual(waf["paverkar"], ["Regeringen"])
+        media = data["team_orders"]["orders_round_3"]["Media"]["orders"]["activities"]
+        blob = json.dumps(media, ensure_ascii=False)
+        self.assertNotIn("SÄPO", blob)
+        self.assertNotIn("USA", blob)
+
+    def test_apply_test_orders_keeps_present_optional_teams(self):
+        from gm_console import apply_test_orders
+
+        data = _roster_state(OPTIONAL_TEAMS)
+        data["test_mode"] = True
+        data["runda"] = 3
+        apply_test_orders(data)
+        stt = data["team_orders"]["orders_round_3"]["STT"]["orders"]["activities"]
+        waf = next(item for item in stt if "till WAF-arbetet" in item["aktivitet"])
+        self.assertIn("SÄPO", waf["aktivitet"])
+        self.assertEqual(waf["paverkar"], ["SÄPO"])
 
 
 class TestLlmForslag(unittest.TestCase):
@@ -900,6 +1202,7 @@ class TestLlmForslag(unittest.TestCase):
         self.assertIn("order_ref: Alfa-1", text)
         self.assertIn("Alfa-1: 44", text)
         self.assertIn("inte att ordern måste få ett sannolikhetsutfall", text)
+        self.assertIn("Order utan backlog-id", text)
         self.assertIn("FALL A", text)
         self.assertIn("FALL C", text)
         self.assertIn('"delmal"', text)
@@ -1182,6 +1485,54 @@ class TestLlmResolution(unittest.TestCase):
             "nyheter": [{"rubrik": "Störning", "upplasning": "Belastning.", "lag": ["Alfa"]}],
         }))
         self.assertEqual(get_round_utfall(data)[0]["slump"], 44)
+
+    def test_custom_order_without_utfall_is_listed_as_missing(self):
+        data = create_game_state()
+        self._submit(data, "STT", [
+            activity(name="Ny säker arkitektur", hp=20, backlog_selected="stt_3"),
+            activity(name="Köpa in AI försvar", hp=5, backlog_selected="custom"),
+            activity(name="", hp=0, backlog_selected="custom"),
+        ])
+        ensure_round_rolls(data, randint=lambda: 36)
+        import_llm_forslag(data, json.dumps({
+            "nyheter": [{
+                "rubrik": "Automatiserat cyberförsvar provas",
+                "upplasning": "En ny lösning förbereds.",
+                "lag": ["STT"],
+            }],
+            "milstolpar": [{
+                "lag": "STT", "uppgift": "stt_3", "delta_hp": 20, "orsak": "Arbete.",
+            }],
+        }))
+        missing = orders_missing_utfall(data)
+        self.assertEqual([item["order_ref"] for item in missing], ["STT-2"])
+        self.assertEqual(missing[0]["aktivitet"], "Köpa in AI försvar")
+        self.assertEqual(missing[0]["slump"], 36)
+        live = build_live_state(data)
+        self.assertEqual(live["llm"]["missing_utfall"][0]["order_ref"], "STT-2")
+        public = build_public_state(data)
+        self.assertNotIn("missing_utfall", public)
+        self.assertNotIn("llm", public)
+
+        import_llm_forslag(data, json.dumps({
+            "utfall": [{
+                "lag": "STT",
+                "order_ref": "STT-2",
+                "order": "Köpa in AI försvar",
+                "satsad_hp": 5,
+                "motstand_hp": 0,
+                "sannolikhet": 70,
+                "slump": 36,
+                "resultat": "framgång",
+                "motivering": "Inköpet går igenom utan motstånd.",
+            }],
+            "nyheter": [{
+                "rubrik": "Automatiserat cyberförsvar provas",
+                "upplasning": "En ny lösning förbereds.",
+                "lag": ["STT"],
+            }],
+        }))
+        self.assertEqual(orders_missing_utfall(data), [])
 
     def test_old_response_without_utfall_still_imports(self):
         data = create_game_state()

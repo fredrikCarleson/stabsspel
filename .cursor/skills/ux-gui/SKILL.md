@@ -16,8 +16,9 @@ It is not a CRUD admin product.
 The GM runs the clock and operates the live console. The projector shows shared public state to the room. Teams submit orders from phones.
 
 Software map: [Docs/architecture.md](../../../Docs/architecture.md).
-Python layering: [python](../python/SKILL.md) skill.
-LLM copy/import and HP/projector contract: [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md).
+Python layering: [python](../python/SKILL.md).
+Room vs software: [game-rules](../game-rules/SKILL.md).
+LLM copy/import and HP/projector contract: [llm-workflow](../llm-workflow/SKILL.md).
 UX working log (historical, not the spec): [Docs/UX_CONSOLE_REWORK.md](../../../Docs/UX_CONSOLE_REWORK.md).
 Design tokens and UI classes live in `static/app.css`.
 
@@ -63,10 +64,10 @@ Wait for approval before coding.
 
 | Surface            | Audience               | Files                                          | Rule                                                                          |
 | ------------------ | ---------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| Spelledarpanel     | GM, laptop             | `gm_console_ui.py`, `static/gm-console.js`     | Compact header + action row + tabs: Inkorg, LLM-resultat (Diplo/Resultat), Lag, Arbete, Historik. **Meny** for overflow. |
-| Spelarskärm        | Room projector         | `create_projector_html`, `static/projector.js` | Round, phase, time, public HP. Resultatfas: denna runda → nästa runda. No buttons, orders, log, rolls or GM information |
+| Spelledarpanel     | GM, laptop             | `gm_console_ui.py`, `static/gm-console.js`     | Compact header + action row + tabs: Inkorg, LLM-resultat (Diplo/Resultat), Lag (not Orderfas), Arbete, Historik. **Meny** for overflow. |
+| Spelarskärm        | Room projector         | `create_projector_html`, `static/projector.js` | Round, phase, Swedish timer status, public HP, one work bar per team. Resultatfas: denna runda → nästa runda. No buttons, orders, log, rolls or GM information |
 | Team order form    | Players, usually phone | `team_order_routes.py`                         | Token URL. Draft autosave, submit, withdraw only in Orderfas                  |
-| Home / create game | GM before start        | `app.py`, `admin_routes.py`                    | List, open, download, delete, create/upload                                   |
+| Home / create game | GM before start        | `app.py`, `admin_routes.py`                    | List, open, download, delete. `/admin`: tabs **Starta nytt spel** (default) and **Ladda upp**. |
 | Print              | Paper                  | `orderkort.py`, `static/print.css`             | Separate from live UI                                                         |
 
 There is no SPA framework and no `templates/` directory. HTML is built in Python.
@@ -75,11 +76,7 @@ Prefer extending the existing live console over adding another full page.
 
 **Leftover chrome** such as the old quarter bar, checklists and extra timer widgets in `admin_routes.py` is unused and is **not** injected under the console. Do not add new workflows there.
 
-News stay on paper for the studio:
-
-**Kopiera till LLM → JSON (with app dice) → paste suggestions → paper → studio**
-
-Keep **Kopiera till LLM** as the export step (`/admin/<id>/order_summary`). Pasted JSON may suggest headlines, HP, milestones, and GM-only `utfall`. Do not add an in-app headline editor. Rolls, probabilities and motivering stay off the projector.
+News stay on paper. Keep **Kopiera till LLM** as the export step. Do not add an in-app headline editor. Rolls, `utfall` and motivering stay off the projector. Contract: [llm-workflow](../llm-workflow/SKILL.md).
 
 ## Design for the current task
 
@@ -190,15 +187,7 @@ Optimize for:
 * strong contrast,
 * large typography.
 
-Projector rules:
-
-* no operational controls,
-* no inbox,
-* no log,
-* no secret information,
-* no Testläge,
-* no rolls, probabilities, `utfall` or `llm_forslag`,
-* no hover-only information.
+Projector rules: no controls, inbox, log, Testläge, rolls, `utfall`, `llm_forslag`, or hover-only information. Forbidden payload keys: [llm-workflow](../llm-workflow/SKILL.md).
 
 In Resultatfas the projector may show this-round vs next-round public HP. That is a forecast, not GM-only data.
 
@@ -257,26 +246,7 @@ Do not steal these shortcuts for new features without a clear reason.
 
 ## Visual direction
 
-The visual identity should support a serious live crisis simulation.
-
-Aim for:
-
-* professional,
-* calm,
-* strategic,
-* modern,
-* authoritative,
-* slightly dramatic where appropriate.
-
-Avoid:
-
-* generic SaaS appearance,
-* unnecessary cyberpunk styling,
-* excessive neon,
-* arcade-game UI,
-* decorative complexity that reduces readability.
-
-Atmosphere must never compete with operational information.
+Serious live crisis simulation: professional, calm, slightly dramatic. Avoid generic SaaS, neon cyberpunk, and arcade chrome. Atmosphere must never compete with operational information.
 
 ## Visual system
 
@@ -368,30 +338,7 @@ Do not solve hierarchy problems by turning several buttons into different bright
 
 ## Existing UI classes
 
-Notifications:
-
-* `.notification.success`
-* `.notification.error`
-
-Modals:
-
-* `.modal`
-* `.modal-content`
-* `.is-open`
-
-GM clock:
-
-* `.gm-clock.is-warning`
-* `.gm-clock.is-danger`
-
-Order status:
-
-* `gm-status-empty`
-* `gm-status-draft`
-* `gm-status-submitted`
-* `gm-status-changed`
-
-Reuse existing patterns before creating parallel classes.
+Reuse `.notification.success` / `.error`, `.modal` / `.modal-content` / `.is-open`, `.gm-clock.is-warning` / `.is-danger`, and order status `gm-status-empty` / `draft` / `submitted` / `changed`. Do not create parallel classes.
 
 ## Backgrounds and imagery
 
@@ -452,7 +399,7 @@ Do not introduce new workflows or functionality merely because they would make a
 
 If solving a UX problem requires behavioural changes, explain that separately before implementing.
 
-If the GUI work affects HP, LLM results, backlog/milestones, or projector data, read [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md) first. Do not invent a second wallet/backlog/import rule in the UI. `Docs/UX_CONSOLE_REWORK.md` is a historical working log, not the current UI spec.
+If the GUI work affects HP, LLM results, backlog/milestones, or projector data, read [llm-workflow](../llm-workflow/SKILL.md) first. Do not invent a second wallet/backlog/import rule in the UI. `Docs/UX_CONSOLE_REWORK.md` is a historical working log, not the current UI spec.
 
 Preserve working interaction patterns unless there is a clear usability reason to change them.
 
@@ -516,7 +463,7 @@ Before considering a UI change complete, ask:
 * [ ] Relevant CSS/JS cache-bust version was bumped
 * [ ] Existing behaviour was not changed unintentionally
 * [ ] Relevant tests still pass
-* [ ] Docs that describe the changed screen were updated (`architecture.md` §8 for console/projector; `LLM_WORKFLOW.md` if LLM/HP visibility changed; UX log only if recording a UX decision)
+* [ ] Docs that describe the changed screen were updated (`architecture.md` §8 for console/projector; [llm-workflow](../llm-workflow/SKILL.md) if LLM/HP visibility changed; UX log only if recording a UX decision)
 
 ## Documentation
 

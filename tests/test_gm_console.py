@@ -1,8 +1,11 @@
 """Tests for Game Master live-console helpers."""
 import json
+import re
+import tempfile
 import unittest
 import sys
 import os
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -15,6 +18,7 @@ from gm_console import (
     apply_undo,
     build_inbox,
     build_live_state,
+    build_public_state,
     get_previous_phase,
     missing_order_teams,
     push_undo,
@@ -177,19 +181,21 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn('id="gm-backlog-root"', html)
         self.assertIn("Teamens arbete", html)
         self.assertIn("Inloggning val", html)
-        self.assertIn("överförbart", html)
         self.assertIn("Space starta/pausa", html)
         self.assertIn("Inte startad", html)
-        self.assertIn("Kvar att använda", html)
-        self.assertIn('data-hp-delta', html)
         self.assertIn("gm-backlog-amount", html)
         self.assertIn('role="progressbar"', html)
         self.assertIn('aria-valuenow="0"', html)
         self.assertIn("gm-backlog-legend", html)
+        self.assertIn("inte påbörjad", html)
+        self.assertIn("gm-backlog-row is-idle", html)
         self.assertIn("förra rundan", html)
         self.assertIn("HP per klick", html)
         self.assertNotIn("−5</button>", html)
         self.assertNotIn("+5</button>", html)
+        self.assertNotIn("överförbart", html)
+        self.assertNotIn("Kvar att använda", html)
+        self.assertNotIn('data-hp-delta', html)
 
         add_backlog_spend(data, "Alfa", "alfa_1", 5)
         data["team_orders"] = {
@@ -222,6 +228,8 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("gm-backlog-add", fragments["backlog"])
         self.assertIn("+5 den här rundan", fragments["backlog"])
         self.assertNotIn("gm-backlog-prev", fragments["backlog"])
+        self.assertIn("gm-backlog-row is-active", fragments["backlog"])
+        self.assertIn("gm-backlog-row is-idle", fragments["backlog"])
 
         data["fas"] = "Diplomatifas"
         fragments = live_html_fragments("g1", build_live_state(data))
@@ -283,6 +291,8 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("{% if is_admin_edit %}", TEAM_ORDER_TEMPLATE)
         self.assertIn("Skicka slutgiltig order", TEAM_ORDER_TEMPLATE)
         self.assertIn("Spara utkast", TEAM_ORDER_TEMPLATE)
+        self.assertIn('id="order-state"', TEAM_ORDER_TEMPLATE)
+        self.assertIn("markOrderSubmitted", TEAM_ORDER_TEMPLATE)
         self.assertNotIn("Uppdatera Order", TEAM_ORDER_TEMPLATE)
 
     def test_backlog_choice_meta_matches_dropdown(self):
@@ -322,12 +332,17 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("projector-progress", html)
         self.assertIn("projector-audio-hint", html)
         self.assertIn("Klicka för ljudvarningar", html)
-        self.assertIn("projector.js?v=5", html)
-        self.assertIn("app.css?v=45", html)
+        self.assertIn("projector.js?v=8", html)
+        self.assertIn("app.css?v=58", html)
         self.assertIn("Inte startad", html)
         self.assertNotIn(">stopped<", html)
         self.assertIn("Denna runda", html)
         self.assertIn("Nästa runda", html)
+        self.assertIn("projector-team-recipe", html)
+        self.assertIn("Bas 25", html)
+        self.assertIn("varaktigt 0", html)
+        self.assertIn("tillfälligt -5", html)
+        self.assertIn("tillfälligt +5", html)
         self.assertIn("projector-team is-loss", html)
         self.assertIn("projector-team is-gain", html)
         self.assertIn("−5 HP", html)
@@ -337,10 +352,45 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Starta", html)
         self.assertNotIn("Pausa", html)
         self.assertNotIn("Testläge", html)
+        self.assertNotIn("stöd +10", html)
         self.assertNotIn("Orderinkorg", html)
         self.assertNotIn("HP per klick", html)
         self.assertNotIn("gm-hp-next", html)
         self.assertNotIn("gm-backlog-prev", html)
+
+    def test_projector_result_shows_lasting_and_temporary_together(self):
+        from gm_console import apply_or_queue_hp
+        from gm_console_ui import create_projector_html
+
+        data = sample_game()
+        data["fas"] = "Resultatfas"
+        apply_or_queue_hp(data, "Bravo", 3, "DevOps", varaktig=True)
+        apply_or_queue_hp(data, "Bravo", 3, "regering", varaktig=False)
+        html = create_projector_html("g1", data)
+        bravo = next(t for t in build_public_state(data)["teams"] if t["team"] == "Bravo")
+        self.assertEqual(bravo["hp"], 25)
+        self.assertEqual(bravo["next_hp"], 31)
+        self.assertEqual(bravo["next_varaktigt"], 3)
+        self.assertEqual(bravo["next_tillfalligt"], 3)
+        self.assertIn("varaktigt +3", html)
+        self.assertIn("tillfälligt +3", html)
+        self.assertIn("varaktigt 0", html)
+
+    def test_projector_lists_only_active_teams(self):
+        data = sample_game()
+        data["lag"] = ["Alfa", "Bravo", "STT", "FM", "BS", "Media", "Regeringen"]
+        data["poang"]["FM"] = {"bas": 10, "aktuell": 10, "regeringsstod": False}
+        data["poang"]["BS"] = {"bas": 10, "aktuell": 10, "regeringsstod": False}
+        data["poang"]["Media"] = {"bas": 12, "aktuell": 12, "regeringsstod": False}
+        data["poang"]["Regeringen"] = {"bas": 12, "aktuell": 12, "regeringsstod": False}
+        names = [row["team"] for row in build_public_state(data)["teams"]]
+        self.assertEqual(names, data["lag"])
+        self.assertNotIn("SÄPO", names)
+        self.assertNotIn("USA", names)
+        html = create_projector_html("g1", data)
+        self.assertIn("Regeringen", html)
+        self.assertNotIn("SÄPO", html)
+        self.assertNotIn("USA", html)
 
     def test_projector_shows_folded_llm_hp_as_next_round_change(self):
         from gm_console_ui import create_projector_html
@@ -445,6 +495,9 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Arbete", html)
         self.assertIn("Historik", html)
         self.assertIn('id="gm-tab-inkorg"', html)
+        self.assertIn('id="gm-tab-arbete"', html)
+        self.assertNotIn('id="gm-tab-lag"', html)
+        self.assertNotIn("Lag och handlingspoäng", html)
         self.assertIn('aria-selected="true" tabindex="0">Inkorg</button>', html)
         self.assertIn("gm-mer-menu", html)
         self.assertIn("gm-app-menu", html)
@@ -468,7 +521,7 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Aktivitetskort", menu_html)
         self.assertNotIn("Gå till nästa fas? Det går att ångra.", html)
         self.assertIn("Testläge", html)
-        self.assertIn("Redigera order", html)
+        self.assertNotIn("Redigera order", html)
         self.assertNotIn("Ange order", html)
         self.assertIn('id="gm-test-form"', html)
         self.assertIn('class="gm-autofill gm-menu-autofill" hidden', html)
@@ -520,6 +573,43 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertIn("Inne", html)
         self.assertIn("saknar HP", html)
         self.assertIn("Saknas", html)
+
+    def test_orderfas_chip_ignores_empty_activity_slots(self):
+        from gm_console_ui import create_gm_console_html
+
+        data = sample_game()
+        data["team_orders"] = {
+            "orders_round_1": {
+                "Alfa": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {
+                        "activities": [
+                            {
+                                "aktivitet": "Inloggning val",
+                                "syfte": "säkerhet",
+                                "hp": 15,
+                                "typ": "bygga",
+                                "paverkar": [],
+                            },
+                            {
+                                "aktivitet": "",
+                                "syfte": "",
+                                "hp": 0,
+                                "typ": "bygga",
+                                "paverkar": [],
+                            },
+                        ]
+                    },
+                }
+            }
+        }
+        html = create_gm_console_html("g1", data)
+        inbox = build_inbox(data)
+        self.assertEqual([row["aktivitet"] for row in inbox if row["team"] == "Alfa"], ["Inloggning val"])
+        self.assertIn("Inne", html)
+        self.assertNotIn("saknar aktivitet", html)
+        self.assertNotIn("saknar HP", html)
 
 
     def test_diplomatifas_job_is_inbox(self):
@@ -592,7 +682,7 @@ class TestGmConsoleHtml(unittest.TestCase):
 
         data = sample_game()
         html = create_gm_console_html("g1", data)
-        self.assertIn("Redigera order", html)
+        self.assertNotIn("Redigera order", html)
         self.assertNotIn("Ange order", html)
         self.assertIn('class="gm-autofill gm-menu-autofill" hidden', html)
         self.assertNotIn("gm-autofill", html[html.find('id="gm-inbox-root"'):])
@@ -601,7 +691,7 @@ class TestGmConsoleHtml(unittest.TestCase):
 
         data["test_mode"] = True
         html = create_gm_console_html("g1", data)
-        self.assertIn("Redigera order", html)
+        self.assertNotIn("Redigera order", html)
         self.assertNotIn('class="gm-autofill gm-menu-autofill" hidden', html)
         self.assertIn("Fyll med testdata", html)
         self.assertLess(html.find("Fyll med testdata"), html.find('id="gm-inbox-root"'))
@@ -647,10 +737,38 @@ class TestGmConsoleHtml(unittest.TestCase):
         data["fas"] = "Diplomatifas"
         apply_or_queue_hp(data, "Alfa", -4, "test")
         html = create_gm_console_html("g1", data)
-        self.assertIn("Nästa runda -4", html)
-        self.assertIn("gm-hp-next", html)
-        self.assertIn("HP schemalagt till nästa runda", html)
+        self.assertIn("gm-hp-to is-loss", html)
+        self.assertIn("gm-team is-loss", html)
+        self.assertIn('aria-label="HP nu 25, nästa runda 21"', html)
+        self.assertIn('<span class="gm-hp-now">25</span>', html)
+        self.assertIn('<span class="gm-hp-next">21</span>', html)
+        self.assertNotIn("HP nu</span>", html)
+        self.assertNotIn("Ändra nästa runda", html)
+        self.assertNotIn("gm-hp-forecast", html)
+        self.assertNotIn("gm-reason-label", html)
+        self.assertIn("gm-hp-commit", html)
+        self.assertIn('placeholder="Orsak, t.ex. spion"', html)
+        self.assertIn("Verkställ", html)
+        self.assertIn("Alfa: -4 HP schemalagt (tillfälligt nästa runda, test).", html)
         self.assertIn('id="gm-tab-lag" data-tab="lag"', html)
+        self.assertIn("Lag och handlingspoäng", html)
+        self.assertNotIn("överförbart", html)
+        self.assertNotIn("Överför HP", html)
+        self.assertNotIn("Kvar att använda", html)
+        self.assertNotIn("sparar direkt", html)
+        self.assertNotIn('data-hp-delta', html)
+        self.assertIn('data-hp-nudge', html)
+        self.assertIn("data-hp-apply-form", html)
+        self.assertIn("Tillfälligt", html)
+        self.assertIn("Varaktigt", html)
+        self.assertIn('name="lasting" value="1"', html)
+        self.assertIn('name="lasting" value="0"', html)
+        self.assertIn('data-hp-baseline="-4"', html)
+        self.assertIn('name="total" value="-4"', html)
+        self.assertNotIn("Bas 25 · varaktigt 0 · tillfälligt 0", html)
+        self.assertNotIn("Bas 25 · varaktigt 0 · tillfälligt -4", html)
+        self.assertNotIn("Stöd +10", html)
+        self.assertNotIn("Varje runda", html)
 
     def test_llm_suggestions_render_after_import(self):
         from gm_console import import_llm_forslag
@@ -797,6 +915,56 @@ class TestGmConsoleHtml(unittest.TestCase):
         self.assertNotIn("Slag 27", projector)
         self.assertNotIn("resursövertag", projector)
         self.assertNotIn("Alfa-1", projector)
+        self.assertNotIn("Saknar utfall", projector)
+
+    def test_llm_tab_lists_custom_order_missing_utfall(self):
+        from gm_console import ensure_round_rolls, import_llm_forslag
+        from gm_console_ui import create_gm_console_html, create_projector_html
+
+        data = sample_game()
+        data["fas"] = "Diplomatifas"
+        data["team_orders"] = {
+            "orders_round_1": {
+                "STT": {
+                    "final": True,
+                    "submitted_at": 1,
+                    "orders": {"activities": [
+                        {
+                            "aktivitet": "Ny säker arkitektur",
+                            "syfte": "Skydd",
+                            "hp": 20,
+                            "typ": "bygga",
+                            "paverkar": ["STT"],
+                            "backlog_selected": "stt_3",
+                        },
+                        {
+                            "aktivitet": "Köpa in AI försvar",
+                            "syfte": "Aktiv AI",
+                            "hp": 5,
+                            "typ": "bygga",
+                            "backlog_selected": "custom",
+                        },
+                    ]},
+                }
+            }
+        }
+        ensure_round_rolls(data, randint=lambda: 36)
+        import_llm_forslag(data, json.dumps({
+            "nyheter": [{
+                "rubrik": "Automatiserat cyberförsvar provas",
+                "upplasning": "En ny lösning förbereds.",
+                "lag": ["STT"],
+            }],
+            "milstolpar": [{"lag": "STT", "uppgift": "stt_3", "delta_hp": 20}],
+        }))
+        html = create_gm_console_html("g1", data)
+        self.assertIn("Saknar utfall", html)
+        self.assertIn("Köpa in AI försvar", html)
+        self.assertIn("1 order saknar utfall", html)
+        self.assertIn("SAKNAS", html)
+        projector = create_projector_html("g1", data)
+        self.assertNotIn("Saknar utfall", projector)
+        self.assertNotIn("Köpa in AI försvar", projector)
 
     def test_deterministic_backlog_is_not_shown_as_dice_outcome(self):
         from gm_console import ensure_round_rolls, import_llm_forslag
@@ -904,6 +1072,80 @@ class TestAdminStartHtml(unittest.TestCase):
         self.assertNotIn("Befintliga spel", src)
         self.assertIn("Till startsidan", src)
         self.assertIn('href="/"', src)
+
+
+class TestOrderkortPrint(unittest.TestCase):
+    def test_rows_only_list_supplied_teams(self):
+        from orderkort import generate_order_rows
+
+        html = generate_order_rows(["Alfa", "Media", "Regeringen"])
+        self.assertIn("affects_Media_1", html)
+        self.assertIn("affects_Regeringen_1", html)
+        self.assertNotIn("SÄPO", html)
+        self.assertNotIn("USA", html)
+        self.assertNotIn("affects_STT_", html)
+
+    def test_rows_without_roster_do_not_dump_the_catalog(self):
+        from orderkort import generate_order_rows
+
+        html = generate_order_rows()
+        self.assertNotIn("SÄPO", html)
+        self.assertNotIn("USA", html)
+        self.assertNotIn("affects_", html)
+
+    def test_printed_hp_uses_stored_bas(self):
+        from orderkort import orderkort_max_hp
+
+        data = {
+            "lag": ["Alfa", "STT", "FM", "Media", "Regeringen"],
+            "poang": {
+                "Alfa": {"bas": 25, "aktuell": 18},
+                "STT": {"bas": 30, "aktuell": 30},
+                "FM": {"bas": 10, "aktuell": 10},
+                "Media": {"bas": 12, "aktuell": 12},
+                "Regeringen": {"bas": 12, "aktuell": 12},
+            },
+        }
+        self.assertEqual(orderkort_max_hp(data, "Alfa"), 25)
+        self.assertEqual(orderkort_max_hp(data, "STT"), 30)
+        self.assertEqual(orderkort_max_hp(data, "FM"), 10)
+        self.assertEqual(orderkort_max_hp(data, "Media"), 12)
+
+    def test_seven_team_cards_omit_absent_teams_and_use_catalog_hp(self):
+        from models import skapa_nytt_spel
+        from orderkort import generate_orderkort_html, generate_team_orderkort_html
+
+        with tempfile.TemporaryDirectory() as data_dir, patch("models.DATA_DIR", data_dir):
+            spel_id = skapa_nytt_spel(
+                "2026-09-05",
+                "T",
+                32,
+                10,
+                10,
+                extra_lag=["Media", "Regeringen"],
+                spellage="extended",
+            )
+            html = generate_orderkort_html(spel_id, 1)
+            pairs = dict(re.findall(
+                r"Team:</span>\s*<span class=\"value\">([^<]+)</span>.*?"
+                r"Max handlingspoäng:</span>\s*<span class=\"value\">([^<]+)</span>",
+                html,
+                re.S,
+            ))
+            self.assertEqual(pairs["STT"], "30")
+            self.assertEqual(pairs["FM"], "10")
+            self.assertEqual(pairs["Media"], "12")
+            self.assertEqual(pairs["Regeringen"], "12")
+            self.assertNotIn("SÄPO", pairs)
+            self.assertNotIn("USA", pairs)
+            self.assertIn("affects_Media_1", html)
+            self.assertIn("affects_Regeringen_1", html)
+            self.assertNotIn("affects_SÄPO_", html)
+            self.assertNotIn("affects_USA_", html)
+            media = generate_team_orderkort_html(spel_id, "Media")
+            self.assertIn(">12<", media.replace(" ", ""))
+            self.assertNotIn("affects_SÄPO_", media)
+            self.assertNotIn("affects_USA_", media)
 
 
 if __name__ == "__main__":

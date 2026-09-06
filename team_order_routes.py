@@ -4,6 +4,7 @@ Handles team-specific order entry with authorization and mobile-responsive desig
 """
 
 from flask import Blueprint, request, render_template_string, redirect, url_for, jsonify, make_response, g
+from markupsafe import escape
 from models import (
     validate_team_token,
     get_team_by_token,
@@ -13,6 +14,7 @@ from models import (
     BACKLOG,
     game_lock_for,
     active_teams,
+    MAX_RUNDA,
 )
 from admin_routes import create_team_overview, check_admin_session
 from gm_console import (
@@ -28,6 +30,70 @@ import json
 import time
 
 team_order_bp = Blueprint('team_order', __name__)
+
+
+def _order_notice_page(
+    status,
+    *,
+    title,
+    lead,
+    team_name="",
+    runda=None,
+    fas="",
+    next_line="",
+    poll_url="",
+):
+    """Phone-sized wait/error page that matches the order form chrome."""
+    meta_bits = []
+    if runda:
+        meta_bits.append(f"Runda {int(runda)}")
+    if fas:
+        meta_bits.append(escape(str(fas)))
+    meta_html = (
+        f'<p class="order-meta">{" · ".join(meta_bits)}</p>' if meta_bits else ""
+    )
+    heading = escape(team_name) if team_name else "Stabsspel"
+    next_html = (
+        f'<p class="order-wait-next">{escape(next_line)}</p>' if next_line else ""
+    )
+    poll_js = ""
+    if poll_url:
+        poll_js = f"""
+<script>
+setInterval(function () {{
+  fetch("{escape(poll_url)}")
+    .then(function (r) {{ return r.ok ? r.json() : null; }})
+    .then(function (d) {{
+      if (d && (d.phase === "Orderfas" || d.phase === "Diplomatifas")) location.reload();
+    }})
+    .catch(function () {{}});
+}}, 5000);
+</script>
+"""
+    html = f'''<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{heading} – {escape(title)}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css?v=59">
+</head>
+<body class="order-page">
+    <div class="order-wrap">
+        <header class="order-head">
+            <p class="order-kicker">Ange order</p>
+            <h1>{heading}</h1>
+            {meta_html}
+            <p class="order-state is-wait">{escape(title)}</p>
+        </header>
+        <p class="order-wait-lead">{escape(lead)}</p>
+        {next_html}
+    </div>
+    {poll_js}
+</body>
+</html>'''
+    return html, status
 
 
 @team_order_bp.before_request
@@ -147,20 +213,55 @@ def team_enter_order(spel_id, token):
     # Validate token and get team
     team_name = get_team_by_token(spel_id, token)
     if not team_name:
-        return "Ogiltig eller utgången länk.", 403
+        return _order_notice_page(
+            403,
+            title="Ogiltig länk",
+            lead="Länken är ogiltig eller har gått ut. Be spelledaren om en ny.",
+        )
     
     # Load game data
     data = load_game_data(spel_id)
     if not data:
-        return "Spelet hittades inte.", 404
+        return _order_notice_page(
+            404,
+            title="Spelet hittades inte",
+            lead="Det finns inget spel bakom den här länken.",
+            team_name=team_name,
+        )
     
     # Check if game is active
     if data.get("avslutat", False):
-        return "Spelet är avslutat.", 403
+        return _order_notice_page(
+            403,
+            title="Spelet är avslutat",
+            lead="Inga fler order. Tack för att ni spelade.",
+            team_name=team_name,
+            runda=data.get("runda"),
+            fas=data.get("fas") or "",
+        )
     
     # Check if orders can be submitted
     if not can_submit_orders(data):
-        return f"Order kan bara lämnas under Orderfas eller Diplomatifas. Nuvarande fas: {data['fas']}", 403
+        fas = data.get("fas") or ""
+        runda = int(data.get("runda") or 1)
+        next_line = ""
+        if fas == "Resultatfas" and runda < MAX_RUNDA:
+            next_line = f"Nästa gång ni lägger order är Orderfas i runda {runda + 1}."
+        elif fas == "Resultatfas":
+            next_line = "Det här är sista rundan. Vänta på spelledaren."
+        return _order_notice_page(
+            403,
+            title="Inte orderfas",
+            lead=(
+                f"Order lämnas under Orderfas. Just nu är det {fas} — "
+                "titta på spelarskärmen."
+            ),
+            team_name=team_name,
+            runda=runda,
+            fas=fas,
+            next_line=next_line,
+            poll_url=f"/team/{spel_id}/{token}/timer",
+        )
     
     # Get remaining time
     remaining_time = get_phase_timer(data)
@@ -255,9 +356,9 @@ def team_save_order(spel_id, token):
         return jsonify({"success": False, "error": "Ordern är redan skickad."}), 403
     order_data = _merge_server_activity_fields(existing, order_data)
 
-    # Save order data
+    # Drafts are not submissions. Keep submitted_at only when the GM is
+    # editing an already-final order.
     saved = {
-        "submitted_at": existing.get("submitted_at") or time.time(),
         "updated_at": time.time(),
         "phase": data["fas"],
         "round": data["runda"],
@@ -322,17 +423,20 @@ def team_submit_order(spel_id, token):
         return jsonify({"success": False, "error": "Order must contain an activity"}), 400
     order_data = _merge_server_activity_fields(existing, order_data)
 
-    # Save final order data
+    # Team (or first) submit stamps the send time. Re-saving an already-final
+    # order as GM keeps the original submitted_at and marks it as GM-edited.
     saved = {
-        "submitted_at": existing.get("submitted_at") or time.time(),
         "updated_at": time.time(),
         "phase": data["fas"],
         "round": data["runda"],
         "orders": order_data,
         "final": True
     }
-    if admin_edit:
+    if existing.get("final") and admin_edit:
+        saved["submitted_at"] = existing.get("submitted_at") or time.time()
         saved["edited_by_gm"] = True
+    else:
+        saved["submitted_at"] = time.time()
     data["team_orders"][orders_key][team_name] = saved
     if team_name == "Regeringen":
         sync_regeringen_fordelning(data, team_name)
@@ -402,7 +506,7 @@ TEAM_ORDER_TEMPLATE = """
     <meta http-equiv="Expires" content="0">
     <title>Ange order – {{ team_name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/app.css?v=44">
+    <link rel="stylesheet" href="/static/app.css?v=59">
 </head>
 <body class="order-page">
     <div class="order-wrap">
@@ -421,9 +525,9 @@ TEAM_ORDER_TEMPLATE = """
             <h1>{{ team_name }}</h1>
             <p class="order-meta">Runda {{ data.runda }} · {{ data.fas }}</p>
             {% if is_submitted and not is_admin_edit %}
-            <p class="order-state is-submitted">Order skickad</p>
+            <p class="order-state is-submitted" id="order-state">Order skickad</p>
             {% else %}
-            <p class="order-state is-draft">Utkast — inte skickad</p>
+            <p class="order-state is-draft" id="order-state">Utkast — inte skickad</p>
             {% endif %}
         </header>
         
@@ -486,8 +590,8 @@ TEAM_ORDER_TEMPLATE = """
                             Spara utkast
                         {% endif %}
                     </button>
-                    {% if is_submitted and not is_admin_edit and data.fas == "Orderfas" %}
-                    <button type="button" class="secondary withdraw-btn" onclick="withdrawOrder()">
+                    {% if not is_admin_edit and data.fas == "Orderfas" %}
+                    <button type="button" class="secondary withdraw-btn" id="withdrawBtn" onclick="withdrawOrder()"{% if not is_submitted %} hidden{% endif %}>
                         Återta order
                     </button>
                     {% endif %}
@@ -880,6 +984,28 @@ TEAM_ORDER_TEMPLATE = """
         
         // Auto-save functionality removed
         
+        function markOrderSubmitted() {
+            var state = document.getElementById('order-state');
+            if (state) {
+                state.textContent = 'Order skickad';
+                state.classList.remove('is-draft');
+                state.classList.add('is-submitted');
+            }
+            var submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Order skickad';
+            }
+            var saveBtn = document.querySelector('.save-btn');
+            if (saveBtn) {
+                saveBtn.style.display = 'none';
+            }
+            var withdrawBtn = document.getElementById('withdrawBtn');
+            if (withdrawBtn) {
+                withdrawBtn.hidden = false;
+            }
+        }
+
         function saveOrder(isFinal = false, retryCount = 0) {
             const usedHP = usedOrderHP();
             if (usedHP > TEAM_MAX_HP) {
@@ -913,13 +1039,7 @@ TEAM_ORDER_TEMPLATE = """
                         showStatus('Slutgiltig order skickad. Du kan gå tillbaka till spelledarpanelen.', 'success');
                         {% else %}
                         showStatus('Slutgiltig order skickad.', 'success');
-                        document.getElementById('submitBtn').disabled = true;
-                        document.getElementById('submitBtn').textContent = 'Order skickad';
-                        // Hide save button when order is submitted
-                        const saveBtn = document.querySelector('.save-btn');
-                        if (saveBtn) {
-                            saveBtn.style.display = 'none';
-                        }
+                        markOrderSubmitted();
                         {% endif %}
                     } else {
                         {% if is_admin_edit %}
@@ -1009,16 +1129,7 @@ TEAM_ORDER_TEMPLATE = """
                 if (button.classList.contains('withdraw-btn')) return;
                 button.disabled = true;
             });
-            
-            // Hide save button and update submit button
-            const saveBtn = document.querySelector('.save-btn');
-            const submitBtn = document.getElementById('submitBtn');
-            if (saveBtn) {
-                saveBtn.style.display = 'none';
-            }
-            if (submitBtn) {
-                submitBtn.textContent = 'Order skickad';
-            }
+            markOrderSubmitted();
         }
         
         // Form submission

@@ -1,6 +1,8 @@
 """In-memory four-round playthrough using testdata orders and frozen LLM JSON.
 
-Does not write under speldata/. Resolution JSON lives in testdata/scenario_llm/.
+Does not write under speldata/. Default (nine teams): testdata/scenario_llm/.
+Seven teams (no SÄPO/USA): testdata/scenario_llm_7lag/. Same seed; do not
+rewrite the nine-team year to match seven.
 """
 from __future__ import annotations
 
@@ -35,13 +37,30 @@ from gm_console import (  # noqa: E402
 )
 from models import (  # noqa: E402
     clone_backlog_for_teams,
+    extra_teams_in,
     get_team_base_hp,
     init_fashistorik_v2,
-    suggest_teams,
+    resolve_active_teams,
 )
 
 SCENARIO_SEED = 20260901
 LLM_DIR = ROOT / "testdata" / "scenario_llm"
+VARIANTS = {
+    "nine": {
+        "llm_dir": ROOT / "testdata" / "scenario_llm",
+        "label": "Nine teams",
+        "spellage": "extended",
+        "extra_lag": ["Media", "SÄPO", "Regeringen", "USA"],
+        "antal_spelare": 27,
+    },
+    "seven": {
+        "llm_dir": ROOT / "testdata" / "scenario_llm_7lag",
+        "label": "Seven teams (no SÄPO, no USA)",
+        "spellage": "extended",
+        "extra_lag": ["Media", "Regeringen"],
+        "antal_spelare": 32,
+    },
+}
 SECRET_PUBLIC_KEYS = (
     "inbox",
     "gm_log",
@@ -64,27 +83,41 @@ NEWS_LEAK_MARKERS = (
 )
 
 
-def llm_path(runda):
-    return LLM_DIR / f"runda{int(runda)}.json"
+def variant_config(name="nine"):
+    key = str(name or "nine").strip().lower()
+    if key not in VARIANTS:
+        raise ValueError(f"Okänd scenario-variant: {name}")
+    return VARIANTS[key]
 
 
-def load_llm_json(runda):
-    path = llm_path(runda)
+def llm_path(runda, llm_dir=None):
+    directory = Path(llm_dir) if llm_dir else LLM_DIR
+    return directory / f"runda{int(runda)}.json"
+
+
+def load_llm_json(runda, llm_dir=None):
+    path = llm_path(runda, llm_dir)
     if not path.is_file():
         return None
     return path.read_text(encoding="utf-8")
 
 
-def create_scenario_state(antal_spelare=27):
-    lag = suggest_teams(antal_spelare)
+def create_scenario_state(variant="nine"):
+    cfg = variant_config(variant)
+    lag = resolve_active_teams(
+        cfg["antal_spelare"],
+        extra_lag=cfg["extra_lag"],
+        spellage=cfg["spellage"],
+    )
     data = {
         "id": "scenario-playthrough",
         "datum": "2026-09-01",
         "plats": "scenario",
-        "antal_spelare": antal_spelare,
+        "antal_spelare": cfg["antal_spelare"],
         "fas": "Orderfas",
         "runda": 1,
         "lag": lag,
+        "extra_lag": extra_teams_in(lag),
         "order": {},
         "poang": {},
         "resultat": [],
@@ -301,23 +334,28 @@ def play_one_round(data, rng, llm_raw=None, stop_before_import=False):
     return report
 
 
-def play_scenario(seed=SCENARIO_SEED, stop_after_missing_llm=True):
+def play_scenario(seed=SCENARIO_SEED, stop_after_missing_llm=True, variant="nine"):
+    cfg = variant_config(variant)
     rng = random.Random(seed)
-    data = create_scenario_state()
+    data = create_scenario_state(variant)
+    llm_dir = cfg["llm_dir"]
     rounds = []
     missing = None
     for runda in range(1, 5):
-        raw = load_llm_json(runda)
+        raw = load_llm_json(runda, llm_dir)
         if raw is None and stop_after_missing_llm:
             dump = play_one_round(data, rng, stop_before_import=True)
             rounds.append(dump)
             missing = runda
             break
         if raw is None:
-            raise FileNotFoundError(f"Saknar {llm_path(runda)}")
+            raise FileNotFoundError(f"Saknar {llm_path(runda, llm_dir)}")
         rounds.append(play_one_round(data, rng, llm_raw=raw))
     return {
         "seed": seed,
+        "variant": variant,
+        "label": cfg["label"],
+        "llm_dir": str(llm_dir.relative_to(ROOT)).replace("\\", "/"),
         "teams": list(data.get("lag") or []),
         "finished": bool(data.get("avslutat")),
         "final_wallets": wallet_map(data),
@@ -333,8 +371,8 @@ def format_transcript(result):
     lines = [
         "# Stabsspel scenario transcript",
         "",
-        f"Seed `{result.get('seed')}`. Nine teams. Testdata orders, frozen D100, "
-        "resolutions in `testdata/scenario_llm/rundaN.json`.",
+        f"Seed `{result.get('seed')}`. {result.get('label') or 'Nine teams'}. Testdata orders, frozen D100, "
+        f"resolutions in `{result.get('llm_dir') or 'testdata/scenario_llm'}/rundaN.json`.",
         "",
         "This is one scripted year, not live diplomacy.",
         "",
@@ -422,15 +460,18 @@ def format_transcript(result):
 
 
 def write_transcript(result, path=None):
-    path = Path(path) if path else LLM_DIR / "transcript.md"
+    cfg = variant_config(result.get("variant") or "nine")
+    path = Path(path) if path else cfg["llm_dir"] / "transcript.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(format_transcript(result), encoding="utf-8")
     return path
 
 
-def dump_round(runda, seed=SCENARIO_SEED):
+def dump_round(runda, seed=SCENARIO_SEED, variant="nine"):
     """Play completed rounds, then write the next round's export brief as JSON."""
-    result = play_scenario(seed=seed, stop_after_missing_llm=True)
+    cfg = variant_config(variant)
+    llm_dir = cfg["llm_dir"]
+    result = play_scenario(seed=seed, stop_after_missing_llm=True, variant=variant)
     current = result["rounds"][-1] if result["rounds"] else None
     if not current or not current.get("stopped"):
         raise SystemExit("Inget round-dump: alla LLM-filer finns redan.")
@@ -438,22 +479,27 @@ def dump_round(runda, seed=SCENARIO_SEED):
         raise SystemExit(
             f"Nästa saknade LLM-fil är runda {current['runda']}, inte {runda}."
         )
-    LLM_DIR.mkdir(parents=True, exist_ok=True)
-    path = LLM_DIR / f"_dump_r{int(runda)}.json"
+    llm_dir.mkdir(parents=True, exist_ok=True)
+    path = llm_dir / f"_dump_r{int(runda)}.json"
     path.write_text(json.dumps(current["brief"], ensure_ascii=False, indent=2), encoding="utf-8")
     print(path)
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    variant = "nine"
+    if args and args[-1] in VARIANTS:
+        variant = args.pop()
     if args and args[0] == "dump":
-        dump_round(int(args[1]) if len(args) > 1 else 1)
+        dump_round(int(args[1]) if len(args) > 1 else 1, variant=variant)
     else:
-        result = play_scenario()
+        result = play_scenario(variant=variant)
         transcript = write_transcript(result)
         print(transcript)
         print(json.dumps({
             "finished": result["finished"],
+            "variant": result["variant"],
+            "teams": result["teams"],
             "findings": result["findings"],
             "final_wallets": result["final_wallets"],
         }, ensure_ascii=False, indent=2))

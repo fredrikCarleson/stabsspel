@@ -4,6 +4,7 @@
  */
 
 (function () {
+  document.documentElement.classList.add("gm-js");
   var POLL_MS = 3000;
   var GM_WARN_S = 300;
   var GM_DANGER_S = 60;
@@ -223,6 +224,43 @@
     });
   }
 
+  function bindHpDrafts() {
+    document.addEventListener("submit", function (event) {
+      var form = event.target.closest && event.target.closest("[data-hp-apply-form]");
+      if (!form) return;
+      event.preventDefault();
+      var amountEl = form.querySelector("[data-hp-amount]");
+      var total = parseDraft(amountEl);
+      var delta = total - parseBaseline(amountEl);
+      if (!delta) {
+        syncApplyButton(form);
+        return;
+      }
+      var lastingEl = form.querySelector("[name=lasting]");
+      var lasting = !!(lastingEl && lastingEl.value === "1");
+      var teamEl = form.querySelector("[name=team]");
+      var reasonEl = form.querySelector("[name=reason]");
+      postHp({
+        op: "adjust",
+        team: teamEl ? teamEl.value : "",
+        amount: delta,
+        reason: reasonEl ? reasonEl.value : "",
+        duration: lasting ? "lasting" : "temp",
+        lasting: lasting,
+      }, form);
+    });
+    document.addEventListener("input", function (event) {
+      var form = event.target.closest && event.target.closest("[data-hp-apply-form]");
+      if (!form || !event.target.hasAttribute("data-hp-amount")) return;
+      syncApplyButton(form);
+    });
+    document.addEventListener("focusout", function (event) {
+      if (!event.target || !event.target.hasAttribute("data-hp-amount")) return;
+      event.target.value = formatDraft(parseDraft(event.target));
+      syncApplyButton(event.target.closest("[data-hp-apply-form]"));
+    });
+  }
+
   function bindSingleSubmitForms() {
     document.addEventListener("submit", function (event) {
       var form = event.target.closest && event.target.closest("form.gm-single-submit");
@@ -240,9 +278,57 @@
     });
   }
 
-  function signedDelta(n) {
-    n = parseInt(n, 10) || 0;
-    return n > 0 ? "+" + n : String(n);
+  function paintTeams(teams) {
+    (teams || []).forEach(function (t) {
+      var chip = document.querySelector('.gm-chip[data-team="' + t.team + '"]');
+      if (chip) {
+        chip.className = "gm-chip " + (STATUS_CLASS[t.status] || "");
+        var chipStatus = chip.querySelector(".gm-chip-status");
+        if (chipStatus) chipStatus.textContent = CHIP_LABELS[t.status] || t.status_label || t.status || "";
+        var chipHp = chip.querySelector(".gm-chip-hp");
+        if (chipHp) chipHp.textContent = t.effective + " HP";
+      }
+      var card = document.querySelector('.gm-team[data-team="' + t.team + '"]');
+      if (!card) return;
+      var pending = parseInt(t.pending_next, 10) || 0;
+      card.classList.toggle("is-gain", pending > 0);
+      card.classList.toggle("is-loss", pending < 0);
+      var status = card.querySelector(".gm-status");
+      if (status) {
+        status.className = "gm-status " + (STATUS_CLASS[t.status] || "");
+        status.textContent = t.status_label || t.status || "";
+      }
+      var nowHp = parseInt(t.aktuell, 10) || 0;
+      var nextHp = t.next_hp == null ? nowHp : parseInt(t.next_hp, 10);
+      if (isNaN(nextHp)) nextHp = nowHp;
+      var now = card.querySelector(".gm-hp-now");
+      if (now) now.textContent = nowHp;
+      var hpBlock = card.querySelector(".gm-hp");
+      if (hpBlock) {
+        hpBlock.setAttribute(
+          "aria-label",
+          nextHp === nowHp ? "HP nu " + nowHp : "HP nu " + nowHp + ", nästa runda " + nextHp
+        );
+      }
+      var to = card.querySelector(".gm-hp-to");
+      if (to) {
+        to.hidden = nextHp === nowHp;
+        to.classList.toggle("is-gain", pending > 0);
+        to.classList.toggle("is-loss", pending < 0);
+      }
+      var next = card.querySelector(".gm-hp-next");
+      if (next) next.textContent = nextHp;
+      var budget = card.querySelector(".gm-hp-budget");
+      if (budget) budget.textContent = "lagt " + t.spent + " av " + t.effective;
+      card.querySelectorAll("[data-hp-apply-form]").forEach(function (form) {
+        var lastingEl = form.querySelector("[name=lasting]");
+        var lasting = !!(lastingEl && lastingEl.value === "1");
+        var amountEl = form.querySelector("[data-hp-amount]");
+        if (!amountEl) return;
+        if (parseDraft(amountEl) !== parseBaseline(amountEl)) return;
+        setLayerTotal(form, layerTotal(t, lasting));
+      });
+    });
   }
 
   function setTabAlert(id, text) {
@@ -283,53 +369,20 @@
     if (llm.milstolpar && llm.milstolpar.length && !llm.milestones_handled) {
       actions.push("milstolpar");
     }
-    setTabAlert("gm-tab-llm", actions.length ? actions.join(" och ") + " att tillämpa" : "");
+    var missingUtfall = llm.missing_utfall || [];
+    if (missingUtfall.length) {
+      var missingLabel = missingUtfall.length === 1
+        ? "1 order saknar utfall"
+        : missingUtfall.length + " order saknar utfall";
+      setTabAlert(
+        "gm-tab-llm",
+        actions.length ? missingLabel + " · " + actions.join(" och ") + " att tillämpa" : missingLabel
+      );
+    } else {
+      setTabAlert("gm-tab-llm", actions.length ? actions.join(" och ") + " att tillämpa" : "");
+    }
     setTabAlert("gm-tab-lag", "");
     setTabAlert("gm-tab-arbete", "");
-  }
-
-  function paintTeams(teams) {
-    (teams || []).forEach(function (t) {
-      var chip = document.querySelector('.gm-chip[data-team="' + t.team + '"]');
-      if (chip) {
-        chip.className = "gm-chip " + (STATUS_CLASS[t.status] || "");
-        var chipStatus = chip.querySelector(".gm-chip-status");
-        if (chipStatus) chipStatus.textContent = CHIP_LABELS[t.status] || t.status_label || t.status || "";
-        var chipHp = chip.querySelector(".gm-chip-hp");
-        if (chipHp) chipHp.textContent = t.effective + " HP";
-      }
-      var card = document.querySelector('.gm-team[data-team="' + t.team + '"]');
-      if (!card) return;
-      var status = card.querySelector(".gm-status");
-      if (status) {
-        status.className = "gm-status " + (STATUS_CLASS[t.status] || "");
-        status.textContent = t.status_label || t.status || "";
-      }
-      var hp = card.querySelector(".gm-hp");
-      if (hp) hp.classList.toggle("gm-hp-over", t.remaining < 0);
-      var now = card.querySelector(".gm-hp-now");
-      if (now) now.textContent = t.remaining;
-      var aktuell = card.querySelector(".gm-hp-aktuell");
-      if (aktuell) aktuell.textContent = "grundvärde " + t.aktuell + (t.regeringsstod ? " +10" : "");
-      var budget = card.querySelector(".gm-hp-budget");
-      if (budget) budget.textContent = t.effective + " tillgängligt · " + t.spent + " lagt";
-      var xfer = card.querySelector(".gm-hp-transferable");
-      if (xfer) {
-        xfer.textContent = t.regeringsstod
-          ? "överförbart " + t.aktuell + " · stöd +10 kan inte flyttas"
-          : "överförbart " + t.aktuell;
-      }
-      var next = card.querySelector(".gm-hp-next");
-      if (next) {
-        var pending = parseInt(t.pending_next, 10) || 0;
-        if (pending) {
-          next.hidden = false;
-          next.textContent = "Nästa runda " + signedDelta(pending);
-        } else {
-          next.hidden = true;
-        }
-      }
-    });
   }
 
   function paintNextConfirm(state) {
@@ -346,6 +399,61 @@
     } else if (action === "next_fas") {
       form.onsubmit = null;
     }
+  }
+
+  function parseBaseline(el) {
+    var n = parseInt(el && el.getAttribute("data-hp-baseline"), 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function layerTotal(t, lasting) {
+    var editNow = live && live.fas === "Orderfas";
+    var raw = lasting
+      ? (editNow ? t.varaktigt : t.next_varaktigt)
+      : (editNow ? t.tillfalligt : t.next_tillfalligt);
+    var n = parseInt(raw, 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function setLayerTotal(form, total) {
+    var amountEl = form.querySelector("[data-hp-amount]");
+    var baselineEl = form.querySelector("[name=baseline]");
+    if (amountEl) {
+      amountEl.value = formatDraft(total);
+      amountEl.setAttribute("data-hp-baseline", String(total));
+    }
+    if (baselineEl) baselineEl.value = String(total);
+    syncApplyButton(form);
+  }
+
+  function parseDraft(el) {
+    var n = parseInt(String((el && el.value) || "").replace("+", ""), 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function formatDraft(n) {
+    n = parseInt(n, 10);
+    if (isNaN(n) || n === 0) return "0";
+    return n > 0 ? "+" + n : String(n);
+  }
+
+  function syncApplyButton(form) {
+    if (!form) return;
+    var btn = form.querySelector("[data-hp-apply]");
+    var amountEl = form.querySelector("[data-hp-amount]");
+    if (!btn || !amountEl) return;
+    var dirty = parseDraft(amountEl) !== parseBaseline(amountEl);
+    form.classList.toggle("is-dirty", dirty);
+    btn.disabled = !dirty;
+  }
+
+  function resetHpDraft(form) {
+    if (!form) return;
+    var amountEl = form.querySelector("[data-hp-amount]");
+    var reasonEl = form.querySelector("[name=reason]");
+    if (reasonEl) reasonEl.value = "";
+    if (amountEl) setLayerTotal(form, parseDraft(amountEl));
+    else syncApplyButton(form);
   }
 
   function parseAmount(el) {
@@ -465,7 +573,23 @@
       });
   }
 
-  function postHp(body) {
+  function flashHpSaved(form) {
+    if (!form) return;
+    var btn = form.querySelector("[data-hp-apply]");
+    if (!btn) return;
+    var original = btn.getAttribute("data-label") || "Verkställ";
+    btn.setAttribute("data-label", original);
+    btn.textContent = "Sparat";
+    form.classList.add("is-saved");
+    window.clearTimeout(form._hpSavedTimer);
+    form._hpSavedTimer = window.setTimeout(function () {
+      if (!btn.isConnected) return;
+      btn.textContent = original;
+      form.classList.remove("is-saved");
+    }, 2000);
+  }
+
+  function postHp(body, form) {
     if (!live || !live.spel_id || inflight) return;
     showError("");
     writeGen += 1;
@@ -483,7 +607,9 @@
       })
       .then(function (payload) {
         if (payload && payload.success) {
+          resetHpDraft(form);
           paintLive(payload);
+          flashHpSaved(form);
           return;
         }
         showError((payload && payload.error) || "Kunde inte uppdatera HP.");
@@ -659,21 +785,16 @@
       poll();
       return;
     }
-    var hpDelta = target.closest("[data-hp-delta]");
-    if (hpDelta) {
+      var hpNudge = target.closest("[data-hp-nudge]");
+    if (hpNudge) {
       event.preventDefault();
-      var form = hpDelta.closest(".gm-hp-actions");
+      var form = hpNudge.closest("[data-hp-apply-form]");
       if (!form) return;
-      var amountEl = form.querySelector("[name=amount]");
-      var reasonEl = form.querySelector("[name=reason]");
-      var teamEl = form.querySelector("[name=team]");
-      var sign = parseInt(hpDelta.getAttribute("data-hp-delta"), 10) < 0 ? -1 : 1;
-      postHp({
-        op: "adjust",
-        team: teamEl ? teamEl.value : "",
-        amount: sign * parseAmount(amountEl),
-        reason: reasonEl ? reasonEl.value : "",
-      });
+      var amountEl = form.querySelector("[data-hp-amount]");
+      if (!amountEl) return;
+      var step = parseInt(hpNudge.getAttribute("data-hp-nudge"), 10) || 0;
+      amountEl.value = formatDraft(parseDraft(amountEl) + step);
+      syncApplyButton(form);
       return;
     }
     var apply = target.closest("[data-backlog-apply]");
@@ -716,6 +837,8 @@
   bindTestMode();
   bindTabs();
   bindSingleSubmitForms();
+  bindHpDrafts();
+  document.querySelectorAll("[data-hp-apply-form]").forEach(syncApplyButton);
   document.addEventListener("click", closeOpenMenus);
   tickClock();
   setInterval(poll, POLL_MS);

@@ -12,8 +12,9 @@ routes, HP/phase/order/backlog rules, persistence, authentication, or tests.
 Single Flask process. No database, no `templates/` tree, no ORM. Each game is one JSON dict on disk.
 
 Map of the repo: [Docs/architecture.md](../../../Docs/architecture.md).
-Game rules: [Docs/Stabsspel Traineeprogrammet.md](../../../Docs/Stabsspel%20Traineeprogrammet.md).
-LLM copy/import, HP queue, projector secrecy: [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md).
+Room rules: [game-rules](../game-rules/SKILL.md).
+LLM copy/import, HP queue, projector secrecy: [llm-workflow](../llm-workflow/SKILL.md).
+Four-round scenario JSON: [scenario-playthrough](../scenario-playthrough/SKILL.md).
 Agent doc hierarchy and conflict handling: `Docs/architecture.md` § For coding agents.
 
 ## Before changing code
@@ -36,7 +37,8 @@ Before implementing a change:
 | Live rules: phase, HP, orders, backlog, undo, LLM rolls/`utfall`, public/live payload | `gm_console.py`                                  | `tests/test_domain.py`                                         |
 | GM / projector HTML                                               | `gm_console_ui.py`                               | `tests/test_gm_console.py`                                     |
 | GM HTTP: auth, mutations, print/export                            | `admin_routes.py`, helpers in `admin_helpers.py` | `tests/test_admin_helpers.py`, `test_admin_routes.py` for HTTP |
-| LLM prompt text (export instructions)                             | `Docs/prompt.md`                                 | domain tests that the filled export contains expected placeholders |
+| LLM prompt text (export instructions)                             | `Docs/prompt.md` ([llm-workflow](../llm-workflow/SKILL.md)) | domain tests that the filled export contains expected placeholders |
+| Scenario round JSON / transcript                                  | `testdata/scenario_llm/` or `testdata/scenario_llm_7lag/` | `tests/test_scenario_playthrough.py`                               |
 | Team briefs / QR                                                  | `team_routes.py`                                 | existing relevant tests                                        |
 | Order save / submit / withdraw                                    | `team_order_routes.py`                           | domain tests for rules, route tests where needed               |
 | JSON load/save, teams, passwords, backlog templates               | `models.py`                                      | `tests/test_domain.py`                                         |
@@ -55,11 +57,10 @@ Important keys include:
 
 * `runda` — 1–4
 * `fas` — `Orderfas` / `Diplomatifas` / `Resultatfas`
-* `poang.<lag>.aktuell`
-* `regeringsstod`
+* `poang.<lag>.bas` / `varaktigt` / `tillfalligt` (`aktuell` is a synced cache of spendable this round)
+* `hp_pending` — queued wallet deltas applied when a new round starts (`varaktig` optional)
 * `team_orders`
 * `backlog`
-* `hp_pending` — queued wallet deltas applied when a new round starts
 * `gm_log`
 * `gm_undo`
 * `test_mode`
@@ -68,13 +69,11 @@ Important keys include:
 
 Important rules:
 
-* Spendable HP is `aktuell`, plus +10 when `regeringsstod` applies.
-* **Transfers use stored `aktuell` only. Government support is not transferable.**
-* LLM **Tillämpa HP** and GM ± after Orderfas queue into `hp_pending` (next round's wallet). GM ± in Orderfas changes this round immediately.
-* `build_live_state` is the GM payload.
-* `build_public_state` is the projector payload. Never send inbox, `gm_log`, test mode, secret orders, `llm_forslag`, `llm_resolution`, rolls or `utfall` to the projector.
-* News headlines stay on paper for the studio. LLM export fills `Docs/prompt.md` and freezes 1–100 rolls in `llm_resolution`. Paste/upload stores suggestions (`llm_forslag`) and GM-only `utfall`. HP and milestones apply only after GM confirm. A successful `utfall` does not create wallet HP by itself. Ordinary undo must not reroll frozen dice. Details: [Docs/LLM_WORKFLOW.md](../../../Docs/LLM_WORKFLOW.md).
-* Code identifiers keep the existing mix such as `fas`, `runda`, `poang`, `regeringsstod`.
+* Spendable HP this round is `bas + varaktigt + tillfalligt`. Temporary HP expires at round change; lasting income stays. LLM `hp[]` is temporary next round.
+* **Transfers move tillfällig HP this round.** They can go below income; next round both sides return to income plus the queue.
+* LLM **Tillämpa HP** and GM ± after Orderfas queue into `hp_pending`. GM ± in Orderfas changes this round immediately. Tillfälligt and varaktigt are independent layers. Full LLM contract: [llm-workflow](../llm-workflow/SKILL.md).
+* `build_live_state` is the GM payload. `build_public_state` is the projector payload (no inbox, log, rolls, `utfall`, or `llm_*`).
+* Code identifiers keep the existing mix such as `fas`, `runda`, `poang`, `tillfalligt`.
 * UI strings are Swedish. See the [ux-gui](../ux-gui/SKILL.md) skill.
 
 ## State mutation discipline
@@ -161,14 +160,14 @@ Escape user-controlled values before rendering them into HTML.
 
 ## Tests
 
-The authoritative suite is `tests/` (`test_domain.py`, `test_gm_console.py`, `test_admin_helpers.py`). Prefer those.
+The authoritative suite is `tests/` (`test_domain.py`, `test_gm_console.py`, `test_admin_helpers.py`, `test_scenario_playthrough.py`). Prefer those.
 
 Root-level `test_*.py` and `debug_*.py` are legacy. Do not treat them as the game specification. `test_admin_routes.py` still covers delete-game HTTP; other root tests are archaeology.
 
 Typical fast test run:
 
 ```bash
-python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers
+python -m unittest tests.test_domain tests.test_gm_console tests.test_admin_helpers tests.test_scenario_playthrough
 ```
 
 Use `tests/game_fixtures.py` for state builders such as:
@@ -184,6 +183,7 @@ Do not create automated tests that depend on live files in `speldata/`.
 * Domain behaviour → `tests/test_domain.py`
 * GM/projector HTML hooks → `tests/test_gm_console.py`
 * Admin helpers → `tests/test_admin_helpers.py`
+* Four-round scenario JSON / transcript → `tests/test_scenario_playthrough.py` ([scenario-playthrough](../scenario-playthrough/SKILL.md))
 * Route/auth behaviour → relevant HTTP tests
 
 Domain tests should assert on state and behaviour, not rendered HTML.
@@ -197,7 +197,7 @@ Any behavioural change to:
 * phases
 * HP
 * transfers
-* government support
+* government support / temporary vs lasting HP
 * orders
 * backlog
 * undo
@@ -250,9 +250,10 @@ Update the relevant docs in the **same change** as the code. Do not leave docume
 | Change | Also update |
 |--------|-------------|
 | Live rules, routes, tests, console structure | `Docs/architecture.md` |
-| LLM export/import, HP queue, `utfall`, projector secrecy | `Docs/LLM_WORKFLOW.md` |
+| LLM export/import, HP queue, `utfall`, projector secrecy | `Docs/LLM_WORKFLOW.md` and [llm-workflow](../llm-workflow/SKILL.md) |
 | External LLM instructions | `Docs/prompt.md` (this file is loaded at copy time) |
-| Room rules (teams, spy, paper news) | `Docs/Stabsspel Traineeprogrammet.md` |
+| Room rules (teams, spy, paper news) | `Docs/Stabsspel Traineeprogrammet.md` and [game-rules](../game-rules/SKILL.md) |
+| Scenario playthrough JSON | `testdata/scenario_llm/` (nine) / `testdata/scenario_llm_7lag/` (seven) and [scenario-playthrough](../scenario-playthrough/SKILL.md) |
 | UX working notes | `Docs/UX_CONSOLE_REWORK.md` (log only, not the UI spec) |
 
 Do not rewrite unrelated docs. Do not treat the UX working log as current specification.

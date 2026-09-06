@@ -207,6 +207,43 @@ def _signed_delta(n):
     return f"+{n}" if n > 0 else str(n)
 
 
+def _hp_recipe_copy(bas, varaktigt, tillfalligt):
+    return (
+        f"Bas {int(bas or 0)} · "
+        f"varaktigt {_signed_delta(int(varaktigt or 0))} · "
+        f"tillfälligt {_signed_delta(int(tillfalligt or 0))}"
+    )
+
+
+def _hp_layer_row(spel_id, team, label, lasting, amount_aria, total):
+    flag = "1" if lasting else "0"
+    total = int(total or 0)
+    shown = _signed_delta(total)
+    return f'''
+            <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-row" data-hp-apply-form>
+              <input type="hidden" name="team" value="{escape(team)}">
+              <input type="hidden" name="op" value="adjust">
+              <input type="hidden" name="lasting" value="{flag}">
+              <input type="hidden" name="baseline" value="{total}">
+              <div class="gm-hp-layer-line">
+                <span class="gm-hp-layer-name">{escape(label)}</span>
+                <div class="gm-stepper">
+                  <button type="button" class="secondary gm-mini" data-hp-nudge="-1"
+                    aria-label="Minska {escape(label)} {escape(team)}">−</button>
+                  <input type="text" name="total" value="{escape(shown)}" inputmode="numeric" class="gm-amount"
+                    aria-label="{escape(amount_aria)}" data-hp-amount data-hp-baseline="{total}" autocomplete="off">
+                  <button type="button" class="success gm-mini" data-hp-nudge="1"
+                    aria-label="Öka {escape(label)} {escape(team)}">+</button>
+                </div>
+              </div>
+              <div class="gm-hp-commit">
+                <input type="text" name="reason" placeholder="Orsak, t.ex. spion" class="gm-reason" autocomplete="off">
+                <button type="submit" class="primary sm gm-hp-apply" data-hp-apply disabled>Verkställ</button>
+              </div>
+            </form>
+    '''
+
+
 def _news_copy_text(nyheter):
     blocks = []
     for item in nyheter or []:
@@ -282,6 +319,41 @@ def _utfall_card_html(item):
         f"</div>"
         f'<p class="gm-utfall-why">{escape(item.get("motivering") or "")}</p>'
         f"</article>"
+    )
+
+
+def _missing_utfall_card_html(item):
+    slump = item.get("slump")
+    slump_html = (
+        f'<span class="gm-utfall-metric"><small>Slag</small><strong>{int(slump)}</strong></span>'
+        if slump is not None else ""
+    )
+    name = item.get("aktivitet") or item.get("order_ref") or "—"
+    return (
+        f'<article class="gm-utfall-card is-missing">'
+        f'<p class="gm-utfall-meta">{escape(item.get("team") or "")} · {escape(item.get("order_ref") or "")}</p>'
+        f'<p class="gm-utfall-order">{escape(name)}</p>'
+        f'<p class="gm-utfall-hp">{int(item.get("hp") or 0)} HP</p>'
+        f'<div class="gm-utfall-headline" aria-label="Saknar utfall">'
+        f'{slump_html}'
+        f'<span class="gm-utfall-metric gm-utfall-result is-missing"><small>Utfall</small><strong>SAKNAS</strong></span>'
+        f"</div>"
+        f'<p class="gm-utfall-why">Ingen chans eller resultat i LLM-svaret. En nyhet räcker inte.</p>'
+        f"</article>"
+    )
+
+
+def _missing_utfall_section_html(items):
+    if not items:
+        return ""
+    cards = "".join(_missing_utfall_card_html(item) for item in items)
+    return (
+        f'<section class="gm-llm-result-section is-missing is-primary">'
+        f'<div class="gm-llm-result-heading"><h4>Saknar utfall</h4><span>{len(items)}</span></div>'
+        f'<p class="gm-section-help">Egna aktiviteter utan backlog, och FÖRSTÖRA, ska ha chans, slag och resultat. '
+        f'Kopiera till LLM igen eller bedöm vid bordet.</p>'
+        f'<div class="gm-utfall">{cards}</div>'
+        f"</section>"
     )
 
 
@@ -459,12 +531,15 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
         if primary_actions else ""
     )
 
-    counts = (
+    counts = [
         ("Utfall", len(llm.get("utfall") or []), ""),
         ("Nyheter", len(llm.get("nyheter") or []), ""),
         ("HP", len(llm.get("hp") or []), "is-action" if llm.get("hp") and not llm.get("hp_applied") else ""),
         ("Milstolpar", len(llm.get("milstolpar") or []), "is-action" if llm.get("milstolpar") and not milestones_handled else ""),
-    )
+    ]
+    missing_utfall = list(llm.get("missing_utfall") or [])
+    if missing_utfall:
+        counts.insert(0, ("Saknas", len(missing_utfall), "is-action"))
     summary = "".join(
         f'<span class="gm-llm-summary-item {tone}"><strong>{count}</strong>{escape(label)}</span>'
         for label, count, tone in counts
@@ -476,6 +551,7 @@ def _llm_block_html(spel_id, state, default_result_tab=None):
         {warning_html}
         <div class="gm-llm-summary" aria-label="Sammanfattning av LLM-resultat">{summary}</div>
         {action_bar}
+        {_missing_utfall_section_html(missing_utfall)}
         <section class="gm-llm-result-section is-primary">
           <div class="gm-llm-result-heading"><h4>Utfall och sannolikhet</h4><span>{len(llm.get("utfall") or [])}</span></div>
           {utfall_html or '<p class="gm-muted">Inga sannolikhetsutfall.</p>'}
@@ -767,10 +843,9 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
         )
 
     hp_body = (
-        f'<p class="gm-section-help">Skriv hur många HP, sedan − eller +. '
-        f'Överför flyttar mellan lag. Regeringsstöd är +10 ovanpå aktuell och kan inte flyttas.</p>'
+        f'<p class="gm-section-help">Ändra totalen, sedan Verkställ. Efter Orderfas gäller nästa runda. '
+        f'Spion: tillfälligt −5 Alfa och +5 BS.</p>'
         f'{teams_html}'
-        f'{_transfer_form_html(spel_id, state["teams"])}'
     )
 
     if fas == "Orderfas":
@@ -787,6 +862,10 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
         f'<p class="gm-section-help">Sätt HP per klick i kolumnen, sedan − / + på en roadmap-uppgift. '
         f'Egna aktiviteter (t.ex. CI/CD) ligger i orderinkorgen, inte här.</p>'
         f'<p class="gm-backlog-legend" aria-hidden="true">'
+        f'<span class="gm-backlog-swatch is-idle"></span> inte påbörjad '
+        f'<span class="gm-backlog-swatch is-active"></span> pågår '
+        f'<span class="gm-backlog-swatch is-done"></span> klar'
+        f'<span class="gm-backlog-legend-gap"></span>'
         f'<span class="gm-backlog-swatch is-prev"></span> förra rundan '
         f'<span class="gm-backlog-swatch is-add"></span> tillagt den här rundan '
         f'<span class="gm-backlog-swatch is-lost"></span> draget den här rundan'
@@ -810,14 +889,25 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
         llm_actions.append("HP")
     if llm.get("milstolpar") and not llm.get("milestones_handled"):
         llm_actions.append("milstolpar")
-    if llm_actions:
+    missing_utfall = llm.get("missing_utfall") or []
+    if missing_utfall:
+        n = len(missing_utfall)
+        missing_label = "1 order saknar utfall" if n == 1 else f"{n} order saknar utfall"
+        if llm_actions:
+            tab_alerts["llm"] = missing_label + " · " + " och ".join(llm_actions) + " att tillämpa"
+        else:
+            tab_alerts["llm"] = missing_label
+    elif llm_actions:
         tab_alerts["llm"] = " och ".join(llm_actions) + " att tillämpa"
     tab_panels = {
         "inkorg": f'<h3 class="gm-section-title">Orderinkorg</h3>{inbox_inner}',
-        "lag": f'<h3 class="gm-section-title">Lag och handlingspoäng</h3>{hp_body}',
         "arbete": f'<h3 class="gm-section-title">Teamens arbete</h3>{backlog_body}',
         "historik": f'<h3 class="gm-section-title">Händelselogg</h3>{log_body}',
     }
+    if fas != "Orderfas":
+        tab_panels["lag"] = (
+            f'<h3 class="gm-section-title">Lag och handlingspoäng</h3>{hp_body}'
+        )
     tab_counts = {}
     if fas in ("Diplomatifas", "Resultatfas"):
         tab_panels["llm"] = llm_note
@@ -852,7 +942,7 @@ def create_gm_console_html(spel_id, data, llm_view=None, banner=""):
     })
 
     return f'''
-    <link rel="stylesheet" href="/static/app.css?v=46">
+    <link rel="stylesheet" href="/static/app.css?v=58">
     <div class="gm-console" id="gm-console">
       <script type="application/json" id="gm-state">{state_json}</script>
       <div class="gm-bar">
@@ -931,13 +1021,6 @@ def _team_strip_html(spel_id, teams, fas):
     cards = []
     can_edit = fas in ("Orderfas", "Diplomatifas")
     for t in teams:
-        support = "checked" if t["regeringsstod"] else ""
-        remaining_class = "gm-hp-over" if t["remaining"] < 0 else ""
-        bonus = " +10" if t["regeringsstod"] else ""
-        if t["regeringsstod"]:
-            transferable = f"överförbart {t['aktuell']} · stöd +10 kan inte flyttas"
-        else:
-            transferable = f"överförbart {t['aktuell']}"
         withdraw = ""
         if t.get("can_withdraw"):
             withdraw = (
@@ -947,65 +1030,53 @@ def _team_strip_html(spel_id, teams, fas):
         edit_link = ""
         if can_edit:
             edit_link = (
-                f'<a class="gm-edit-order secondary gm-mini" '
+                f'<a class="gm-edit-order" '
                 f'href="/admin/{escape(spel_id)}/edit_order/{escape(t["team"])}">Redigera order</a>'
             )
+        pending = int(t.get("pending_next") or 0)
+        next_cls = " is-gain" if pending > 0 else (" is-loss" if pending < 0 else "")
+        this_hp = int(t.get("aktuell") or 0)
+        next_hp = int(t.get("next_hp") if t.get("next_hp") is not None else this_hp)
+        forecast_hidden = "" if next_hp != this_hp else " hidden"
+        hp_aria = f"HP nu {this_hp}"
+        if next_hp != this_hp:
+            hp_aria += f", nästa runda {next_hp}"
+        edit_now = fas == "Orderfas"
+        lasting_row = _hp_layer_row(
+            spel_id,
+            t["team"],
+            "Varaktigt",
+            True,
+            f'Varaktigt HP {t["team"]}',
+            t.get("varaktigt") if edit_now else t.get("next_varaktigt"),
+        )
+        temp_row = _hp_layer_row(
+            spel_id,
+            t["team"],
+            "Tillfälligt",
+            False,
+            f'Tillfälligt HP {t["team"]}',
+            t.get("tillfalligt") if edit_now else t.get("next_tillfalligt"),
+        )
         cards.append(f'''
-        <div class="gm-team" data-team="{escape(t["team"])}">
+        <div class="gm-team{next_cls}" data-team="{escape(t["team"])}">
           <div class="gm-team-head">
             <strong>{escape(t["team"])}</strong>
             <span class="gm-status {_status_class(t["status"])}">{escape(t["status_label"])}</span>
           </div>
-          <div class="gm-hp {remaining_class}">
-            <span class="gm-hp-label">Kvar att använda</span>
-            <span class="gm-hp-now">{t["remaining"]}</span>
-            <span class="gm-hp-sub gm-hp-budget">{t["effective"]} tillgängligt · {t["spent"]} lagt</span>
-            <span class="gm-hp-sub gm-hp-aktuell">grundvärde {t["aktuell"]}{bonus}</span>
-            <span class="gm-hp-sub gm-hp-transferable">{escape(transferable)}</span>
-            <span class="gm-hp-next"{"" if t.get("pending_next") else " hidden"}>Nästa runda {escape(_signed_delta(t.get("pending_next")))}</span>
+          <div class="gm-hp" aria-label="{escape(hp_aria)}">
+            <span class="gm-hp-now">{this_hp}</span>
+            <span class="gm-hp-to{next_cls}"{forecast_hidden} aria-hidden="true">→ <span class="gm-hp-next">{next_hp}</span></span>
           </div>
-          <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-actions">
-            <input type="hidden" name="team" value="{escape(t["team"])}">
-            <input type="hidden" name="op" value="adjust">
-            <div class="gm-stepper">
-              <button type="submit" name="direction" value="minus" class="secondary gm-mini" data-hp-delta="-1">−</button>
-              <input type="number" name="amount" min="1" value="1" class="gm-amount" inputmode="numeric" aria-label="HP-belopp">
-              <button type="submit" name="direction" value="plus" class="secondary gm-mini" data-hp-delta="1">+</button>
-            </div>
-            <input type="text" name="reason" placeholder="Orsak" class="gm-reason">
-          </form>
-          <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-hp-support">
-            <input type="hidden" name="team" value="{escape(t["team"])}">
-            <input type="hidden" name="op" value="support">
-            <label class="gm-support">
-              <input type="checkbox" name="regeringsstod" value="on" {support} onchange="this.form.submit()">
-              Stöd +10
-            </label>
-          </form>
-          {withdraw}
-          {edit_link}
+          {lasting_row}
+          {temp_row}
+          <div class="gm-team-foot">
+            {withdraw}
+            {edit_link}
+          </div>
         </div>
         ''')
     return '<div class="gm-teams">' + "".join(cards) + "</div>"
-
-
-def _transfer_form_html(spel_id, teams):
-    options = "".join(
-        f'<option value="{escape(t["team"])}">{escape(t["team"])} '
-        f'({t.get("transferable", t.get("aktuell", 0))} överförbart)</option>'
-        for t in teams
-    )
-    return f'''
-    <form method="post" action="/admin/{escape(spel_id)}/hp" class="gm-transfer">
-      <input type="hidden" name="op" value="transfer">
-      <label>Överför <input type="number" name="amount" min="1" value="5" class="gm-amount"></label>
-      <label>från <select name="from_team">{options}</select></label>
-      <label>till <select name="to_team">{options}</select></label>
-      <input type="text" name="reason" placeholder="Orsak (spion, regering, förhandling…)" class="gm-reason-wide">
-      <button type="submit" class="primary">Överför HP</button>
-      <p class="gm-transfer-help">Bara aktuell HP kan flyttas. Regeringsstöd +10 följer inte med.</p>
-    </form>
-    '''
 
 
 def _team_tone(name):
@@ -1209,6 +1280,20 @@ def _backlog_count_html(spent, estimated, previous=None):
     return f'{int(spent or 0)} / {int(estimated or 0)} HP <small>{suffix}</small>{extra}'
 
 
+def _backlog_status_class(spent, estimated, done=False, recurring=False):
+    """Traffic-light class: idle (not started), active (in progress), done."""
+    try:
+        spent = max(0, int(spent or 0))
+        estimated = max(0, int(estimated or 0))
+    except (TypeError, ValueError):
+        spent = estimated = 0
+    if done or (not recurring and estimated and spent >= estimated):
+        return " is-done"
+    if spent > 0:
+        return " is-active"
+    return " is-idle"
+
+
 def _backlog_html(board, avslutat=False):
     if not board:
         return '<p class="gm-empty">Inga utvecklingsteam med backlog i det här spelet.</p>'
@@ -1217,20 +1302,30 @@ def _backlog_html(board, avslutat=False):
     for team in board:
         rows = []
         for item in team.get("items") or []:
-            done_class = " is-done" if item.get("done") else ""
-            recurring = ' <span class="gm-recurring">återkommande</span>' if item.get("recurring") else ""
+            recurring = bool(item.get("recurring"))
+            status = _backlog_status_class(
+                item.get("spent"),
+                item.get("estimated"),
+                item.get("done"),
+                recurring,
+            )
+            recurring_mark = ' <span class="gm-recurring">återkommande</span>' if recurring else ""
             if item.get("kind") == "phased":
                 rows.append(
-                    f'<div class="gm-backlog-item{done_class}">'
-                    f'<div class="gm-backlog-parent"><span class="gm-backlog-name">'
+                    f'<div class="gm-backlog-item">'
+                    f'<div class="gm-backlog-parent{status}"><span class="gm-backlog-name">'
                     f'<strong>{escape(item["name"])}</strong>'
                     f'{_backlog_progress_html(item["spent"], item["estimated"], item["name"], item.get("previous"))}</span>'
                     f'<span class="gm-backlog-count">{_backlog_count_html(item["spent"], item["estimated"], item.get("previous"))}</span></div>'
                 )
                 for phase in item.get("phases") or []:
-                    phase_done = " is-done" if phase.get("done") else ""
+                    phase_status = _backlog_status_class(
+                        phase.get("spent"),
+                        phase.get("estimated"),
+                        phase.get("done"),
+                    )
                     rows.append(
-                        f'<div class="gm-backlog-row gm-backlog-phase{phase_done}">'
+                        f'<div class="gm-backlog-row gm-backlog-phase{phase_status}">'
                         f'<span class="gm-backlog-name">{escape(phase["name"])}'
                         f'{_backlog_progress_html(phase["spent"], phase["estimated"], phase["name"], phase.get("previous"))}</span>'
                         f'<span class="gm-backlog-count">{_backlog_count_html(phase["spent"], phase["estimated"], phase.get("previous"))}</span>'
@@ -1239,18 +1334,19 @@ def _backlog_html(board, avslutat=False):
                     )
                 rows.append("</div>")
             else:
-                progress = "" if item.get("recurring") else _backlog_progress_html(
+                progress = "" if recurring else _backlog_progress_html(
                     item["spent"], item["estimated"], item["name"], item.get("previous")
                 )
                 rows.append(
-                    f'<div class="gm-backlog-row{done_class}">'
-                    f'<span class="gm-backlog-name">{escape(item["name"])}{recurring}{progress}</span>'
+                    f'<div class="gm-backlog-row{status}">'
+                    f'<span class="gm-backlog-name">{escape(item["name"])}{recurring_mark}{progress}</span>'
                     f'<span class="gm-backlog-count">{_backlog_count_html(item["spent"], item["estimated"], item.get("previous"))}</span>'
                     f'<span class="gm-backlog-btns">{_spend_buttons(team["team"], item["id"], "", disabled)}</span>'
                     f'</div>'
                 )
+        team_status = _backlog_status_class(team.get("spent"), team.get("estimated"))
         cards.append(
-            f'<section class="gm-backlog-team" data-team="{escape(team["team"])}">'
+            f'<section class="gm-backlog-team{team_status}" data-team="{escape(team["team"])}">'
             f'<h4>{escape(team["team"])} '
             f'<span class="gm-hp-sub">{_backlog_count_html(team["spent"], team["estimated"], team.get("previous"))}</span></h4>'
             f'<label class="gm-backlog-stepper">HP per klick '
@@ -1317,29 +1413,48 @@ def _projector_hp_change(delta):
     return " is-same", "Oförändrat"
 
 
+def _projector_recipe_html(bas, varaktigt, tillfalligt):
+    return (
+        f'<div class="projector-team-recipe">'
+        f'<span>Bas {int(bas or 0)}</span>'
+        f'<span>varaktigt {escape(_signed_delta(int(varaktigt or 0)))}</span>'
+        f'<span>tillfälligt {escape(_signed_delta(int(tillfalligt or 0)))}</span>'
+        f"</div>"
+    )
+
+
 def _projector_hp_html(teams, show_next=False):
     cards = []
     for t in teams or []:
-        extra = " has-support" if t.get("regeringsstod") else ""
-        note = '<div class="projector-team-note">stöd +10</div>' if t.get("regeringsstod") else ""
-        hp_html = f'<div class="projector-team-hp">{t["hp"]}</div>'
+        extra = ""
+        note = ""
+        hp_html = (
+            f'<div class="projector-team-hp">{t["hp"]}</div>'
+            f'{_projector_recipe_html(t.get("bas"), t.get("varaktigt"), t.get("tillfalligt"))}'
+        )
         aria = f'{escape(t["team"])}: {t["hp"]} HP'
         if show_next:
             change_class, change_label = _projector_hp_change(t.get("next_delta"))
             extra += change_class
+            next_hp = t.get("next_hp", t["hp"])
             aria = (
                 f'{escape(t["team"])}: denna runda {t["hp"]} HP, '
-                f'nästa runda {t.get("next_hp", t["hp"])} HP, {escape(change_label)}'
+                f'nästa runda {next_hp} HP, {escape(change_label)}. '
+                f'{_hp_recipe_copy(t.get("next_bas"), t.get("next_varaktigt"), t.get("next_tillfalligt"))}'
             )
             hp_html = (
                 '<div class="projector-team-comparison">'
                 '<div class="projector-team-period">'
                 '<span>Denna runda</span>'
-                f'<strong>{t["hp"]}</strong></div>'
+                f'<strong>{t["hp"]}</strong>'
+                f'{_projector_recipe_html(t.get("bas"), t.get("varaktigt"), t.get("tillfalligt"))}'
+                '</div>'
                 '<span class="projector-team-arrow" aria-hidden="true">→</span>'
                 '<div class="projector-team-period is-next">'
                 '<span>Nästa runda</span>'
-                f'<strong>{t.get("next_hp", t["hp"])}</strong></div>'
+                f'<strong>{next_hp}</strong>'
+                f'{_projector_recipe_html(t.get("next_bas"), t.get("next_varaktigt"), t.get("next_tillfalligt"))}'
+                '</div>'
                 '</div>'
                 f'<div class="projector-team-change">{escape(change_label)}</div>'
             )
@@ -1425,7 +1540,7 @@ def create_projector_html(spel_id, data):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spelarskärm – runda {state["runda"]}</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <link rel="stylesheet" href="/static/app.css?v=45">
+  <link rel="stylesheet" href="/static/app.css?v=58">
 </head>
 <body class="projector-page">
   <script type="application/json" id="projector-state">{state_json}</script>
@@ -1442,7 +1557,7 @@ def create_projector_html(spel_id, data):
   <button type="button" class="projector-audio-hint" id="projector-audio-hint" hidden>
     Klicka för ljudvarningar
   </button>
-  <script src="/static/projector.js?v=5"></script>
+  <script src="/static/projector.js?v=8"></script>
 </body>
 </html>
 '''

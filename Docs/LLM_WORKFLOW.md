@@ -13,6 +13,7 @@ Appen anropar ingen modell. Spelledaren kopierar ett färdigt underlag, klistrar
 LLM:en ska:
 
 - avgöra vilka ordrar som är osäkra och därför hör hemma i `utfall`
+- ge `utfall` för **varje order utan backlog-id** och för **varje FÖRSTÖRA-order** (en nyhet räcker inte)
 - återanvända appens låsta slumpvärden (1–100) när den faktiskt slumpar
 - föreslå nyheter som kan läsas i studion
 - föreslå HP-delta för **nästa rundas kassa**
@@ -29,15 +30,16 @@ LLM:en ska inte:
 
 Bryt inte dessa utan en uttrycklig mekanikändring.
 
-- Varje inskickad `order_ref` får ett låst D100. Det kräver inte `utfall`.
+- Varje inskickad `order_ref` får ett låst D100. Det kräver inte `utfall` för vanligt backlog-arbete.
+- Order utan backlog-id, och FÖRSTÖRA-order, ska ha `utfall`. Konsolen listar luckor under **Saknar utfall**.
 - Vanligt backlog-arbete är deterministisk progress (`milstolpar`), inte ett slag.
 - Import av `utfall` ändrar aldrig kassa-HP eller backlog.
-- `hp[]` är nästa rundas kassa, och bara efter **Tillämpa HP**.
+- `hp[]` är tillfällig kassa nästa runda, och bara efter **Tillämpa HP**.
 - `milstolpar[]` är backlog-progress nu, efter **Tillämpa milstolpar** (eller Inkorg).
 - `build_public_state` får inte innehålla ordrar, slag, sannolikheter, `utfall`, `llm_forslag` eller `llm_resolution`.
 - Omimport får inte återaktivera HP eller milstolpar som redan är tillämpade den här rundan.
 - Ångra får inte skapa nya tärningsslag. Låsta slag ligger kvar.
-- Regeringsstöd är inte överförbar kassa-HP.
+- När Regeringen är ett lag är deras kassa politiska resurser som kan föras över eller satsas på påverkan; tillfällig HP återställs nästa runda, varaktig inkomst stannar.
 - Ett lyckat `utfall` skapar inte en `hp`-rad av sig själv.
 
 ---
@@ -49,7 +51,7 @@ De blandas lätt. Spelet behandlar dem som tre mekanismer.
 | Begrepp | Vad det är | Var det syns | När det ändrar kassan |
 |---------|------------|--------------|------------------------|
 | **Satsad HP** | Hur mycket ordern satte mot motståndet (`satsad_hp` mot `motstand_hp` i `utfall`) | GM-kort i **LLM-resultat** | Aldrig. Det är insats, inte delta. |
-| **Kassa-HP** | Lagets `poang.<lag>.aktuell` | Lag-fliken, spelarskärmen | LLM: efter **Tillämpa HP**, först när **Starta nästa runda** körs. GM ± i Orderfas: direkt. |
+| **Kassa-HP** | Lagets spendable `bas + varaktigt + tillfalligt` (`aktuell` är cache) | Lag-fliken, spelarskärmen | LLM: efter **Tillämpa HP**, först när **Starta nästa runda** körs (tillfälligt nästa runda). GM ± i Orderfas: direkt, tillfälligt eller varje runda. |
 | **Backlog-HP** | `spenderade_hp` på en uppgift i Teamens arbete | **Arbete**, ibland Inkorg | Direkt vid **Tillämpa milstolpar** eller när GM lägger HP i Inkorg. Påverkar inte kassan. |
 
 Ett lyckat utfall (FRAMGÅNG) skapar **inte** automatiskt ett HP-delta. Om kassan ska ändras måste LLM:en skriva en rad i `hp[]`, och spelledaren måste tillämpa den.
@@ -97,7 +99,7 @@ Mallen är `Docs/prompt.md`. Appen ersätter platshållarna med den här rundans
 | `{FAS}` | Aktuell fas |
 | `{BACKLOG}` | Teamens arbete: id, namn, lagd HP / estimat, status. Bravo-faser som `id_Fasnamn`. |
 | `{ORDRAR}` | Inskickade ordrar per lag, med `order_ref` (t.ex. `FM-1`), typ BYGGA/FÖRSTÖRA, HP, syfte, backlog-id, påverkar, målområde. Kassan per lag står i rubriken. |
-| `{SLUMPVARDEN}` | Ett heltal 1–100 per inskickad `order_ref`. Texten säger att slumpvärdets existens **inte** betyder att ordern måste slumpas. |
+| `{SLUMPVARDEN}` | Ett heltal 1–100 per inskickad `order_ref`. FALL A ignorerar slaget. Order utan backlog-id ska använda det. |
 | `{TIDIGARE_UTFALL}` | Sparade `utfall` från tidigare rundor, eller `(Inga tidigare utfall)`. |
 
 ### Slumpvärden
@@ -106,7 +108,8 @@ Mallen är `Docs/prompt.md`. Appen ersätter platshållarna med den här rundans
 
 - Ett värde per inskickad `order_ref`.
 - Befintliga värden slås **aldrig om**. Ångra rullar inte tärningen.
-- Oanvända slag är tillåtna. Vanligt backlog-arbete ska inte få `utfall`.
+- Oanvända slag är tillåtna för vanligt backlog-arbete, som inte ska få `utfall`.
+- Order utan backlog-id som saknas i `utfall` avvisas inte vid import. Fliken **LLM-resultat** visar dem som **Saknar utfall** så spelledaren inte missar dem.
 - LLM:en får inte hitta på nya tal. Importen avvisar ett `utfall` vars `slump` inte matchar det låsta värdet.
 
 Utkast (oskickade ordrar) ingår inte. Bara `final`-ordrar får `order_ref` och slag.
@@ -151,7 +154,7 @@ Runda i JSON:en jämförs med spelets runda. Fel runda ger en **varning**, inte 
 
 ### `utfall` — strikt
 
-Tom lista eller saknad nyckel är tillåtet. Inte varje order behöver ett utfall.
+Tom lista eller saknad nyckel är tillåtet. Vanligt backlog-arbete behöver inget utfall. Order utan backlog-id ska ha det; saknas det visas ordern under **Saknar utfall**.
 
 Om listan har objekt måste **varje** objekt vara giltigt, annars avvisas hela importen. Krävda fält: `lag`, `order_ref`, `order`, `satsad_hp`, `motstand_hp`, `sannolikhet` (10–90), `slump` (1–100, måste matcha låst slag), `resultat` (`framgång` / `delvis framgång` / `misslyckande`), `motivering`. `delmal` är valfritt när bara en del av ordern slumpas.
 
@@ -189,17 +192,17 @@ Knappen **Tillämpa HP** (`apply_llm_hp`) köar varje rad i `hp[]` via `queue_hp
 
 When spelledaren kör **Starta nästa runda** (`apply_new_round`), eller **Avsluta spelet** efter sista rundan (`end_game`):
 
-1. `nollstall_regeringsstod`
+1. `clear_temporary_hp` — tillfällig HP försvinner; varaktig inkomst stannar
 2. `snapshot_backlog_round` — sparar `tidigare_hp` för progressstaplar (endast ny runda)
-3. `apply_pending_hp` — skriver kön till `aktuell`, klämd vid 0
+3. `apply_pending_hp` — skriver kön: `varaktig` till inkomst, resten till tillfällig HP den nya rundan, klämd vid 0
 
 Sista rundans HP-delta ska alltså synas i den avslutade kassan, inte bara som en prognos. `end_game` tar inte en ny runda och snapshot:ar inte backloggen.
 
-GM ± i Diplomatifas/Resultatfas köas på samma sätt. GM ± i Orderfas ändrar den här rundan direkt. Överföringar är alltid direkta (utan stöd).
+GM ± i Diplomatifas/Resultatfas köas på samma sätt (tillfälligt eller varaktigt). GM ± i Orderfas ändrar den här rundan direkt. På Lag-fliken visar − / + lagrets total; **Verkställ** skriver skillnaden (en Historik-rad). Överföringar är alltid tillfälliga den här rundan.
 
-I Resultatfas visar Lag-fliken **Nästa runda ±N**. Projektorn visar **Denna runda → Nästa runda**. Nästa värde är kassan efter kön, **utan** regeringsstöd (stödet nollställs innan kön tillämpas).
+I Resultatfas visar Lag-fliken HP nu och `→` nästa total när den skiljer sig. Projektorn visar **Denna runda → Nästa runda**. Nästa värde är inkomst (bas + varaktigt) plus kön, utan den här rundans tillfälliga HP. Ingen stöd +10-fotnot.
 
-**Äldre sparningar:** en tidigare **Tillämpa HP** skrev deltat rakt in i `aktuell` och lämnade `hp_pending` tom. Då räknar `next_round_hp_view` baklänges från den tillämpade `hp`-listan så rummet inte ser *Oförändrat*. Nya spel ska inte hamna där.
+**Äldre sparningar:** en tidigare **Tillämpa HP** skrev deltat rakt in i `aktuell` och lämnade `hp_pending` tom. Då räknar `next_round_hp_view` baklänges från den tillämpade `hp`-listan så rummet inte ser *Oförändrat*. Nya spel ska inte hamna där. En äldre `regeringsstod`-flagga räknas om till +10 tillfälligt en gång.
 
 ### Milstolpar (Teamens arbete)
 
@@ -211,7 +214,7 @@ Samma progress kan också läggas manuellt i **Inkorg**. Om Inkorg redan har han
 
 ## Vad rummet ser
 
-`build_public_state` är den enda projektorsnappen. Den innehåller runda, fas, tid, publik HP, stöd-flagga, backlog-progress, och i Resultatfas `next_hp` / `next_delta`. Projektorn visar timerstatus på svenska och **en stapel per lag** (procent och lagd/estimerad HP), inte uppgiftsnamn.
+`build_public_state` är den enda projektorsnappen. Den innehåller runda, fas, tid, publik HP uppdelad i bas / varaktigt / tillfälligt, backlog-progress, och i Resultatfas `next_hp` / `next_delta` plus nästa rundas samma uppdelning. Projektorn visar timerstatus på svenska och **en stapel per lag** (procent och lagd/estimerad HP), inte uppgiftsnamn. Ingen stöd-fotnot.
 
 Den innehåller **inte** inbox, händelselogg, testläge, ordrar, `llm_forslag`, `llm_resolution`, slag, sannolikheter, utfall eller nyheter.
 
@@ -225,7 +228,7 @@ Resultatfasen är fortfarande den här rundan. Jämförelsen denna → nästa ä
 - FRAMGÅNG i `utfall` skapar inte en `hp`-rad.
 - Tom `hp`-lista betyder *ingen kassaförändring*, även om utfallen är dramatiska.
 - Nyheter publiceras inte digitalt.
-- Oanvända slumpvärden tvingar inte fram utfall.
+- Oanvända slumpvärden tvingar inte fram utfall vid import. Order utan backlog-id som saknas visas som **Saknar utfall**.
 - Ångra tar tillbaka tillämpad HP/milstolpe, men rullar inte om tärningen.
 
 ---

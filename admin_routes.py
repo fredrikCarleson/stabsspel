@@ -7,7 +7,7 @@ from models import (
     skapa_nytt_spel, suggest_teams, get_fas_minutes, save_game_data, get_next_fas,
     avsluta_aktuell_fas, add_fashistorik_entry, avsluta_spel, init_fashistorik_v2, MAX_RUNDA, DATA_DIR, TEAMS, AKTIVITETSKORT, BACKLOG,
     check_game_password, is_game_session_valid, create_game_session, refresh_game_session, get_phase_timer, is_declaration_period,
-    list_saved_games, clone_backlog_for_teams, game_lock_for, generate_game_id
+    list_saved_games, clone_backlog_for_teams, game_lock_for, generate_game_id, active_teams
 )
 from game_management import delete_game, nollstall_regeringsstod, load_game_data, save_checkbox_state, get_checkbox_state
 from orderkort import generate_orderkort_html, get_available_rounds
@@ -30,7 +30,9 @@ from gm_console import (
     build_llm_export_text,
     end_game,
     hp_delta_from_fields,
+    hp_delta_from_total,
     import_llm_forslag,
+    lasting_from_fields,
     LlmJsonSyntaxError,
     LlmSuggestionAlreadyApplied,
     push_undo,
@@ -509,7 +511,7 @@ def create_orderfas_checklist(spel_id, data):
     team_tokens = data.get("team_tokens", {})
 
     # Skapa rad för varje lag
-    for i, lag in enumerate(data["lag"], 1):
+    for i, lag in enumerate(data.get("lag") or [], 1):
         checkbox_id = f"order_check{i}"
         is_checked = get_checkbox_state(data, checkbox_id)
         checked_attr = "checked" if is_checked else ""
@@ -558,7 +560,7 @@ def create_orderfas_checklist(spel_id, data):
     }}
 
     function updateNextFasButton() {{
-        const totalTeams = {len(data["lag"])};
+        const totalTeams = {len(data.get("lag") or [])};
         let checkedCount = 0;
         for (let i = 1; i <= totalTeams; i++) {{
             const checkbox = document.getElementById('order_check' + i);
@@ -1091,162 +1093,215 @@ def admin_start():
     if request.method == "POST":
         datum = request.form.get("datum")
         plats = request.form.get("plats")
-        intervall = request.form.get("players_interval")
-        antal_spelare = int(intervall) if intervall else 20
+        spellage = (request.form.get("spellage") or "").strip().lower()
+        extra_lag = request.form.getlist("extra_lag")
         orderfas_min = int(request.form.get("orderfas_min") or 10)
         diplomatifas_min = int(request.form.get("diplomatifas_min") or 10)
         password = request.form.get("password", "").strip()
-        spel_id = skapa_nytt_spel(datum, plats, antal_spelare, orderfas_min, diplomatifas_min, password)
+        try:
+            antal_spelare = int(request.form.get("antal_spelare") or 0)
+        except (TypeError, ValueError):
+            antal_spelare = 0
+        if not spellage:
+            intervall = request.form.get("players_interval")
+            antal_spelare = int(intervall) if intervall else (antal_spelare or 20)
+            extra_lag = None
+            spellage = None
+        elif not antal_spelare:
+            antal_spelare = 20 if spellage == "core" else 27
+        try:
+            spel_id = skapa_nytt_spel(
+                datum,
+                plats,
+                antal_spelare,
+                orderfas_min,
+                diplomatifas_min,
+                password,
+                extra_lag=extra_lag,
+                spellage=spellage,
+            )
+        except ValueError as exc:
+            return str(exc), 400
         return redirect(url_for("admin.admin_panel", spel_id=spel_id))
     
-    game_count = sum(1 for _ in list_saved_games())
-    intervals = [
-        ("15-26 (5 team)", 20),
-        ("27-60 (9 team)", 27)
-    ]
-    
-    # Skapa JavaScript för att visa vilka team som kommer vara med
     team_info_js = create_team_info_js()
-    
+    upload_tab = request.args.get("tab") == "upload"
+    create_selected = "false" if upload_tab else "true"
+    upload_selected = "true" if upload_tab else "false"
+    create_hidden = " hidden" if upload_tab else ""
+    upload_hidden = "" if upload_tab else " hidden"
+    create_tabindex = "-1" if upload_tab else "0"
+    upload_tabindex = "0" if upload_tab else "-1"
+
     return f'''
         <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/static/app.css?v=48">
         <link rel="stylesheet" href="/static/print.css" media="print">
-        <div class="container">
-            <!-- Header Section -->
+        <div class="container admin-start-page">
             <div class="page-header">
                 <h1>Stabsspel Admin</h1>
                 <p class="page-subtitle">Spelhantering och kontrollpanel</p>
             </div>
-            
-            <!-- Main Content Grid -->
-            <div class="admin-form-grid">
-                
-                <!-- New Game Form -->
-                <div class="admin-form-section">
-                    <h2>
-                        <span class="admin-form-section-icon">➕</span>
+
+            <div class="app-tabs admin-start-tabs" data-admin-start-tabs>
+                <div class="app-tablist" role="tablist" aria-label="Spelhantering">
+                    <button type="button" class="app-tab" role="tab" id="admin-tab-create"
+                            data-tab="create" aria-controls="admin-panel-create"
+                            aria-selected="{create_selected}" tabindex="{create_tabindex}">
                         Starta nytt spel
-                    </h2>
-                    
-                    <form method="post">
-                        <div class="admin-form-grid">
-                            <div>
-                                <label for="datum">📅 Datum</label>
-                                <input type="date" name="datum" id="datum" required>
+                    </button>
+                    <button type="button" class="app-tab" role="tab" id="admin-tab-upload"
+                            data-tab="upload" aria-controls="admin-panel-upload"
+                            aria-selected="{upload_selected}" tabindex="{upload_tabindex}">
+                        Ladda upp
+                    </button>
+                </div>
+
+                <div class="app-tabpanel" role="tabpanel" id="admin-panel-create"
+                     aria-labelledby="admin-tab-create"{create_hidden}>
+                    <div class="admin-create-layout">
+                        <form method="post">
+                            <div class="admin-form-grid">
+                                <div>
+                                    <label for="datum">Datum</label>
+                                    <input type="date" name="datum" id="datum" required>
+                                </div>
+                                <div>
+                                    <label for="plats">Plats</label>
+                                    <input type="text" name="plats" id="plats" required placeholder="T.ex. Stockholm">
+                                </div>
                             </div>
-                            <div>
-                                <label for="plats">📍 Plats</label>
-                                <input type="text" name="plats" id="plats" required placeholder="T.ex. Stockholm">
+                            <div class="admin-form-grid">
+                                <div class="admin-field-narrow">
+                                    <label for="antal_spelare">Antal spelare</label>
+                                    <input type="number" name="antal_spelare" id="antal_spelare" min="1" max="80" value="20">
+                                    <small class="text-muted">Rummets storlek. Påverkar inte vilka lag som är med.</small>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="admin-form-grid-single">
-                            <div>
-                                <label for="players_interval">👥 Antal spelare</label>
-                                <select name="players_interval" id="players_interval" onchange="updateTeamInfo()">
-                                    {''.join([f'<option value="{val}">{label}</option>' for label, val in intervals])}
-                                </select>
+                            <fieldset class="admin-team-setup">
+                                <legend>Laguppsättning</legend>
+                                <div class="admin-setup-choices">
+                                    <label class="admin-choice-card">
+                                        <input type="radio" name="spellage" value="core" checked>
+                                        <span class="admin-choice-card-body">
+                                            <span class="admin-choice-card-title">Grundspel</span>
+                                            <span class="admin-choice-card-hint">5 lag</span>
+                                        </span>
+                                    </label>
+                                    <label class="admin-choice-card">
+                                        <input type="radio" name="spellage" value="extended">
+                                        <span class="admin-choice-card-body">
+                                            <span class="admin-choice-card-title">Utökat spel</span>
+                                            <span class="admin-choice-card-hint">5 grundlag + valfria extralag</span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <div id="extra-teams" class="admin-extra-teams" hidden>
+                                    <p class="admin-extra-teams-label">Extra lag</p>
+                                    <div class="admin-extra-teams-grid">
+                                        <label class="admin-check-chip">
+                                            <input type="checkbox" name="extra_lag" value="Media" disabled>
+                                            <span>Media</span>
+                                        </label>
+                                        <label class="admin-check-chip">
+                                            <input type="checkbox" name="extra_lag" value="Regeringen" disabled>
+                                            <span>Regeringen</span>
+                                        </label>
+                                        <label class="admin-check-chip">
+                                            <input type="checkbox" name="extra_lag" value="SÄPO" disabled>
+                                            <span>SÄPO</span>
+                                        </label>
+                                        <label class="admin-check-chip">
+                                            <input type="checkbox" name="extra_lag" value="USA" disabled>
+                                            <span>USA</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <p class="admin-team-total" id="admin-team-total">Totalt: 5 lag</p>
+                            </fieldset>
+                            <div class="admin-form-grid">
+                                <div>
+                                    <label for="orderfas_min">Orderfas (min)</label>
+                                    <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required>
+                                </div>
+                                <div>
+                                    <label for="diplomatifas_min">Diplomatifas (min)</label>
+                                    <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="admin-form-grid">
-                            <div>
-                                <label for="orderfas_min">⏱️ Orderfas (min)</label>
-                                <input type="number" name="orderfas_min" id="orderfas_min" min="1" value="10" required>
+                            <div class="admin-form-grid-single">
+                                <div>
+                                    <label for="password">Spellösenord</label>
+                                    <input type="password" name="password" id="password" placeholder="Lämna tomt för standardlösenord" maxlength="50">
+                                    <small class="text-muted">Skyddar spelledarpanelen. Lämna tomt för standardlösenord.</small>
+                                </div>
                             </div>
-                            <div>
-                                <label for="diplomatifas_min">🤝 Diplomatifas (min)</label>
-                                <input type="number" name="diplomatifas_min" id="diplomatifas_min" min="1" value="10" required>
-                            </div>
-                        </div>
-                        
-                        <div class="admin-form-grid-single">
-                            <div>
-                                <label for="password">🔒 Spellösenord</label>
-                                <input type="password" name="password" id="password" placeholder="Lämna tomt för standardlösenord" maxlength="50">
-                                <small class="text-muted">Skyddar spelledarpanelen. Lämna tomt för standardlösenord.</small>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="primary lg">
-                            🚀 Starta nytt spel
-                        </button>
+                            <button type="submit" class="primary lg">Starta nytt spel</button>
+                        </form>
+                        <div id="team-info"></div>
+                    </div>
+                </div>
+
+                <div class="app-tabpanel" role="tabpanel" id="admin-panel-upload"
+                     aria-labelledby="admin-tab-upload"{upload_hidden}>
+                    <p class="text-muted mb-3">Återställ ett spel från en tidigare nedladdad JSON-fil.</p>
+                    <form method="post" action="/admin/upload_game" enctype="multipart/form-data">
+                        <label class="admin-file-input" for="gameFile">
+                            <span id="admin-upload-label">Välj JSON-fil</span>
+                            <input type="file" id="gameFile" name="gameFile" accept=".json" required>
+                        </label>
+                        <button type="submit" class="primary">Ladda upp JSON-fil</button>
                     </form>
-                    
-                    <div id="team-info" class="mt-4"></div>
-                </div>
-                
-                <!-- Upload Game -->
-                <div class="admin-form-section info">
-                    <h2>
-                        <span class="admin-form-section-icon">📁</span>
-                        Ladda upp spel
-                    </h2>
-                    <p class="text-muted mb-3">Återställ ett spel från en tidigare nedladdad JSON-fil</p>
-                    <a href="/admin/upload_game" class="secondary lg">
-                        📤 Ladda upp JSON-fil
-                    </a>
-                </div>
-                
-                <div class="admin-form-section">
-                    <h2>Sparade spel</h2>
-                    <p class="text-muted mb-3">Öppna, ladda ner och ta bort spel från startsidan.</p>
-                    <a href="/" class="secondary lg">Till startsidan</a>
                 </div>
             </div>
-            
-            <!-- Quick Stats -->
-            <div class="stats-card">
-                <h2 class="title-row">
-                    <span class="title-icon">📊</span>
-                    Snabbstatistik
-                </h2>
-                <div class="grid-auto-200">
-                    <div class="stat-box">
-                        <div class="emoji-lg">🎮</div>
-                        <h3 class="mb-0">{game_count}</h3>
-                        <p class="mt-5px text-sm text-muted">Totalt antal spel</p>
-                    </div>
-                    <div class="stat-box">
-                        <div class="emoji-lg">👥</div>
-                        <h3 class="mb-0">5-9</h3>
-                        <p class="mt-5px text-sm text-muted">Team per spel</p>
-                    </div>
-                    <div class="stat-box">
-                        <div class="emoji-lg">⏱️</div>
-                        <h3 class="mb-0">10-15</h3>
-                        <p class="mt-5px text-sm text-muted">Minuter per fas</p>
-                    </div>
-                    <div class="stat-box">
-                        <div class="emoji-lg">🔄</div>
-                        <h3 class="mb-0">3</h3>
-                        <p class="mt-5px text-sm text-muted">Faser per runda</p>
-                    </div>
-                </div>
-            </div>
-            
+
+            <p class="admin-start-home">
+                <a href="/" class="secondary">Till startsidan — öppna sparade spel</a>
+            </p>
+
             {team_info_js}
             {create_delete_game_modal()}
         </div>
-        
-        <style>
-        input:focus, select:focus {{
-            outline: none;
-            border-color: #667eea !important;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }}
-        
-        button:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }}
-        
-        .container > div:hover {{
-            transform: translateY(-2px);
-            transition: transform 0.3s ease;
-        }}
-        </style>
+        <script>
+        (function () {{
+            var root = document.querySelector('[data-admin-start-tabs]');
+            if (!root) return;
+            var tabs = Array.from(root.querySelectorAll('[role="tab"]'));
+            var panels = Array.from(root.querySelectorAll('[role="tabpanel"]'));
+            function activate(tab, focus) {{
+                tabs.forEach(function (item) {{
+                    var selected = item === tab;
+                    item.setAttribute('aria-selected', selected ? 'true' : 'false');
+                    item.tabIndex = selected ? 0 : -1;
+                }});
+                panels.forEach(function (panel) {{
+                    panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+                }});
+                if (focus) tab.focus();
+            }}
+            tabs.forEach(function (tab, index) {{
+                tab.addEventListener('click', function () {{ activate(tab, false); }});
+                tab.addEventListener('keydown', function (event) {{
+                    var next = null;
+                    if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+                    if (event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+                    if (event.key === 'Home') next = tabs[0];
+                    if (event.key === 'End') next = tabs[tabs.length - 1];
+                    if (!next) return;
+                    event.preventDefault();
+                    activate(next, true);
+                }});
+            }});
+            var fileInput = document.getElementById('gameFile');
+            var fileLabel = document.getElementById('admin-upload-label');
+            if (fileInput && fileLabel) {{
+                fileInput.addEventListener('change', function () {{
+                    var file = fileInput.files && fileInput.files[0];
+                    fileLabel.textContent = file ? file.name : 'Välj JSON-fil';
+                }});
+            }}
+        }})();
+        </script>
     '''
 
 @admin_bp.route("/admin/<spel_id>", methods=["GET", "POST"])
@@ -1566,11 +1621,20 @@ def admin_hp_live(spel_id):
     op = source.get("op")
     reason = source.get("reason") or ""
     try:
-        delta = hp_delta_from_fields(op, source.get("amount"), source.get("direction"))
+        if source.get("total") not in (None, "") and source.get("baseline") not in (None, ""):
+            delta = hp_delta_from_total(source.get("total"), source.get("baseline"))
+        else:
+            delta = hp_delta_from_fields(op, source.get("amount"), source.get("direction"))
         if delta is not None:
             sign = "+" if delta >= 0 else ""
             push_undo(data, f"HP {sign}{delta}")
-            apply_or_queue_hp(data, source.get("team"), delta, reason)
+            apply_or_queue_hp(
+                data,
+                source.get("team"),
+                delta,
+                reason,
+                varaktig=lasting_from_fields(source),
+            )
         elif op == "transfer":
             push_undo(data, "HP-överföring")
             transfer_hp(
@@ -1753,7 +1817,7 @@ def admin_poang(spel_id):
     data = load_game_data(spel_id)
     if not data:
         return "Spelet hittades inte.", 404
-    laglista = data["lag"]
+    laglista = active_teams(data)
     runda = data.get("runda", 1)
     # Initiera poängstruktur om den saknas eller om lag saknas
     if "poang" not in data:
@@ -1842,14 +1906,17 @@ def admin_reset(spel_id):
     data["timer_bonus"] = 0
     data["avslutat"] = False
     data["fashistorik"] = init_fashistorik_v2()
-    # Nollställ handlingspoäng och regeringsstöd, sätt rätt basvärde från TEAMS
+    # Nollställ handlingspoäng och regeringsstöd, sätt rätt basvärde från aktiva lag
     if "poang" in data:
-        from models import get_team_base_hp
-        for lag in data["poang"]:
+        from models import get_team_base_hp, active_teams
+        for lag in active_teams(data):
             bas = get_team_base_hp(lag, data)
-            data["poang"][lag]["bas"] = bas
-            data["poang"][lag]["aktuell"] = bas
-            data["poang"][lag]["regeringsstod"] = False
+            if lag not in data["poang"]:
+                data["poang"][lag] = {"bas": bas, "aktuell": bas, "regeringsstod": False}
+            else:
+                data["poang"][lag]["bas"] = bas
+                data["poang"][lag]["aktuell"] = bas
+                data["poang"][lag]["regeringsstod"] = False
     # Nollställ checkbox-tillstånd
     if "checkbox_states" in data:
         data["checkbox_states"] = {}
@@ -1879,7 +1946,8 @@ def admin_aktivitetskort(spel_id):
     if not data:
         return "Spelet hittades inte.", 404
     
-    laglista = data["lag"]
+    from models import activity_cards_for_team, active_teams
+    laglista = active_teams(data)
     html = f'''
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/app.css?v=5">
@@ -1898,7 +1966,9 @@ def admin_aktivitetskort(spel_id):
             html += '<div class="cards-container force-break">'
             
             # Skapa kort för alla spelare i laget (2 med uppdrag, resten blanka)
-            kort = AKTIVITETSKORT[lag]
+            kort = activity_cards_for_team(lag, laglista)
+            if len(kort) < 2:
+                kort = AKTIVITETSKORT[lag]
             
             # Kort 1 med uppdrag
             html += f'''

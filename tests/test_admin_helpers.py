@@ -41,6 +41,8 @@ class TestAdminHelpers(unittest.TestCase):
         # Check that it contains expected JavaScript
         self.assertIn('function updateTeamInfo()', js_code)
         self.assertIn('document.getElementById', js_code)
+        self.assertIn('spellage', js_code)
+        self.assertIn('extra_lag', js_code)
         self.assertIn('Team Alfa', js_code)
         self.assertIn('Team Bravo', js_code)
         self.assertIn('STT', js_code)
@@ -48,6 +50,7 @@ class TestAdminHelpers(unittest.TestCase):
         self.assertIn('SÄPO', js_code)
         self.assertIn('Regeringen', js_code)
         self.assertIn('USA', js_code)
+        self.assertIn('admin-team-preview', js_code)
     
     def test_create_compact_header(self):
         """Test create_compact_header function"""
@@ -99,7 +102,7 @@ class TestAdminHelpers(unittest.TestCase):
         
         # Check that it contains expected script reference
         self.assertIn('<script src="/static/admin.js"></script>', script_refs)
-        self.assertIn('<script src="/static/gm-console.js?v=15"></script>', script_refs)
+        self.assertIn('<script src="/static/gm-console.js?v=23"></script>', script_refs)
 
     def test_create_delete_game_modal(self):
         html = create_delete_game_modal()

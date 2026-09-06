@@ -87,7 +87,7 @@ Wallets after apply: Alfa 22, Bravo 29, STT 28, FM 10, BS 10, Media 12, SÄPO 15
 
 Wallets this round: Alfa 22, Bravo 29, STT 28, FM 10, BS 10, Media 12, SÄPO 15, Regeringen 9, USA 12.
 Queued HP: SÄPO +3, STT -3, Alfa -2.
-Wallets after apply: Alfa 20, Bravo 29, STT 25, FM 10, BS 10, Media 12, SÄPO 18, Regeringen 9, USA 12.
+Wallets after apply: Alfa 23, Bravo 25, STT 27, FM 10, BS 10, Media 12, SÄPO 18, Regeringen 12, USA 12.
 
 ### Orders
 
@@ -161,20 +161,20 @@ Wallets after apply: Alfa 20, Bravo 29, STT 25, FM 10, BS 10, Media 12, SÄPO 18
 
 ## Runda 3
 
-Wallets this round: Alfa 20, Bravo 29, STT 25, FM 10, BS 10, Media 12, SÄPO 18, Regeringen 9, USA 12.
+Wallets this round: Alfa 23, Bravo 25, STT 27, FM 10, BS 10, Media 12, SÄPO 18, Regeringen 12, USA 12.
 Queued HP: Alfa +3, SÄPO +3, STT +2.
-Wallets after apply: Alfa 23, Bravo 29, STT 27, FM 10, BS 10, Media 12, SÄPO 21, Regeringen 9, USA 12.
+Wallets after apply: Alfa 28, Bravo 25, STT 32, FM 10, BS 10, Media 12, SÄPO 18, Regeringen 12, USA 12.
 
 ### Orders
 
-- `Alfa-1` Alfa [bygga] Admin-gränssnitt (20 HP) (10 HP, roll 70)
-- `Alfa-2` Alfa [bygga] Köpa en lucka efter deklarationen (5 HP, roll 71)
-- `Alfa-3` Alfa [bygga] Andra resurskravet mot regeringen (5 HP, roll 11)
-- `Bravo-1` Bravo [bygga] Grafisk visning valet - Utveckling (20 HP) (17 HP, roll 65)
-- `Bravo-2` Bravo [bygga] Andra ryktet: Alfa saboterar deklarationen (7 HP, roll 50)
-- `Bravo-3` Bravo [bygga] Andra resursflytten från Alfa (5 HP, roll 58)
-- `STT-1` STT [bygga] Ny säker arkitektur (poddar, WAF, brandväggar) (20 HP) (14 HP, roll 45)
-- `STT-2` STT [bygga] Vägra båda leveranserna i deklarationsfönstret (6 HP, roll 82)
+- `Alfa-1` Alfa [bygga] Admin-gränssnitt (20 HP) (11 HP, roll 70)
+- `Alfa-2` Alfa [bygga] Köpa en lucka efter deklarationen (6 HP, roll 71)
+- `Alfa-3` Alfa [bygga] Andra resurskravet mot regeringen (6 HP, roll 11)
+- `Bravo-1` Bravo [bygga] Grafisk visning valet - Utveckling (20 HP) (15 HP, roll 65)
+- `Bravo-2` Bravo [bygga] Andra ryktet: Alfa saboterar deklarationen (6 HP, roll 50)
+- `Bravo-3` Bravo [bygga] Andra resursflytten från Alfa (4 HP, roll 58)
+- `STT-1` STT [bygga] Ny säker arkitektur (poddar, WAF, brandväggar) (20 HP) (15 HP, roll 45)
+- `STT-2` STT [bygga] Vägra båda leveranserna i deklarationsfönstret (7 HP, roll 82)
 - `STT-3` STT [bygga] Ta SÄPO till WAF-arbetet (5 HP, roll 35)
 - `FM-1` FM [forstora] Tyst påverkan medan systemet är låst (6 HP, roll 34)
 - `FM-2` FM [forstora] Kräva lapp från infiltratören (4 HP, roll 87)
@@ -184,8 +184,8 @@ Wallets after apply: Alfa 23, Bravo 29, STT 27, FM 10, BS 10, Media 12, SÄPO 21
 - `Media-2` Media [bygga] Fyra källor under deklarationen (6 HP, roll 15)
 - `SÄPO-1` SÄPO [bygga] Förbereda offentligt avslöjande (11 HP, roll 37)
 - `SÄPO-2` SÄPO [bygga] Andra resurskravet mot regeringen (7 HP, roll 18)
-- `Regeringen-1` Regeringen [bygga] Andra positiva nyheten: deklarationen är under kontroll (5 HP, roll 14)
-- `Regeringen-2` Regeringen [bygga] Hålla linjen: inga nödsättningar (4 HP, roll 52)
+- `Regeringen-1` Regeringen [bygga] Andra positiva nyheten: deklarationen är under kontroll (7 HP, roll 14)
+- `Regeringen-2` Regeringen [bygga] Hålla linjen: inga nödsättningar (5 HP, roll 52)
 - `USA-1` USA [bygga] Erbjudande: molnkapacitet mot inflytande (8 HP, roll 59)
 - `USA-2` USA [bygga] Andra tipset: "FM förbereder valnatt" (4 HP, roll 11)
 
@@ -237,31 +237,31 @@ Wallets after apply: Alfa 23, Bravo 29, STT 27, FM 10, BS 10, Media 12, SÄPO 21
 
 ## Runda 4
 
-Wallets this round: Alfa 23, Bravo 29, STT 27, FM 10, BS 10, Media 12, SÄPO 21, Regeringen 9, USA 12.
+Wallets this round: Alfa 28, Bravo 25, STT 32, FM 10, BS 10, Media 12, SÄPO 18, Regeringen 12, USA 12.
 Queued HP: STT +7, Alfa -5.
-Wallets after apply: Alfa 18, Bravo 29, STT 34, FM 10, BS 10, Media 12, SÄPO 21, Regeringen 9, USA 12.
+Wallets after apply: Alfa 20, Bravo 25, STT 37, FM 10, BS 10, Media 12, SÄPO 15, Regeringen 12, USA 12.
 
 ### Orders
 
-- `Alfa-1` Alfa [bygga] Driva admin-gränssnittet i mål (11 HP, roll 3)
-- `Alfa-2` Alfa [bygga] Kräva produktionssättning nu (7 HP, roll 54)
-- `Alfa-3` Alfa [bygga] Sista narrativet mot Bravo (5 HP, roll 20)
-- `Bravo-1` Bravo [bygga] Grafisk visning valet - Test (10 HP) (12 HP, roll 34)
-- `Bravo-2` Bravo [bygga] Loggning & felhantering - Krav (4 HP) (9 HP, roll 96)
-- `Bravo-3` Bravo [bygga] Valrykte: Alfa är inte produktionsklart (8 HP, roll 56)
-- `STT-1` STT [bygga] Produktionssättning (per gång) (10 HP) (11 HP, roll 51)
-- `STT-2` STT [bygga] Kapacitetstest inför valet (10 HP) (11 HP, roll 33)
-- `STT-3` STT [bygga] Inkassera motprestation för släppet (5 HP, roll 34)
+- `Alfa-1` Alfa [bygga] Driva admin-gränssnittet i mål (13 HP, roll 3)
+- `Alfa-2` Alfa [bygga] Kräva produktionssättning nu (9 HP, roll 54)
+- `Alfa-3` Alfa [bygga] Sista narrativet mot Bravo (6 HP, roll 20)
+- `Bravo-1` Bravo [bygga] Grafisk visning valet - Test (10 HP) (10 HP, roll 34)
+- `Bravo-2` Bravo [bygga] Loggning & felhantering - Krav (4 HP) (8 HP, roll 96)
+- `Bravo-3` Bravo [bygga] Valrykte: Alfa är inte produktionsklart (7 HP, roll 56)
+- `STT-1` STT [bygga] Produktionssättning (per gång) (10 HP) (13 HP, roll 51)
+- `STT-2` STT [bygga] Kapacitetstest inför valet (10 HP) (13 HP, roll 33)
+- `STT-3` STT [bygga] Inkassera motprestation för släppet (6 HP, roll 34)
 - `FM-1` FM [forstora] Valnattens DDOS (7 HP, roll 96)
 - `FM-2` FM [forstora] Sista desinformationen: valet är riggat (3 HP, roll 79)
 - `BS-1` BS [forstora] Aktivera bakdörren på valnatten (6 HP, roll 18)
 - `BS-2` BS [forstora] Gemensam valnattsaktion med FM (4 HP, roll 49)
 - `Media-1` Media [bygga] Valsensation: spion i Alfa (6 HP, roll 30)
 - `Media-2` Media [bygga] Valnattens fyra samtal (6 HP, roll 71)
-- `SÄPO-1` SÄPO [bygga] Offentligt avslöjande av infiltratören (14 HP, roll 83)
-- `SÄPO-2` SÄPO [bygga] Skydda valnattens drift (7 HP, roll 27)
-- `Regeringen-1` Regeringen [bygga] Valbudskap: systemet håller (5 HP, roll 37)
-- `Regeringen-2` Regeringen [bygga] Nödfördela HP till STT (4 HP, roll 66)
+- `SÄPO-1` SÄPO [bygga] Offentligt avslöjande av infiltratören (12 HP, roll 83)
+- `SÄPO-2` SÄPO [bygga] Skydda valnattens drift (6 HP, roll 27)
+- `Regeringen-1` Regeringen [bygga] Valbudskap: systemet håller (7 HP, roll 37)
+- `Regeringen-2` Regeringen [bygga] Nödfördela HP till STT (5 HP, roll 66)
 - `USA-1` USA [bygga] Sista avtalet: stöd mot inflytande över utfallet (8 HP, roll 83)
 - `USA-2` USA [bygga] Offentlig varning via Media (4 HP, roll 59)
 
@@ -313,12 +313,12 @@ Wallets after apply: Alfa 18, Bravo 29, STT 34, FM 10, BS 10, Media 12, SÄPO 21
 
 ## Final wallets
 
-- Alfa: 18
-- Bravo: 29
-- STT: 34
+- Alfa: 20
+- Bravo: 25
+- STT: 37
 - FM: 10
 - BS: 10
 - Media: 12
-- SÄPO: 21
-- Regeringen: 9
+- SÄPO: 15
+- Regeringen: 12
 - USA: 12

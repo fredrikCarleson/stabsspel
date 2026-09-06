@@ -1,0 +1,213 @@
+{
+  "runda": 1,
+  "utfall": [
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-3",
+      "order": "Kampanja mot Bravo i korridorerna",
+      "satsad_hp": 6,
+      "motstand_hp": 13,
+      "sannolikhet": 25,
+      "slump": 65,
+      "resultat": "misslyckande",
+      "motivering": "Alfas 6 HP möter Bravos rykte (6) och Medias artikel mot Alfa (7). Narrativet om Bravo som långsamt tar inte fäste."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-2",
+      "order": "Kontakta regeringen för extra resurser",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 80,
+      "slump": 87,
+      "resultat": "misslyckande",
+      "motivering": "Välfinansierad lobbying utan motorder, men slaget ligger strax över. Bravo får inte igenom flytten från Alfa. Regeringens egen order om extra till Bravo löses separat."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-3",
+      "order": "Sprida rykten om Alfa",
+      "satsad_hp": 6,
+      "motstand_hp": 6,
+      "sannolikhet": 75,
+      "slump": 69,
+      "resultat": "delvis framgång",
+      "motivering": "Medias artikel (7 HP) förstärker ryktet, mot Alfas motkampanj (6). 6+7 mot 6 ger övertag, slaget är knappt under. Historien sprids men utan entydig evidens."
+    },
+    {
+      "lag": "STT",
+      "order_ref": "STT-3",
+      "order": "Förhandla om prioritet",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 40,
+      "slump": 77,
+      "resultat": "misslyckande",
+      "motivering": "Ingen betalar extra för förtur. 7 HP räcker inte för att tvinga fram en motprestation när både Alfa och Bravo prioriterar eget arbete."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-1",
+      "order": "Massiv DDOS-attack mot valservern",
+      "satsad_hp": 7,
+      "motstand_hp": 15,
+      "sannolikhet": 35,
+      "slump": 41,
+      "resultat": "misslyckande",
+      "motivering": "STT:s hardening (15) väger tyngre än 7 HP attack. Knapp förlust: kort belastningsspik syns, men front-end håller. STT:s backlog-arbete minskas inte."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-2",
+      "order": "Desinformationskampanj på sociala medier",
+      "satsad_hp": 3,
+      "motstand_hp": 5,
+      "sannolikhet": 60,
+      "slump": 23,
+      "resultat": "framgång",
+      "motivering": "Regeringens mörkning (5) är motstånd, men Medias granskning förstärker tvivlet. Lågt slag: påståenden om röstmanipulation får spridning."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-1",
+      "order": "Utpressa en STT-medlem",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 65,
+      "slump": 51,
+      "resultat": "delvis framgång",
+      "motivering": "Ingen motorder. Utpressning är svårt men 6 HP är en tydlig satsning. Knapp framgång: personen skräms och läcker fragment, men går inte helt över."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-2",
+      "order": "Manipulera databasen",
+      "satsad_hp": 4,
+      "motstand_hp": 15,
+      "sannolikhet": 25,
+      "slump": 43,
+      "resultat": "misslyckande",
+      "motivering": "STT:s hardening är relevant försvar mot bakdörr i röstdatan. 4 mot 15 ger låg chans. Slaget missar: ingen bakdörr etableras."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-1",
+      "order": "Publicera artikel om misstänkt sabotage i Alfa",
+      "satsad_hp": 7,
+      "motstand_hp": 6,
+      "sannolikhet": 75,
+      "slump": 36,
+      "resultat": "framgång",
+      "motivering": "Bravos rykte stöttar publiceringen. Alfas motkampanj träffar Bravo, inte artikeln. 7+6 mot 6. Tydlig framgång: rubriken går ut."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-2",
+      "order": "Granskning av regeringens mörkläggning",
+      "satsad_hp": 5,
+      "motstand_hp": 5,
+      "sannolikhet": 55,
+      "slump": 13,
+      "resultat": "framgång",
+      "motivering": "5 mot regeringens 5 i mörkning. Lågt slag: granskningen får internationellt genomslag."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-1",
+      "order": "Fördela extra resurser till Bravo",
+      "satsad_hp": 7,
+      "motstand_hp": 0,
+      "sannolikhet": 75,
+      "slump": 48,
+      "resultat": "framgång",
+      "motivering": "Regeringen styr sin egen tilldelning. Bravo-lobbyingen misslyckades, men beslutet går igenom på regeringens linje. Extra till Bravo, inte flytt från Alfa."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-2",
+      "order": "Mörka säkerhetsbrister",
+      "satsad_hp": 5,
+      "motstand_hp": 5,
+      "sannolikhet": 40,
+      "slump": 44,
+      "resultat": "misslyckande",
+      "motivering": "Medias granskning (5) tynger lika mycket som 5 HP PR. Slaget ligger över: mörkningen håller inte."
+    }
+  ],
+  "nyheter": [
+    {
+      "rubrik": "Kort störning i valets testmiljö – myndigheterna talar om belastning",
+      "upplasning": "Tekniska miljöer kopplade till det kommande extravalet utsattes under förmiddagen för ovanligt hög trafik. Delar av testsystemen svarade långsammare innan läget stabiliserades. Driftansvariga vill inte kalla händelsen ett angrepp, men bekräftar att övervakningen har skärpts. Inga röstuppgifter uppges ha påverkats.",
+      "lag": ["STT", "FM"]
+    },
+    {
+      "rubrik": "Frågetecken kring säkerheten i ett av utvecklingsteamen",
+      "upplasning": "Uppgifter om möjliga brister i arbetet med det nya valsystemet har fått spridning. Det är oklart var uppgifterna kommer ifrån, men ett av de två utvecklingsteamen pekas ut för ett mer experimentellt arbetssätt. Projektledningen säger att inget sabotage är belagt, samtidigt som mer tid nu går åt till att svara på frågor om kvalitet och kontroll.",
+      "lag": ["Alfa", "Bravo", "Media"]
+    },
+    {
+      "rubrik": "Regeringskansliet anklagas för att tona ned IT-problem",
+      "upplasning": "En granskning gör gällande att allvarliga brister i valets IT-stöd har bagatelliserats för att inte oroa allmänheten. Regeringen avvisar att något har undanhållits, men flera källor talar om intern oro. Samtidigt cirkulerar påståenden på sociala medier om att röster skulle kunna manipuleras – något myndigheterna kallar spekulation.",
+      "lag": ["Regeringen", "Media", "FM"]
+    },
+    {
+      "rubrik": "Extra resurser till det mer planerade utvecklingsspåret",
+      "upplasning": "Regeringen har beslutat att skjuta till extra stöd till det utvecklingsteam som arbetar efter en mer dokumenterad plan. Syftet uppges vara att minska risken för kaos inför extravalet. Det andra teamet får inget motsvarande tillskott. Oppositionen frågar om politiken nu väljer metod före resultat.",
+      "lag": ["Regeringen", "Bravo", "Alfa"]
+    }
+  ],
+  "hp": [
+    {
+      "lag": "Bravo",
+      "delta": 4,
+      "orsak": "Regeringen skjuter till extra planeringsresurser efter det lyckade tilldelningsbeslutet."
+    },
+    {
+      "lag": "Alfa",
+      "delta": -3,
+      "orsak": "Säkerhetsfrågor och mediedrev tvingar fram intern avstämning och förlorad arbetstid."
+    },
+    {
+      "lag": "STT",
+      "delta": -2,
+      "orsak": "En medarbetare är skrämd och måste hanteras internt efter utpressningsförsöket."
+    },
+    {
+      "lag": "Regeringen",
+      "delta": -3,
+      "orsak": "Misslyckad mörkning tvingar fram krishantering och mer tid mot medier."
+    }
+  ],
+  "milstolpar": [
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_1",
+      "delta_hp": 10,
+      "orsak": "10 HP utvecklingsarbete på inloggning. Ingen relevant attack träffade arbetet."
+    },
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_2",
+      "delta_hp": 9,
+      "orsak": "9 HP på röst-API. Bakdörrsförsöket mot databasen misslyckades."
+    },
+    {
+      "lag": "Bravo",
+      "uppgift": "bravo_1_Krav",
+      "delta_hp": 10,
+      "orsak": "12 HP satsades mot 10 HP kravfas. Överskottet förbrukas, 10 HP räknas."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_1",
+      "delta_hp": 15,
+      "orsak": "15 HP hardening. DDoS misslyckades och minskar inte progressen."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_2",
+      "delta_hp": 8,
+      "orsak": "8 HP planering av deklarationsinfrastruktur."
+    }
+  ]
+}

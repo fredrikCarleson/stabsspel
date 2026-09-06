@@ -209,14 +209,31 @@
       "</div>";
   }
 
+  function signedDelta(n) {
+    n = parseInt(n, 10) || 0;
+    return n > 0 ? "+" + n : String(n);
+  }
+
+  function recipeHtml(bas, varaktigt, tillfalligt) {
+    return (
+      '<div class="projector-team-recipe">' +
+      "<span>Bas " + (parseInt(bas, 10) || 0) + "</span>" +
+      "<span>varaktigt " + escapeHtml(signedDelta(varaktigt)) + "</span>" +
+      "<span>tillfälligt " + escapeHtml(signedDelta(tillfalligt)) + "</span>" +
+      "</div>"
+    );
+  }
+
   function paintHp(teams, showNext) {
     var root = document.getElementById("projector-hp");
     if (!root) return;
     root.innerHTML = (teams || [])
       .map(function (t) {
-        var extra = t.regeringsstod ? " has-support" : "";
-        var note = t.regeringsstod ? '<div class="projector-team-note">stöd +10</div>' : "";
-        var hpHtml = '<div class="projector-team-hp">' + t.hp + "</div>";
+        var extra = "";
+        var note = "";
+        var hpHtml =
+          '<div class="projector-team-hp">' + t.hp + "</div>" +
+          recipeHtml(t.bas, t.varaktigt, t.tillfalligt);
         var aria = escapeHtml(t.team) + ": " + t.hp + " HP";
         if (showNext) {
           var delta = parseInt(t.next_delta, 10) || 0;
@@ -239,10 +256,14 @@
             '<div class="projector-team-comparison">' +
             '<div class="projector-team-period"><span>Denna runda</span><strong>' +
             t.hp +
-            '</strong></div><span class="projector-team-arrow" aria-hidden="true">→</span>' +
+            "</strong>" +
+            recipeHtml(t.bas, t.varaktigt, t.tillfalligt) +
+            '</div><span class="projector-team-arrow" aria-hidden="true">→</span>' +
             '<div class="projector-team-period is-next"><span>Nästa runda</span><strong>' +
             nextHp +
-            "</strong></div></div>" +
+            "</strong>" +
+            recipeHtml(t.next_bas, t.next_varaktigt, t.next_tillfalligt) +
+            "</div></div>" +
             '<div class="projector-team-change">' + changeLabel + "</div>";
         }
         return (

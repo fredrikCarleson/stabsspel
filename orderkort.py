@@ -5,8 +5,20 @@ Skapar utskrivbara orderkort för alla team för varje runda.
 
 import os
 from datetime import datetime
-from models import TEAMS
+from models import active_teams, get_team_base_hp
 from game_management import load_game_data
+
+
+def orderkort_max_hp(data, team):
+    """Wallet printed on paper cards: stored bas, else the roster catalog."""
+    entry = ((data or {}).get("poang") or {}).get(team) or {}
+    try:
+        bas = int(entry.get("bas") or 0)
+    except (TypeError, ValueError):
+        bas = 0
+    if bas > 0:
+        return bas
+    return get_team_base_hp(team, data)
 
 def generate_orderkort_html(spel_id, runda):
     """
@@ -23,20 +35,14 @@ def generate_orderkort_html(spel_id, runda):
     if not data:
         return "<p>Spel hittades inte.</p>"
     
-    # Hämta team från spelet
-    teams = data.get("lag", [])
+    teams = active_teams(data)
     if not teams:
         return "<p>Inga team hittades i spelet.</p>"
     
-    # Hämta poängdata för att visa max handlingspoäng
-    poang = data.get("poang", {})
-    
-    # Skapa HTML för varje team
     orderkort_html = ""
     
     for team in teams:
-        # Hämta teamets max handlingspoäng
-        max_hp = poang.get(team, {}).get("max_hp", 25)  # Standard 25 om inte satt
+        max_hp = orderkort_max_hp(data, team)
         
         orderkort_html += f"""
         <div class="orderkort-page">
@@ -77,7 +83,7 @@ def generate_orderkort_html(spel_id, runda):
                         </tr>
                     </thead>
                     <tbody>
-                        {generate_order_rows()}
+                        {generate_order_rows(teams)}
                     </tbody>
                 </table>
             </div>
@@ -300,13 +306,10 @@ def generate_order_rows(teams=None):
     Generera HTML för orderraderna i tabellen.
     
     Args:
-        teams (list): Lista med teamnamn för att generera checkboxes för "Påverkar/Vem"
-    
-    Returns:
-        str: HTML för orderraderna
+        teams (list): Aktiva lag för kryssrutorna "Påverkar/Vem".
+            Empty or omitted → no team checkboxes (never the full catalog).
     """
-    if teams is None:
-        teams = [team[0] for team in TEAMS]  # Använd standardteam om inga angivna
+    teams = [name for name in (teams or []) if str(name or "").strip()]
     
     rows_html = ""
     
@@ -402,8 +405,7 @@ def generate_team_orderkort_html(spel_id, team_name):
     if not data:
         return "<p>Spel hittades inte.</p>"
     
-    # Kontrollera att teamet finns i spelet
-    teams = data.get("lag", [])
+    teams = active_teams(data)
     if team_name not in teams:
         return f"<p>Team '{team_name}' hittades inte i spelet.</p>"
     
@@ -412,9 +414,7 @@ def generate_team_orderkort_html(spel_id, team_name):
     if not available_rounds:
         return "<p>Inga rundor hittades för spelet.</p>"
     
-    # Hämta poängdata för att visa max handlingspoäng
-    poang = data.get("poang", {})
-    max_hp = poang.get(team_name, {}).get("max_hp", 25)  # Standard 25 om inte satt
+    max_hp = orderkort_max_hp(data, team_name)
     
     # Skapa HTML för varje runda
     orderkort_html = ""
@@ -459,7 +459,7 @@ def generate_team_orderkort_html(spel_id, team_name):
                                </tr>
                            </thead>
                            <tbody>
-                               {generate_order_rows()}
+                               {generate_order_rows(teams)}
                            </tbody>
                        </table>
                    </div>

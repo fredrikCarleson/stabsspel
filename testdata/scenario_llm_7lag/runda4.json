@@ -1,0 +1,216 @@
+{
+  "runda": 4,
+  "utfall": [
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-2",
+      "order": "Kräva produktionssättning nu",
+      "delmal": "Släppa inloggning, API och sök",
+      "satsad_hp": 8,
+      "motstand_hp": 0,
+      "sannolikhet": 35,
+      "slump": 87,
+      "resultat": "misslyckande",
+      "motivering": "Inloggning 10/15, API 9/25 och sök 11/20 är inte klara. STT släpper bara det som är färdigt. Ingen lucka räddar ofärdig kod."
+    },
+    {
+      "lag": "Alfa",
+      "order_ref": "Alfa-3",
+      "order": "Sista narrativet mot Bravo",
+      "satsad_hp": 5,
+      "motstand_hp": 8,
+      "sannolikhet": 35,
+      "slump": 54,
+      "resultat": "misslyckande",
+      "motivering": "5 mot Bravos 8. Slaget missar. Storyn att Bravo bara testar tar inte över. Bravo:s motrykte om Alfas ofärdiga släpp löses separat."
+    },
+    {
+      "lag": "Bravo",
+      "order_ref": "Bravo-3",
+      "order": "Valrykte: Alfa är inte produktionsklart",
+      "satsad_hp": 8,
+      "motstand_hp": 5,
+      "sannolikhet": 70,
+      "slump": 15,
+      "resultat": "framgång",
+      "motivering": "Alfas ofärdiga stack ger substans. Lågt slag: ryktet att det iterativa spåret inte är produktionsklart går ut."
+    },
+    {
+      "lag": "STT",
+      "order_ref": "STT-1",
+      "order": "Produktionssättning (per gång)",
+      "delmal": "Vad som faktiskt går live",
+      "satsad_hp": 10,
+      "motstand_hp": 0,
+      "sannolikhet": 65,
+      "slump": 37,
+      "resultat": "framgång",
+      "motivering": "Admin når taket denna runda. Inloggning, API, sök och Bravos visning är ofärdiga. STT släpper admin, inget röstflöde."
+    },
+    {
+      "lag": "STT",
+      "order_ref": "STT-3",
+      "order": "Inkassera motprestation för släppet",
+      "satsad_hp": 5,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 14,
+      "resultat": "framgång",
+      "motivering": "Alfa ville betala för tre släpp och fick ett. STT tar betalt för admin, inte för det som inte gick ut."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-1",
+      "order": "Valnattens DDOS",
+      "satsad_hp": 7,
+      "motstand_hp": 9,
+      "sannolikhet": 40,
+      "slump": 52,
+      "resultat": "misslyckande",
+      "motivering": "BS gemensamma aktion ger samordning, men lastsiffrorna (9) plus tidigare hardening väger mer. Slaget missar: valnatten håller."
+    },
+    {
+      "lag": "FM",
+      "order_ref": "FM-2",
+      "order": "Sista desinformationen: valet är riggat",
+      "satsad_hp": 3,
+      "motstand_hp": 7,
+      "sannolikhet": 30,
+      "slump": 59,
+      "resultat": "misslyckande",
+      "motivering": "Regeringens valbudskap (7) plus att DDoS misslyckas. 3 HP räcker inte. Riggad-valet-spåret tar inte fäste."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-1",
+      "order": "Aktivera bakdörren på valnatten",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 10,
+      "slump": 11,
+      "resultat": "misslyckande",
+      "motivering": "Ingen bakdörr etablerades i tidigare rundor. Att aktivera något som inte finns ger lägsta chans. Slaget ligger över."
+    },
+    {
+      "lag": "BS",
+      "order_ref": "BS-2",
+      "order": "Gemensam valnattsaktion med FM",
+      "satsad_hp": 4,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 3,
+      "resultat": "framgång",
+      "motivering": "Samordningen blir av. DDoS-effekten uteblir ändå — kontakten finns, stilleståndet uteblir."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-1",
+      "order": "Valsensation: spion i Alfa",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 54,
+      "resultat": "framgång",
+      "motivering": "Ingen myndighet motbevisar. 6 HP. Skandalen går ut som obekräftade uppgifter, utan att namnge dolda aktörer."
+    },
+    {
+      "lag": "Media",
+      "order_ref": "Media-2",
+      "order": "Valnattens fyra samtal",
+      "satsad_hp": 6,
+      "motstand_hp": 0,
+      "sannolikhet": 70,
+      "slump": 20,
+      "resultat": "framgång",
+      "motivering": "Lågt slag. Media får samtal med drift, politik och de som vill så tvivel. Underlaget till valnatten blir brett."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-1",
+      "order": "Valbudskap: systemet håller",
+      "satsad_hp": 7,
+      "motstand_hp": 3,
+      "sannolikhet": 65,
+      "slump": 34,
+      "resultat": "framgång",
+      "motivering": "DDoS misslyckas. 7 mot 3 i sista fuskläckan. Budskapet att driften klarade natten går ut, parallellt med spionuppgifter."
+    },
+    {
+      "lag": "Regeringen",
+      "order_ref": "Regeringen-2",
+      "order": "Nödfördela HP till STT",
+      "satsad_hp": 5,
+      "motstand_hp": 0,
+      "sannolikhet": 75,
+      "slump": 96,
+      "resultat": "misslyckande",
+      "motivering": "Politisk vilja finns, men slaget missar. STT får inget nöd tillskott. De klarar natten på befintlig kassa och lasttest."
+    }
+  ],
+  "nyheter": [
+    {
+      "rubrik": "Bara administrationsytan gick live – röstflödet väntar",
+      "upplasning": "När deklarationsstoppet släppte sattes en administrativ yta i drift. Inloggning, röstinsamling och den grafiska visningen uppges inte vara klara. Driftansvariga säger att valet kan genomföras med befintliga rutiner. Oppositionen kallar det ett halvfärdigt system på valdagen.",
+      "lag": ["STT", "Alfa", "Bravo"]
+    },
+    {
+      "rubrik": "Obekräftade uppgifter om infiltratör i ett utvecklingsteam",
+      "upplasning": "Uppgifter cirkulerar om att ett av utvecklingsteamen skulle ha en person med lojalitet någon annanstans. Inga namn har offentliggjorts och ingen myndighet bekräftar. Stämningen beskrivs som giftig. Projektledningen säger att arbetet fortsätter.",
+      "lag": ["Media", "Alfa", "BS"]
+    },
+    {
+      "rubrik": "Ett spår kallas ofärdigt – det andra fast i test",
+      "upplasning": "Källor gör gällande att det mer iterativa teamet inte fick sina kärnfunktioner i drift, medan det mer planerade teamet fortfarande testar visningen. Båda sidor anklagar den andra för att sätta extravalet på spel. Väljarna ser bara att systemet inte är komplett.",
+      "lag": ["Alfa", "Bravo", "Media"]
+    },
+    {
+      "rubrik": "Regeringen: driften klarade natten",
+      "upplasning": "Regeringen säger att valnattens drift höll, trots larm om överbelastning. Inga röstuppgifter uppges ha påverkats. Samtidigt får obekräftade uppgifter om intern infiltration mer utrymme än myndigheterna önskar. Förtroendet beskrivs som sårigt, men natten som tekniskt överlevd.",
+      "lag": ["Regeringen", "STT", "Media"]
+    }
+  ],
+  "hp": [
+    {
+      "lag": "STT",
+      "delta": 5,
+      "orsak": "Betalt för det enda släppet som faktiskt gick ut."
+    },
+    {
+      "lag": "Alfa",
+      "delta": -5,
+      "orsak": "Betalning för admin-släpp plus intern kris efter obekräftade spionuppgifter."
+    }
+  ],
+  "milstolpar": [
+    {
+      "lag": "Alfa",
+      "uppgift": "alfa_4",
+      "delta_hp": 10,
+      "orsak": "11 HP satsades mot 10 HP kvar på admin. Uppgiften går i mål."
+    },
+    {
+      "lag": "Bravo",
+      "uppgift": "bravo_1_Test",
+      "delta_hp": 10,
+      "orsak": "12 HP satsades mot 10 HP testfas. Visningen når test, inte produktion."
+    },
+    {
+      "lag": "Bravo",
+      "uppgift": "bravo_2_Krav",
+      "delta_hp": 4,
+      "orsak": "Nödsäkring: kravfas för loggning. Överskottet förbrukas."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_6",
+      "delta_hp": 10,
+      "orsak": "Produktionssättning av det som var redo: admin."
+    },
+    {
+      "lag": "STT",
+      "uppgift": "stt_4",
+      "delta_hp": 9,
+      "orsak": "Andra kapacitetstestet inför valnatt. DDoS misslyckades."
+    }
+  ]
+}

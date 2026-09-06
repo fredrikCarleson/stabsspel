@@ -328,6 +328,28 @@ class TestLiveRoutes(unittest.TestCase):
         )
         self.assertTrue(self._read_game()["llm_forslag"]["1"]["importerad"])
 
+    def test_order_form_wait_page_during_result_phase(self):
+        data = self._read_game()
+        data["fas"] = "Resultatfas"
+        data["runda"] = 2
+        self._write_game(data)
+
+        response = app.test_client().get(
+            f"/team/{self.spel_id}/{self.token}/enter_order"
+        )
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("order-page", html)
+        self.assertIn("Inte orderfas", html)
+        self.assertIn("Order lämnas under Orderfas", html)
+        self.assertIn("Resultatfas", html)
+        self.assertIn("Orderfas i runda 3", html)
+        self.assertIn("titta på spelarskärmen", html)
+        self.assertNotIn("eller Diplomatifas", html)
+        self.assertIn("Ange order", html)
+        self.assertIn("Alfa", html)
+
 
 if __name__ == "__main__":
     unittest.main()

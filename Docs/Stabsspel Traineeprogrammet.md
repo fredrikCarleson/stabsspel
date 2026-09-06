@@ -170,6 +170,19 @@ Tabellen nedan beskriver de aktiviteter som behöver vara på palts innan valet.
 | Produktionssätta | 10 per gång | STT |
 | Totalt | 250 poäng |  |
 
+# **Laguppsättning**
+
+Fem lag är alltid med: Alfa, Bravo, STT, FM och Brottssyndikatet.
+
+Fyra lag är valfria extra: Media, Regeringen, SÄPO och USA.
+
+- **Grundspel:** de fem kärnlagen.
+- **Utökat spel:** kärnlagen plus minst ett extra lag. Giltiga spel har 6, 7, 8 eller 9 lag.
+
+Det sparade spelets `lag`-lista är sanningen för HP, spelledarpanel, projektor, orderlänkar och LLM. Ett inaktivt lag ska inte synas.
+
+Appen balanserar inte HP automatiskt efter hur många extra lag som valts. Grundspelets HP-tabell används för fem lag. Utökat spel använder samma HP-katalog som det fulla 9-lagsspelet för de lag som faktiskt är med.
+
 # **Handlingspoäng per team**
 
 För att klara av det som finns i backlog behöver varje team under perfekta förutsättningar spendera ca 21 handlingspoäng per runda. Det förutsätter att saker och ting går bra. Det finns alltså en liten övervikt för FM och BS att ställa till med problem om de samordnar.
@@ -195,6 +208,13 @@ Poängen per team ändras per runda baserat på händelser. Det är upp till spe
 | Regeringen | 12 HP |
 | SÄPO | 15 HP |
 | USA | 12 HP |
+
+När **Regeringen** är ett spelande lag är dess 12 HP politiska resurser, inte teknisk backlog-kapacitet. Varje runda får de användas på två sätt:
+
+1. Föras över till ett eller flera andra aktiva lag. Överförd HP lämnar regeringens kassa samma runda.
+2. Satsas på politisk eller medial påverkan (opinion, media, motverka negativ press).
+
+Samma HP kan inte både ges bort och läggas på en order. Kassan nästa runda är **bas + varaktigt**, plus tillfälliga justeringar från spelledare eller LLM den rundan. Det finns ingen dold extra bank på +10. Ett tillfälligt anslag (regering, spion, GM −/+) försvinner vid rundbyte. Varaktig inkomst (t.ex. DevOps +3 varje runda) stannar tills spelledaren tar bort den.
 
 2. ## **Smarta saker för teamen att göra**
 

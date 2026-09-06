@@ -4,7 +4,7 @@ import os
 import qrcode
 import io
 import base64
-from models import DATA_DIR, load_game_data, get_team_by_token
+from models import DATA_DIR, load_game_data, get_team_by_token, active_teams, absent_optional_teams_mentioned
 from orderkort import generate_team_orderkort_html
 
 team_bp = Blueprint('team', __name__)
@@ -32,18 +32,23 @@ def generate_qr_code(data):
 
 @team_bp.route("/team/<spel_id>/<lag_namn>")
 def team_beskrivning(spel_id, lag_namn):
-    # Sökväg till beskrivning och bild
+    # Load game data first so inactive teams cannot be opened.
+    data = load_game_data(spel_id)
+    if not data:
+        return "Spelet hittades inte.", 404
+    roster = active_teams(data)
+    if lag_namn not in roster:
+        return "Laget ingår inte i det här spelet.", 404
+
     desc_dir = os.path.join("teambeskrivning")
     txt_path = os.path.join(desc_dir, f"{lag_namn.lower()}.txt")
     img_path = os.path.join(desc_dir, f"{lag_namn.lower()}.jpg")
     
-    # Load game data to get team token
-    data = load_game_data(spel_id)
     team_token = None
     team_order_url = None
     qr_code_html = ""
     
-    if data and "team_tokens" in data:
+    if "team_tokens" in data:
         team_token = data["team_tokens"].get(lag_namn)
         if team_token:
             team_order_url = f"/team/{spel_id}/{team_token}/enter_order"
@@ -76,6 +81,15 @@ def team_beskrivning(spel_id, lag_namn):
             else:
                 html_lines.append(line)
         text_html = "<br>".join(html_lines)
+        missing = absent_optional_teams_mentioned(text, roster)
+        if missing:
+            names = ", ".join(missing)
+            text_html = (
+                f'<p class="brief-banner">I det här spelet ingår inte: {names}. '
+                "Tolka hänvisningar till dem som aktörer i spelvärlden som spelledaren "
+                "kan spela, inte som lag vid ett bord.</p>"
+                + text_html
+            )
     else:
         text_html = "<i>Ingen beskrivning hittades för detta lag.</i>"
     # Bild om den finns, placeras längst ner och på egen sida vid utskrift
