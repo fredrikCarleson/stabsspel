@@ -25,6 +25,7 @@ from models import (
     get_next_fas,
     get_phase_timer,
     get_team_base_hp,
+    active_teams,
 )
 from game_management import nollstall_regeringsstod
 
@@ -113,6 +114,75 @@ def can_submit_orders(data):
         data.get("fas") in ("Orderfas", "Diplomatifas")
         and not data.get("avslutat")
     )
+
+
+def _fordelning_items(order_data, teams, from_team):
+    """Normalize government HP grants. Unknown or inactive teams are skipped."""
+    raw = (order_data or {}).get("hp_fordelning") or []
+    if not isinstance(raw, list):
+        return []
+    known = list(teams or [])
+    merged = {}
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        team = normalize_team_name(item.get("lag") or item.get("team"), known)
+        if not team or team == from_team:
+            continue
+        try:
+            amount = int(item.get("hp") or item.get("amount") or 0)
+        except (TypeError, ValueError):
+            continue
+        if amount <= 0:
+            continue
+        merged[team] = int(merged.get(team) or 0) + amount
+    return [{"lag": team, "hp": amount} for team, amount in merged.items()]
+
+
+def apply_regeringen_fordelning(data, team):
+    """Move submitted government grants out of Regeringen's wallet. Idempotent."""
+    if team != "Regeringen":
+        return data
+    record = _team_order_record(data, team)
+    if not record or record.get("hp_fordelning_applied"):
+        return data
+    items = _fordelning_items(record.get("orders"), active_teams(data), team)
+    for item in items:
+        transfer_hp(data, "Regeringen", item["lag"], item["hp"], "Regeringen fördelar HP")
+    record["hp_fordelning_applied"] = items
+    return data
+
+
+def reverse_regeringen_fordelning(data, team):
+    """Undo government grants applied from the current-round order."""
+    record = _team_order_record(data, team)
+    if not record:
+        return data
+    applied = record.get("hp_fordelning_applied") or []
+    if not applied:
+        record["hp_fordelning_applied"] = []
+        return data
+    ensure_poang(data)
+    for item in applied:
+        target = item.get("lag")
+        try:
+            amount = int(item.get("hp") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not target or amount <= 0 or target not in data["poang"]:
+            continue
+        available = int(data["poang"][target].get("aktuell") or 0)
+        take = min(amount, available)
+        if take:
+            transfer_hp(data, target, "Regeringen", take, "Återtagen fördelning")
+    record["hp_fordelning_applied"] = []
+    return data
+
+
+def sync_regeringen_fordelning(data, team):
+    """Re-apply grants after an edit of a submitted government order."""
+    reverse_regeringen_fordelning(data, team)
+    return apply_regeringen_fordelning(data, team)
 
 
 def validate_order_hp(data, team_name, order_data):
